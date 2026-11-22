@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
 const binary = resolve(process.argv[2])
+const diagSupervisor = process.argv[3]
 const root = await mkdtemp(join(tmpdir(), "fase1-loopback-"))
 const state = join(root, "state", "opencode")
 const workspace = join(root, "fixture")
@@ -56,6 +57,15 @@ const server = Bun.serve({
         typeof message.content === "string" ? message.content : JSON.stringify(message.content))
       return stream({ content: marker }, "stop")
     }
+    if (current === "diag") {
+      const names = body.tools.map((tool: { function: { name: string } }) => tool.function.name)
+      const name = names.find((value: string) => value === "diag_environment")
+      assert(name, JSON.stringify(names))
+      return stream({ tool_calls: [{
+        index: 0, id: "call_diag", type: "function",
+        function: { name, arguments: "{}" },
+      }] }, "tool_calls")
+    }
     assert(body.tools.some((tool: { function: { name: string } }) => tool.function.name === "read"))
     const inputs: Record<string, object[]> = {
       invalid: [{ path: "sample.txt", limit: 0 }],
@@ -86,6 +96,10 @@ try {
   await writeFile(join(workspace, unicode), "UNICODE_OK\n")
   await writeFile(join(workspace, "large.txt"), "large-filler\n".repeat(4000) + "TAIL_OUTSIDE_LIMIT\n")
   const config = JSON.stringify({
+    ...(diagSupervisor ? {
+      mcp: { servers: { diag: { type: "local", command: ["/usr/bin/python3", "-I", "-B", diagSupervisor, "diag"],
+        protocol: "legacy", codemode: false } } },
+    } : {}),
     providers: {
       fixture: {
         package: "@opencode/ai/providers/openai-compatible",
@@ -95,7 +109,7 @@ try {
     },
   })
 
-  for (current of ["invalid", "windows", "unicode", "bounded", "large", "multiple", "cancel", "retry"]) {
+  for (current of diagSupervisor ? ["diag"] : ["invalid", "windows", "unicode", "bounded", "large", "multiple", "cancel", "retry"]) {
     requests = 0
     toolResults = []
     const process = Bun.spawn([binary, "--standalone", "run", "--model", "fixture/synthetic", "--format", "json", `Synthetic fixture: ${current}`], {
@@ -129,6 +143,11 @@ try {
         assert(stdout.includes(marker), stdout)
         assert.equal(requests, 2)
         const result = toolResults.join("\n")
+        if (current === "diag") {
+          const values = JSON.parse(toolResults[0])
+          assert.equal(values.profile, "DIAG", JSON.stringify(values))
+          assert.equal(values.system, "Linux")
+        }
         if (current === "invalid") assert.match(result, /positive|invalid|greater|at least/i)
         if (current === "windows") assert(result.replaceAll("\\\\", "\\").includes(windows), result)
         if (current === "unicode") assert(result.includes("UNICODE_OK"), result)

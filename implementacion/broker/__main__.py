@@ -186,7 +186,12 @@ def call_tool(identifier, params):
         audit("unknown", "denied")
         response(identifier, error=(-32602, "Unknown tool"))
         return
-    if params.keys() - {"name", "arguments"} or params.get("arguments", {}) != {}:
+    metadata = params.get("_meta", {})
+    if (
+        params.keys() - {"name", "arguments", "_meta"}
+        or params.get("arguments", {}) != {}
+        or not isinstance(metadata, dict)
+    ):
         audit(name, "denied")
         response(identifier, error=(-32602, "Tool accepts no arguments"))
         return

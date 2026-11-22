@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fases 1 (P-1) y 2 (P0) completadas. El broker de Fase 3 (P1) está implementado y verificado sobre stdio en CachyOS x86_64. El descubrimiento desde la CLI compilada queda pendiente.
+Fases 1 (P-1), 2 (P0) y 3 (P1) completadas. Fase 4 (P2) en curso para Linux x86_64.
 
 ## Fase 0 cerrada
 
@@ -34,7 +34,12 @@ Fases 1 (P-1) y 2 (P0) completadas. El broker de Fase 3 (P1) está implementado 
 
 - Broker MCP local de solo lectura con cinco consultas tipadas, entrada y salida limitadas, y auditoría sin argumentos ni valores. Se comprobó con pruebas Python y con el SDK MCP instalado en el checkout fijado.
 - Prioridad Linux x86_64. Probado en CachyOS; Arch, Ubuntu, Debian, Fedora, WSL2, macOS y Windows quedan pendientes de validación propia.
-- Siguiente acción: confirmar el descubrimiento del broker por la CLI compilada. La Fase 4 requiere aprobación explícita. [Evidencia](docs/evidencias/FASE3.md)
+- La CLI compilada descubrió e invocó el broker desde una sesión privada. El proveedor simulado recibió el resultado y el señuelo recibió cero solicitudes. [Evidencia](docs/evidencias/FASE3.md)
+
+## Fase 4
+
+- Se inició la calificación en CachyOS x86_64. La prueba sintética Bubblewrap verificó escritura en el montaje permitido, rechazo en montajes protegidos, traversal y enlaces, red privada, entorno limpio y fin de la carga hija tras timeout.
+- Siguiente acción: calificar la frontera con la sesión completa de OpenCode, incluido el control de extensiones y configuraciones no aprobadas. WORKSPACE sigue deshabilitado y el doctor conserva el estado de aislamiento no verificado.
 
 ## Reanudar el trabajo
 

@@ -64,5 +64,10 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 
 - `python3 -B -m unittest discover -s tests`: cinco pruebas, cero fallos, en CachyOS x86_64. Pasaron las cinco consultas, errores de protocolo, rechazo de comandos, rutas y parámetros, auditoría sin valores y separación de PLAN.
 - Cliente `@modelcontextprotocol/client` 2.4.0 del checkout fijado, ejecutado con Node: inicializó, listó y ejecutó las cinco herramientas con resultados estructurados. El transporte stdio del SDK ejecutado directamente con Bun cerró la conexión durante el handshake; la prueba con Node sí pasó.
-- `opencode --standalone mcp list` dentro de Bubblewrap no descubrió el servidor en las configuraciones temporales ensayadas. La integración verificada es la del cliente MCP. Queda pendiente el descubrimiento desde la CLI compilada.
+- `opencode --standalone mcp list` no enumeró el servidor al inicio. La CLI compilada sí descubrió e invocó `diag_environment` durante `--standalone run`. Con el sobre MCP corregido, el simulador recibió el resultado DIAG y el señuelo recibió cero solicitudes.
 - [Configuración y alcance](evidencias/FASE3.md).
+
+## Inicio de Fase 4
+
+- `python3 -B tests/fase4-linux.py` pasó en CachyOS x86_64 con Bubblewrap. La sesión de herramientas necesitó permiso para crear el listener local de control. El primer intento de Bubblewrap exigió `--unshare-user` explícito; el reintento con namespaces explícitos pasó.
+- Los fixtures verificaron un destino permitido, denegación en ruta absoluta, traversal, enlaces y política protegida, desconexión del loopback del host, entorno limpio y ausencia de actividad del hijo tras timeout. Pendiente validar la sesión integrada y la no ampliación de capacidades mediante configuración y plugins. La prueba sintética no califica la escritura de producto.

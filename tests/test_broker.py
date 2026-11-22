@@ -34,7 +34,8 @@ class BrokerTest(unittest.TestCase):
         names = sorted(TOOLS)
         payload = HANDSHAKE + request("tools/list", 2)
         for index, name in enumerate(names, 3):
-            payload += request("tools/call", index, name=name, arguments={})
+            payload += request("tools/call", index, name=name, arguments={},
+                               _meta={"ai.opencode/sessionID": "synthetic-session", "progressToken": index})
         process = self.run_broker(payload)
         self.assertEqual(process.returncode, 0, process.stderr)
         rows = [json.loads(line) for line in process.stdout.splitlines()]
@@ -58,6 +59,7 @@ class BrokerTest(unittest.TestCase):
         self.assertEqual(result["environment"]["system"], "Linux")
         self.assertEqual(result["environment"]["profile"], "DIAG")
         self.assertNotIn(b"never-return-this-value", process.stdout + process.stderr)
+        self.assertNotIn(b"synthetic-session", process.stdout + process.stderr)
         self.assertEqual(process.stderr.count(b"outcome=ok"), 5)
         self.assertLess(max(map(len, process.stdout.splitlines())), 8192)
 
@@ -68,16 +70,18 @@ class BrokerTest(unittest.TestCase):
         payload += request("tools/call", 4, name="cpu", arguments=[])
         payload += request("resources/read", 5, uri="file:///etc/passwd")
         payload += request("tools/call", 6, name="processes", arguments={"limit": 5000})
+        payload += request("tools/call", 7, name="cpu", arguments={}, _meta=[])
         process = self.run_broker(payload)
         self.assertEqual(process.returncode, 0)
         errors = {
             row["id"]: row["error"]["code"]
             for row in map(json.loads, process.stdout.splitlines()) if "error" in row
         }
-        self.assertEqual(errors, {9: -32002, 2: -32602, 3: -32602, 4: -32602, 5: -32601, 6: -32602})
+        self.assertEqual(errors, {9: -32002, 2: -32602, 3: -32602, 4: -32602, 5: -32601,
+                                  6: -32602, 7: -32602})
         self.assertNotIn(b"/etc/passwd", process.stdout + process.stderr)
         self.assertNotIn(b"marker", process.stdout + process.stderr)
-        self.assertEqual(process.stderr.count(b"outcome=denied"), 4)
+        self.assertEqual(process.stderr.count(b"outcome=denied"), 5)
 
     def test_malformed_and_oversize_frames(self):
         process = self.run_broker(b"{bad\n" + b"x" * 8193 + b"\n")
