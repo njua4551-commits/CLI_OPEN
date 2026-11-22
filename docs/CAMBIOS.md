@@ -16,3 +16,5 @@
 - El checkpoint revisado `5ec7fa4` se publicó en `origin/main` mediante fast-forward. Se añadió `tests/fase1-loopback.ts` para los ocho casos y el señuelo. El núcleo permanece intacto.
 - El checkpoint `d0dee98` se revisó y se publicó en `origin/main` mediante fast-forward.
 - Se registró la autenticación correcta y el bloqueo de disponibilidad del modelo fijado.
+- Se actualizó el modelo en el plan y el informe, se añadió `tests/fase1-openrouter.py` y se registró el cierre de Fase 1.
+- Se añadieron `implementacion/supervisor/__main__.py` y `tests/test_supervisor.py` para el doctor y el perfil PLAN de Fase 2.

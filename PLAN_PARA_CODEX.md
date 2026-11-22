@@ -85,7 +85,7 @@ Usa el siguiente conjunto pequeño de pruebas sintéticas para OpenCode:
 - Arranque desde una configuración limpia y privada, sin reutilizar silenciosamente un servidor, credenciales o plugins globales.
 - Construcción y una sesión de lectura sobre un proyecto de prueba.
 - Pruebas deterministas de herramientas, respuestas extensas, cancelación y errores con una API compatible con OpenAI simulada en loopback.
-- Inferencia real con OpenRouter, modelo fijo `openai/gpt-oss-20b:free`, solo fixtures sintéticos y presupuesto máximo de USD 0. Confirmar soporte de herramientas y precio cero antes de ejecutar. Usar `OPENROUTER_API_KEY` inyectada en el entorno y detener la prueba si falta, cambia el precio o falla el endpoint. Deshabilitar fallbacks, modelos alternativos y herramientas alojadas.
+- Inferencia real con OpenRouter, modelo fijo `liquid/lfm-3-1.7b:free`, solo fixtures sintéticos y presupuesto máximo de USD 0. Confirmar soporte de herramientas y precio cero antes de ejecutar. Usar `OPENROUTER_API_KEY` inyectada en el entorno y detener la prueba si falta, cambia el precio o falla el endpoint. Deshabilitar fallbacks, modelos alternativos y herramientas alojadas.
 - Registrar la inferencia física local como pendiente de validación. Conservar la opción de configurar Ollama, llama.cpp y otros endpoints de forma explícita.
 - Descubrimiento y uso de MCP únicamente con un servidor de prueba aprobado.
 - Cancelación de una tarea y cierre de procesos secundarios.

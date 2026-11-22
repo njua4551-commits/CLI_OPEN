@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fase en curso: 1 (P-1). El usuario autorizó iniciar la Fase 2 automáticamente cuando se cumplan los criterios de aceptación de P-1. La Fase 3 requiere autorización aparte.
+Fases 1 (P-1) y 2 (P0) completadas en el entorno Linux de prueba. La Fase 3 queda pendiente de aprobación.
 
 ## Fase 0 cerrada
 
@@ -18,9 +18,17 @@ Fase en curso: 1 (P-1). El usuario autorizó iniciar la Fase 2 automáticamente 
 - Dependencias congeladas instaladas dentro de Bubblewrap con `--ignore-scripts`. El lockfile coincide con el SHA fijado.
 - Build de CLI Linux x86_64 completado con `OPENCODE_VERSION=2.3.2`. El artefacto reporta `opencode v2.3.2` y ofrece `--standalone` y `--server`.
 - El smoke test del servicio compilado y la prueba de terminación standalone pasaron en Bubblewrap con red privada. Pasaron también 23 pruebas no interactivas de upstream.
-- La calificación usa una API simulada en loopback y, por separado, OpenRouter con el modelo fijo `openai/gpt-oss-20b:free` y presupuesto de USD 0. La inferencia física local queda pendiente fuera de esta puerta. No hay modelo ni runtime de inferencia local instalado para retirar.
+- La calificación usa una API simulada en loopback y, por separado, OpenRouter con el modelo fijo `liquid/lfm-3-1.7b:free` y presupuesto de USD 0. La inferencia física local queda pendiente fuera de esta puerta. No hay modelo ni runtime de inferencia local instalado para retirar.
 - Pasaron los ocho casos de CLI contra el simulador de chat y el señuelo recibió cero solicitudes en modo standalone. Las 440 pruebas anteriores y la invocación MCP sintética conservan su evidencia.
-- OpenRouter autenticó `OPENROUTER_API_KEY` con HTTP 200. El modelo fijado está ausente del catálogo y su consulta devolvió cero endpoints. La Fase 1 sigue abierta. Siguiente acción: obtener aprobación para sustituir el modelo fijado por `liquid/lfm-3-1.7b:free`, cuyo endpoint anuncia herramientas y precio cero para entrada y salida. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+
+- OpenRouter confirmó costo USD 0 en las dos respuestas de la prueba final. Pasaron los argumentos de la herramienta y la devolución del marcador sintético. La prueba remota usó directamente la API; la CLI se calificó con loopback.
+
+## Fase 2
+
+- Supervisor mínimo en `implementacion/supervisor` con `doctor` y `plan`. Sin dependencias adicionales. OpenCode conserva su función de motor y su CLI original.
+- El doctor identifica entorno, arquitectura, shell configurada, WSL y elevación. Reporta el aislamiento como no verificado. `PLAN` rechaza comandos y escrituras.
+- Pruebas automatizadas aprobadas en CachyOS x86_64. Las rutas macOS, Windows y WSL quedan pendientes de ejecución en sus entornos.
+- Siguiente puerta: aprobación explícita de Fase 3 para diseñar el broker de diagnóstico tipado. Véase [PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Reanudar el trabajo
 

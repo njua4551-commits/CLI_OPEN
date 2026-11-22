@@ -52,5 +52,10 @@ Para reproducir, ejecutar `bun tests/fase1-loopback.ts RUTA_AL_BINARIO` en un en
 
 Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1/key` devolvió HTTP 200. La consulta de endpoints para `openai/gpt-oss-20b:free` devolvió cero y el ID está ausente del catálogo autenticado. La consulta pública de `liquid/lfm-3-1.7b:free` devolvió el endpoint `liquid`, soporte de herramientas y precios cero para entrada y salida. No hubo solicitudes de inferencia ni gasto.
 
-- Aprobar un nuevo modelo fijo. Antes de enviar el fixture sintético, comprobar disponibilidad, soporte de herramientas y precio cero. Aplicar límite de tokens, deshabilitar fallbacks y herramientas alojadas y registrar costo reportado.
 - Inferencia física local pendiente de validar en un entorno adecuado, fuera de la puerta de P-1. Aislamiento de producto pendiente de su fase.
+
+
+## Inferencia real y Fase 2
+
+- OpenRouter: el usuario aprobó `liquid/lfm-3-1.7b:free`. El endpoint `liquid` anunció herramientas y precio cero. El primer intento obtuvo una llamada a herramienta con costo cero y HTTP 404 en la continuación con `tool_choice: none`. El fixture definitivo omitió ese parámetro en la continuación y pasó ambas solicitudes. Se verificaron el proveedor, el modelo, el argumento, el marcador final y costo USD 0 en cada respuesta. Reproducción: `python3 tests/fase1-openrouter.py` con `OPENROUTER_API_KEY` inyectada. Es una prueba de API directa; la cobertura real de la CLI corresponde a la matriz de loopback.
+- Supervisor: `python3 -B tests/test_supervisor.py` pasó dos pruebas de integración local. `python3 -B implementacion/supervisor doctor` detectó Linux x86_64, usuario estándar y Bubblewrap en PATH, con aislamiento no verificado. `PLAN` rechazó las operaciones y argumentos de ejecución y escritura. macOS, Windows y WSL requieren validación en sus entornos.
