@@ -45,7 +45,8 @@ Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en
 ## Fase 5
 
 - Se abrió con una edición y validación sintéticas en una copia desechable. El original se montó de solo lectura y se produjo un diff para revisión.
-- Siguiente acción: definir el flujo de copias de trabajo del producto y los validadores autorizados, y comprobar reconciliación de diff antes de cualquier integración. El comando de producto WORKSPACE sigue deshabilitado mientras se califica ese flujo. [Evidencia](docs/PRUEBAS.md)
+- El supervisor ofrece `review-workspace` para propuestas explícitas. Pasó creación, reemplazo, validación, diff, detección de concurrencia y descarte sin modificar el original.
+- Siguiente acción: integrar las herramientas de edición de OpenCode en la misma transacción acotada y calificar su recorrido. WORKSPACE para el agente y Fase 6 siguen pendientes. [Evidencia](docs/evidencias/FASE5.md)
 
 ## Reanudar el trabajo
 

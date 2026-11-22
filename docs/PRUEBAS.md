@@ -77,3 +77,5 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 ## Inicio de Fase 5
 
 - `python3 -I -B tests/fase5-workspace.py`: edición y validación de la copia sintética dentro de Bubblewrap. La escritura al original fue rechazada. El anfitrión confirmó el contenido original y obtuvo un diff unificado con el cambio esperado.
+- `python3 -I -B tests/fase5-review.py` pasó a través del supervisor y Bubblewrap. Validó creación y reemplazo, diffs, rechazo de JSON inválido y conservación del original.
+- Nueve pruebas unitarias pasaron. Las carreras sintéticas de creación y reemplazo invalidaron la revisión y descartaron la copia. La edición de agente mediante OpenCode sigue pendiente. [Alcance](evidencias/FASE5.md)

@@ -4,6 +4,7 @@ import ctypes
 import json
 import os
 import platform
+import runpy
 import shutil
 import subprocess
 import sys
@@ -98,11 +99,28 @@ def main(argv=None):
     commands.add_parser("plan", help="Mostrar capacidades del perfil activo")
     commands.add_parser("diag", help="Iniciar el broker MCP de solo lectura sobre stdio")
     commands.add_parser("qualify-linux", help="Calificar el aislamiento con una sesión sintética fija")
+    review = commands.add_parser("review-workspace", help="Revisar una copia desechable con cambios explícitos")
+    review.add_argument("source", type=Path)
     options = parser.parse_args(argv)
     if options.command == "doctor":
         print(json.dumps(doctor(), ensure_ascii=True, indent=2))
     elif options.command == "qualify-linux":
         return qualify_linux()
+    elif options.command == "review-workspace":
+        workspace = runpy.run_path(str(Path(__file__).with_name("workspace.py")))
+        try:
+            edits = workspace["parse_request"](sys.stdin.buffer)
+            changes = workspace["review"](options.source, edits, bubblewrap_command)
+        except workspace["SourceChanged"]:
+            print("Revisión rechazada: el original cambió durante la operación.", file=sys.stderr)
+            return 1
+        except (workspace["IsolatedEditFailed"], subprocess.SubprocessError):
+            print("Edición aislada o validación fallida. Copia descartada.", file=sys.stderr)
+            return 1
+        except (ValueError, OSError, RecursionError):
+            print("Revisión rechazada: entrada u origen inválido, o aislamiento no disponible.", file=sys.stderr)
+            return 1
+        print(json.dumps({"mode": "review-only", "changes": changes}))
     elif options.command == "diag":
         broker = Path(__file__).resolve().parent.parent / "broker"
         return subprocess.run([sys.executable, "-I", "-B", str(broker)], env={}, check=False).returncode
