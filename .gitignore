@@ -1,0 +1,10 @@
+/upstream/
+/.fase1/
+/.agents/
+/.codex/
+/.aws/
+node_modules/
+.env
+.env.*
+*.pem
+*.key
