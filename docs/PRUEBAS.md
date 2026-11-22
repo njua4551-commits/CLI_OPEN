@@ -92,3 +92,4 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 ## Fase 7 · Memoria por proyecto
 
 `python3 -I -B tests/fase7-memoria.py` pasó en CachyOS x86_64. Verificó alta con archivo referenciado, ranking por etiquetas y texto, ajuste al presupuesto de tokens, exclusión automática tras cambiar el archivo, informe y purga de entradas inválidas, separación entre proyectos y rechazo de secretos y rutas externas. El almacén usa JSONL con bloqueo y no toca la red.
+- `python3 -I -B tests/fase7-contexto.py` pasó. Cubre límite de bytes con Unicode, exclusión de entradas vencidas y sobre de autoridad nula. `python3 -I -B tests/fase7-memoria.py` también pasó como regresión del ranking compartido. No hubo red ni inferencia.

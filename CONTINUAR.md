@@ -7,7 +7,7 @@ El proyecto cerró la **Fase 6 (P3)** para el perfil local sintético. La **Fase
 1. Leer `AGENTS.md`, `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `ESTADO.md`. Consultar `docs/DECISIONES.md`, `docs/CAMBIOS.md` y `docs/PRUEBAS.md` para decisiones y pruebas ya verificadas.
 2. Comprobar `git status -sb` y `git log -1 --oneline`. El remoto del proyecto es [CLI_OPEN](https://github.com/njua4551-commits/CLI_OPEN). El checkout independiente de OpenCode, si está disponible, está en `upstream/upstream/opencode`.
 3. **Tarea cerrada:** la CLI fijada se conectó al gateway por el proveedor OpenAI-compatible. `tests/fase6-cli-gateway.ts` demuestra `OpenCode → gateway → endpoint de loopback`, rechazo de costo distinto de cero y endpoint caído sin salida alternativa. El gateway sirve `--listen` con validación de modelo y costo en SSE.
-4. **Fase 7 en curso:** memoria cerrada en `implementacion/memoria/`. Siguiente módulo: optimización de contexto en `implementacion/contexto/`. Cada módulo se prueba, documenta y publica antes del siguiente.
+4. **Fase 7 en curso:** memoria cerrada en `implementacion/memoria/`. Módulo 2 iniciado en el comando `context` de memoria, reutilizando su clasificación e invalidación. Siguiente prueba: conectar el sobre como datos no confiables al fixture de sesión `tests/fase1-loopback.ts` y comprobar que conserva las restricciones del supervisor. Cada módulo se prueba, documenta y publica antes del siguiente.
 5. **Aplazado por D07:** seguimiento de presupuesto remoto, aprobación por contenido y calificación de un modelo físico local. No habilitar inferencia remota de producto sin una autorización nueva. Mantener el perfil local sin salida externa. La Fase 6 requiere una comprobación separada de modelo físico local o una decisión explícita sobre su aplazamiento. Antes de habilitar inferencia remota de producto, probar autorización del contenido, destino, conciliación de costo y denegación cuando el gasto o el destino sean desconocidos. OpenRouter se probó únicamente como fixture sintético de USD 0 en la Fase 1. Actualizar los registros tras cada hito.
 
 ## Base técnica y archivos
@@ -46,3 +46,5 @@ bwrap --die-with-parent --unshare-user --unshare-pid --unshare-ipc \
 ## Límites de continuidad
 
 No adjuntar secretos al código, logs, prompts ni Git. Las credenciales autorizadas se inyectan en el entorno de la sesión que las necesita. No usar sudo, publicar sin autorización ni cambiar de motor. Priorizar Linux x86_64 y mantener protocolos y componentes portables, con límites de archivos, red, procesos y permisos. Los documentos conservan decisiones y evidencia; las autorizaciones se comprueban en la sesión vigente.
+
+Para verificar el checkpoint de contexto: `python3 -I -B tests/fase7-contexto.py`. Uso local: `python3 -I -B implementacion/memoria context --project . --query loopback --max-bytes 4096`. El sobre no se inyecta aún en OpenCode.

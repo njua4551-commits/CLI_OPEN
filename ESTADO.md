@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 autorizada y sin comenzar.
+Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 en curso.
 
 ## Cerrado
 
@@ -17,7 +17,8 @@ Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 autorizada y sin com
 ## Fase 7 en curso
 
 - Módulo 1 cerrado: memoria persistente por proyecto con recuperación selectiva e invalidación automática. `tests/fase7-memoria.py` pasó.
-- Siguiente: módulo 2, optimización de contexto y consumo de tokens.
+- Módulo 2 iniciado: `memoria context` recupera entradas vigentes y relevantes dentro de un límite de bytes, con un sobre de autoridad nula.
+- Siguiente acción: probar una sesión sintética de OpenCode donde el supervisor incorpore ese sobre como datos no confiables, sin modificar permisos ni enviar datos fuera de loopback.
 
 ## Reanudar el trabajo
 

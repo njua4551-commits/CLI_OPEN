@@ -43,3 +43,4 @@
 - `implementacion/memoria/__main__.py`: almacén JSONL por proyecto fuera del repositorio, con bloqueo de escritura, alta acotada, recuperación por términos y presupuesto de tokens, invalidación por hash de archivos referenciados y purga.
 - Rechaza secretos evidentes, rutas fuera del proyecto, archivos ausentes y referencias mayores de 1 MiB.
 - `tests/fase7-memoria.py` cubre alta, ranking, presupuesto, invalidación automática, purga, aislamiento entre proyectos y rechazos.
+- El comando `context` añade una salida selectiva y acotada. La clasificación compartida evita verificar referencias dos veces por consulta.

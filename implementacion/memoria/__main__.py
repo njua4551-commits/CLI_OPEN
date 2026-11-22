@@ -160,24 +160,30 @@ def add(args):
     return {"stored": entry["id"], "entries": len(entries)}
 
 
-def search(args):
+def rank(args):
     project = resolve_project(args.project)
     path = store_path(args.store, project)
     entries = read_entries(path)
-    terms = [term.lower() for term in re.findall(r"[A-Za-z0-9_.:/-]{2,}", args.query)]
+    terms = set(re.findall(r"[A-Za-z0-9_.:/-]{2,}", args.query.lower()))
     if not terms:
         raise Rejected("empty query")
-    budget = args.budget
-    if budget < 1:
-        raise Rejected("invalid token budget")
-    ranked = []
+    ranked, expired = [], 0
     for entry in entries:
         if stale(project, entry):
+            expired += 1
             continue
         value = score(entry, terms)
         if value:
             ranked.append((value, entry.get("created") or "", entry))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return ranked, expired
+
+
+def search(args):
+    budget = args.budget
+    if budget < 1:
+        raise Rejected("invalid token budget")
+    ranked, expired = rank(args)
     selected, used = [], 0
     for value, _, entry in ranked:
         cost = tokens(entry["text"])
@@ -186,7 +192,33 @@ def search(args):
         selected.append({**entry, "score": value, "tokens": cost})
         used += cost
     return {"entries": selected, "tokens": used, "budget": budget,
-            "stale": sum(1 for entry in entries if stale(project, entry))}
+            "stale": expired}
+
+
+def encode_context(result):
+    return json.dumps(result, ensure_ascii=True, separators=(",", ":"))
+
+
+def context(args):
+    if not 128 <= args.max_bytes <= 16384 or len(args.query) > 2048:
+        raise Rejected("invalid context budget or query")
+    ranked, _ = rank(args)
+    result = {"authority": "none", "source": "project-memory", "entries": []}
+    used = len(encode_context(result)) + 1  # The emitted newline is part of the budget.
+    for _, _, entry in ranked:
+        try:
+            text = check_text(entry["text"])
+        except Rejected:
+            continue
+        identifier = entry.get("id")
+        if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9]{16}", identifier):
+            continue
+        candidate = {"id": identifier, "text": text}
+        cost = len(encode_context(candidate)) + bool(result["entries"])
+        if used + cost <= args.max_bytes:
+            result["entries"].append(candidate)
+            used += cost
+    return result
 
 
 def invalidate(args):
@@ -231,6 +263,12 @@ def main():
     search_parser.add_argument("--budget", type=int, default=512)
     search_parser.set_defaults(handler=search)
 
+    context_parser = commands.add_parser("context")
+    context_parser.add_argument("--project", required=True)
+    context_parser.add_argument("--query", required=True)
+    context_parser.add_argument("--max-bytes", type=int, default=4096)
+    context_parser.set_defaults(handler=context)
+
     invalidate_parser = commands.add_parser("invalidate")
     invalidate_parser.add_argument("--project", required=True)
     invalidate_parser.add_argument("--purge", action="store_true")
@@ -246,7 +284,7 @@ def main():
     except (Rejected, OSError, ValueError) as exc:
         print(json.dumps({"error": str(exc)}), file=sys.stderr)
         return 1
-    print(json.dumps(result, ensure_ascii=True))
+    print(encode_context(result) if args.command == "context" else json.dumps(result, ensure_ascii=True))
     return 0
 
 
