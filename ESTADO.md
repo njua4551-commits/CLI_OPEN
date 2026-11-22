@@ -18,7 +18,9 @@ Fase autorizada y en curso: 1 (P-1). Fase 2 requiere aprobación al cierre.
 - Dependencias congeladas instaladas dentro de Bubblewrap con `--ignore-scripts`. El lockfile coincide con el SHA fijado.
 - Build de CLI Linux x86_64 completado con `OPENCODE_VERSION=2.3.2`. El artefacto reporta `opencode v2.3.2` y ofrece `--standalone` y `--server`.
 - El smoke test del servicio compilado y la prueba de terminación standalone pasaron en Bubblewrap con red privada. Pasaron también 23 pruebas no interactivas de upstream.
-- Siguiente acción: identificar un modelo local autorizado y ejecutar las pruebas de sesión de lectura y herramientas. Quedan la prueba de servidor señuelo y una invocación MCP sintética. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+- La calificación usa una API simulada en loopback y, por separado, OpenRouter con el modelo fijo `openai/gpt-oss-20b:free` y presupuesto de USD 0. La inferencia física local queda pendiente fuera de esta puerta. No hay modelo ni runtime de inferencia local instalado para retirar.
+- Las suites adaptadas suman 440 pruebas aprobadas. Pasó la invocación MCP sintética. Hay cobertura por componentes; queda la matriz de CLI contra un simulador de chat en loopback y el señuelo activo junto a standalone.
+- Siguiente acción: cerrar esos casos y ejecutar la prueba de inferencia con una `OPENROUTER_API_KEY` válida, que falta en el entorno. Véase [PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Reanudar el trabajo
 

@@ -11,3 +11,5 @@
 - `AGENTS.md` registra la autonomía dentro de cada fase aprobada y las acciones que requieren autorización.
 - Se generó la CLI Linux x86_64 en el área excluida `.fase1/`.
 - Se registraron las pruebas de servicio, sesión no interactiva y terminación standalone en `docs/PRUEBAS.md`.
+- Se publicó `8abba6a` en `origin/main` tras revisar los cinco archivos del checkpoint. Se adaptaron el plan, el informe y los registros al alcance revisado de inferencia de P-1.
+- Se registraron los resultados de replay HTTP, MCP sintético, herramientas y resolución de servidor. No había un modelo o runtime de inferencia instalado que retirar.

@@ -18,10 +18,21 @@
 | Sesión no interactiva | `bun test test/standalone.test.ts test/run/noninteractive.test.ts` | 23 pruebas no interactivas aprobadas, incluidas cancelación simulada y solicitudes MCP. El caso standalone agotó los 5 s del runner en Bubblewrap. |
 | Terminación standalone | `bun test --timeout 30000 test/standalone.test.ts` en Bubblewrap sin red externa | Sin versión explícita faltó la señal de arranque. Con `OPENCODE_VERSION=2.3.2` pasó. Verificó HTTP 200 en loopback y que el servidor termina al matar a su proceso propietario. |
 
+## Pruebas tras adaptar la inferencia de P-1
+
+Ejecutadas sobre el SHA fijado con Bun 1.4.4, `OPENCODE_VERSION=2.3.2` y Bubblewrap sin red externa.
+
+| Suite | Resultado |
+|---|---|
+| Core: `session-runner.test.ts`, `mcp.test.ts`, `session-error.test.ts` | 379 pasaron. Incluye llamadas múltiples, interrupción, recuperación de errores, descubrimiento e invocación MCP sintética y terminación de descendientes del transporte MCP. |
+| Core: `session-runner-recorded.test.ts`, `tool-read.test.ts`, `tool-output.test.ts` | 57 pasaron. Incluye replay del transporte HTTP, rechazo de límite inválido, lectura acotada y límites de salida. |
+| CLI: `server-connection.test.ts` | 4 pasaron. Incluye servidor simulado registrado y selección explícita del endpoint. Falta probar un proceso standalone con el señuelo activo en la misma ejecución. |
+| OpenRouter | Sin solicitudes. `OPENROUTER_API_KEY` ausente. La credencial comunicada corresponde a otro proveedor y no se guardó. |
+| Preparación de inferencia física local | Sin binarios, pesos ni directorio de inferencia local detectado. Se conservaron Bun y el build de OpenCode para las pruebas. |
+
 ## Pendiente
 
-1. Revisar cualquier script de instalación de terceros que el build llegue a requerir. Los scripts permanecen deshabilitados.
-2. Verificar identidad y conexiones de un servidor privado frente a un servicio señuelo, lectura sintética y ciclo de vida de procesos hijos. Probar una invocación MCP con un servidor sintético aprobado.
-3. Calificar un modelo local con argumento inválido, ruta Windows escapada, ruta Unicode, lectura acotada, respuesta grande, llamadas múltiples, cancelación y fallo recuperable. Comprobar que la caída local no desencadena inferencia remota. Los ejecutables `ollama`, `lms` y `llama-server` no aparecen en PATH. Hace falta identificar un modelo y un endpoint existentes o aprobar su provisión local.
-
-La lectura en una sesión con un modelo, la invocación MCP sintética y la calificación de aislamiento siguen pendientes.
+- Completar la sesión de lectura de CLI contra un simulador de chat en loopback con la matriz de ocho casos. Hay cobertura por componentes de argumento inválido, lectura acotada, salida extensa, llamadas múltiples, cancelación y fallo recuperable. La ruta Windows escapada, la ruta Unicode y el recorrido completo siguen pendientes.
+- Probar `--standalone` con un señuelo activo y comprobar que el señuelo no recibe solicitudes.
+- Inyectar una clave nueva de OpenRouter desde el entorno de ejecución. Antes de enviar el fixture sintético, verificar que el modelo exacto está disponible, admite herramientas y tiene precio cero. Aplicar límite de tokens, deshabilitar fallbacks y herramientas alojadas y registrar costo reportado. Detenerse si el precio, la autenticación o el uso no se pueden comprobar.
+- Inferencia física local pendiente de validar en un entorno adecuado, fuera de la puerta de P-1. Aislamiento de producto pendiente de su fase.

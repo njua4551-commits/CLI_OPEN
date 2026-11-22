@@ -145,7 +145,7 @@ No mostrar “sandbox activo” solo porque un binario exista. El estado inicial
 1. Usar el repositorio oficial como upstream y fijar una versión V2 concreta, con lockfile y esquema correspondiente.
 2. Mantener launcher, gateway, broker, políticas, memoria y validadores en módulos propios separados del núcleo, aunque se utilice un fork de GitHub para desarrollar y colaborar.
 3. Mantener la configuración y las políticas de confianza fuera de los archivos que el agente puede editar.
-4. Implementar primero una ruta vertical mínima: launcher → OpenCode → proveedor local → lectura de un workspace de prueba → evidencia.
+4. Calificar primero una ruta vertical mínima: OpenCode → endpoint explícito → lectura de un workspace sintético → evidencia. Usar un servidor simulado en loopback para resultados deterministas y OpenRouter con un modelo gratuito fijo para la inferencia real de P-1.
 5. Añadir herramientas e integración MCP solo cuando su frontera y permisos estén probados.
 6. Considerar un fork solo si el spike demuestra una limitación indispensable no resoluble con APIs públicas. Registrar el parche, pruebas y estrategia de sincronización con upstream.
 
@@ -155,7 +155,9 @@ La IA puede acelerar el scaffolding, los adaptadores y las pruebas; no puede ree
 
 | Fase | Objetivo y entregables | Criterio para avanzar |
 |---|---|---|
-| **P-1: Spike de integración** | Arranque supervisado de OpenCode V2; proveedor local; configuración efectiva; prueba de MCP, cancelación, llamadas auxiliares y APIs disponibles | Se demuestra una ruta sin modificar el núcleo con alcance claro, o se documenta el bloqueo y se compara Codex/reduce alcance |
+| **P-1: Spike de integración** | Arranque supervisado de OpenCode V2; API simulada y prueba sintética de inferencia en OpenRouter; configuración efectiva; MCP, cancelación, llamadas auxiliares y APIs disponibles | Se demuestra una ruta sin modificar el núcleo con alcance claro, o se documenta el bloqueo y se compara Codex/reduce alcance |
+
+Para P-1, el endpoint simulado y OpenRouter se seleccionan por separado. OpenRouter queda restringido a `openai/gpt-oss-20b:free`, precio verificado de USD 0, datos sintéticos y credencial `OPENROUTER_API_KEY` inyectada desde fuera del repositorio. Se detiene la prueba si falla el destino o falta una condición de costo o autenticación. Usar la configuración de proveedores de OpenCode como punto de integración. La selección futura podrá declarar Ollama, llama.cpp u otro endpoint compatible con OpenAI. Un servidor autogestionado en Kaggle se considera remoto y requiere aprobación como destino independiente. La inferencia física local queda pendiente y esta prueba acotada conserva las puertas de la Fase 6 para uso remoto del producto.
 | **P0: Base segura** | Versiones fijadas, launcher/doctor, usuario estándar, modo PLAN y configuración local restrictiva | Identifica SO efectivo, shell y elevación; no expone secretos ni ejecuta acciones de host |
 | **P1: Broker de lectura** | Broker autenticado con catálogo pequeño de diagnósticos, límites y auditoría | Rechaza recursos y parámetros no autorizados; no tiene método genérico de shell |
 | **P2: Aislamiento por plataforma** | Sandbox o VM para OpenCode, plugins, herramientas y procesos hijos; pruebas de rutas, red y terminación | Escritura fuera del workspace y red no autorizada fallan. Si no pasa, permanece en PLAN/DIAG |
