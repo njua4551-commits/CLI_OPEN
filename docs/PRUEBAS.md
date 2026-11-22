@@ -88,3 +88,7 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 ## Gateway local de Fase 6
 
 - `tests/fase6-gateway.py` pasó en Bubblewrap con loopback privado. Verificó una llamada a herramienta en la respuesta, límites de tokens y tamaño, destino y modelo fijos, rechazo de costo positivo, respuesta de modelo distinto, redirección y caída del endpoint sin fallback. La prueba no invocó servicios externos. Sigue pendiente el recorrido desde la CLI de OpenCode y un modelo físico local.
+
+## Fase 7 · Memoria por proyecto
+
+`python3 -I -B tests/fase7-memoria.py` pasó en CachyOS x86_64. Verificó alta con archivo referenciado, ranking por etiquetas y texto, ajuste al presupuesto de tokens, exclusión automática tras cambiar el archivo, informe y purga de entradas inválidas, separación entre proyectos y rechazo de secretos y rutas externas. El almacén usa JSONL con bloqueo y no toca la red.

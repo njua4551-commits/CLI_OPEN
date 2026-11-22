@@ -37,3 +37,9 @@
 - Se verificaron de nuevo las diez pruebas unitarias, el fixture HTTP y los tres casos de CLI con gateway.
 - Se cerró la Fase 6 para el perfil local sintético y se aplazaron presupuesto remoto, aprobación por contenido y modelo físico local (D07).
 - La Fase 7 queda autorizada y sin comenzar.
+
+## 2026-11-21 · Fase 7 · Módulo 1: memoria por proyecto
+
+- `implementacion/memoria/__main__.py`: almacén JSONL por proyecto fuera del repositorio, con bloqueo de escritura, alta acotada, recuperación por términos y presupuesto de tokens, invalidación por hash de archivos referenciados y purga.
+- Rechaza secretos evidentes, rutas fuera del proyecto, archivos ausentes y referencias mayores de 1 MiB.
+- `tests/fase7-memoria.py` cubre alta, ranking, presupuesto, invalidación automática, purga, aislamiento entre proyectos y rechazos.

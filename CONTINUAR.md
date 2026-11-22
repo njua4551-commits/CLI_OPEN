@@ -2,12 +2,13 @@
 
 ## Punto de reanudación
 
-El proyecto cerró la **Fase 6 (P3)** para el perfil local sintético. La **Fase 7 está autorizada y sin comenzar**. Las fases 1–5 se cerraron para los flujos acotados descritos en la evidencia. CachyOS Linux x86_64 es el entorno probado. Arch, Ubuntu, Debian, Fedora, WSL2, Windows y macOS requieren validación propia. No iniciar Fase 7 hasta recibir la instrucción de arranque.
+El proyecto cerró la **Fase 6 (P3)** para el perfil local sintético. La **Fase 7 está en curso** (módulo 1 de 5 cerrado). Las fases 1–5 se cerraron para los flujos acotados descritos en la evidencia. CachyOS Linux x86_64 es el entorno probado. Arch, Ubuntu, Debian, Fedora, WSL2, Windows y macOS requieren validación propia. Continuar la Fase 7 en el orden aprobado: contexto, enrutador, autocorrección y subagentes.
 
 1. Leer `AGENTS.md`, `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `ESTADO.md`. Consultar `docs/DECISIONES.md`, `docs/CAMBIOS.md` y `docs/PRUEBAS.md` para decisiones y pruebas ya verificadas.
 2. Comprobar `git status -sb` y `git log -1 --oneline`. El remoto del proyecto es [CLI_OPEN](https://github.com/njua4551-commits/CLI_OPEN). El checkout independiente de OpenCode, si está disponible, está en `upstream/upstream/opencode`.
 3. **Tarea cerrada:** la CLI fijada se conectó al gateway por el proveedor OpenAI-compatible. `tests/fase6-cli-gateway.ts` demuestra `OpenCode → gateway → endpoint de loopback`, rechazo de costo distinto de cero y endpoint caído sin salida alternativa. El gateway sirve `--listen` con validación de modelo y costo en SSE.
-4. **Aplazado por D07:** seguimiento de presupuesto remoto, aprobación por contenido y calificación de un modelo físico local. No habilitar inferencia remota de producto sin una autorización nueva. Mantener el perfil local sin salida externa. La Fase 6 requiere una comprobación separada de modelo físico local o una decisión explícita sobre su aplazamiento. Antes de habilitar inferencia remota de producto, probar autorización del contenido, destino, conciliación de costo y denegación cuando el gasto o el destino sean desconocidos. OpenRouter se probó únicamente como fixture sintético de USD 0 en la Fase 1. Actualizar los registros tras cada hito.
+4. **Fase 7 en curso:** memoria cerrada en `implementacion/memoria/`. Siguiente módulo: optimización de contexto en `implementacion/contexto/`. Cada módulo se prueba, documenta y publica antes del siguiente.
+5. **Aplazado por D07:** seguimiento de presupuesto remoto, aprobación por contenido y calificación de un modelo físico local. No habilitar inferencia remota de producto sin una autorización nueva. Mantener el perfil local sin salida externa. La Fase 6 requiere una comprobación separada de modelo físico local o una decisión explícita sobre su aplazamiento. Antes de habilitar inferencia remota de producto, probar autorización del contenido, destino, conciliación de costo y denegación cuando el gasto o el destino sean desconocidos. OpenRouter se probó únicamente como fixture sintético de USD 0 en la Fase 1. Actualizar los registros tras cada hito.
 
 ## Base técnica y archivos
 

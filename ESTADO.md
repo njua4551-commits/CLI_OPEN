@@ -14,9 +14,10 @@ Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 autorizada y sin com
 - Aceptación verificada en el perfil local sintético: destino y límites fijados, sin ruta remota alternativa y sin fallback ante fallo local.
 - El modelo físico local y el presupuesto remoto se aplazan por decisión explícita (D07). La inferencia remota de producto sigue deshabilitada.
 
-## Siguiente
+## Fase 7 en curso
 
-Fase 7 autorizada y sin comenzar: memoria, contexto y automatización, solo tras medir la ruta de lectura y escritura ya calificada. Leer su alcance en `PLAN_PARA_CODEX.md` antes de actuar.
+- Módulo 1 cerrado: memoria persistente por proyecto con recuperación selectiva e invalidación automática. `tests/fase7-memoria.py` pasó.
+- Siguiente: módulo 2, optimización de contexto y consumo de tokens.
 
 ## Reanudar el trabajo
 
