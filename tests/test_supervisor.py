@@ -51,6 +51,8 @@ class SupervisorTest(unittest.TestCase):
                 ("write", "marker", "contents"),
                 ("plan", "--execute", payload),
                 ("plan", "diag"),
+                ("plan", "qualify-linux"),
+                ("workspace",),
             ):
                 result = self.run_supervisor(*args, cwd=workdir)
                 self.assertEqual(result.returncode, 2, result.stderr)

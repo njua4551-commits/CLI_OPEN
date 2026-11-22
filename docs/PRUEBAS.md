@@ -71,4 +71,9 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 
 - `python3 -B tests/fase4-linux.py` pasó en CachyOS x86_64 con Bubblewrap. La sesión de herramientas necesitó permiso para crear el listener local de control. El primer intento de Bubblewrap exigió `--unshare-user` explícito; el reintento con namespaces explícitos pasó.
 - Los fixtures verificaron un destino permitido, denegación en ruta absoluta, traversal, enlaces y política protegida, desconexión del loopback del host, entorno limpio y ausencia de actividad del hijo tras timeout.
-- Pasó la sesión integrada con el catálogo restringido, el broker aprobado, denegación de escritura y `skill`, exclusión del plugin local y MCP de prueba, SIGINT y limpieza de procesos. Tres pruebas del supervisor pasaron, incluida la degradación con Bubblewrap ausente del PATH. Queda pendiente validar el arrancador del supervisor ante fallo efectivo del backend. [Evidencia](evidencias/FASE4.md)
+- Pasó la sesión integrada con el catálogo restringido, el broker aprobado, denegación de escritura y `skill`, exclusión del plugin local y MCP de prueba, SIGINT y limpieza de procesos. Tres pruebas del supervisor pasaron, incluida la degradación con Bubblewrap ausente del PATH.
+- `python3 -I -B implementacion/supervisor qualify-linux`: el entorno base provocó un fallo real de Bubblewrap al crear el socket NETLINK_ROUTE. El supervisor terminó con código 1 e informó que el aislamiento no está verificado. En el entorno autorizado, el mismo comando completó los cuatro casos de la sesión. [Evidencia](evidencias/FASE4.md)
+
+## Inicio de Fase 5
+
+- `python3 -I -B tests/fase5-workspace.py`: edición y validación de la copia sintética dentro de Bubblewrap. La escritura al original fue rechazada. El anfitrión confirmó el contenido original y obtuvo un diff unificado con el cambio esperado.

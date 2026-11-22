@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fases 1 (P-1), 2 (P0) y 3 (P1) completadas. Fase 4 (P2) en curso para Linux x86_64.
+Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en CachyOS Linux x86_64. Fase 5 (P4) en curso.
 
 ## Fase 0 cerrada
 
@@ -40,7 +40,12 @@ Fases 1 (P-1), 2 (P0) y 3 (P1) completadas. Fase 4 (P2) en curso para Linux x86_
 
 - Se inició la calificación en CachyOS x86_64. La prueba sintética Bubblewrap verificó escritura en el montaje permitido, rechazo en montajes protegidos, traversal y enlaces, red privada, entorno limpio y fin de la carga hija tras timeout.
 - La sesión de OpenCode dentro de Bubblewrap pasó con el broker, rechazo de escritura, catálogo restringido, cancelación, descarte de extensiones de prueba y cero solicitudes al señuelo.
-- Siguiente acción: trasladar la frontera verificada al punto de entrada de lanzamiento del supervisor y probar su degradación ante un backend fallido. WORKSPACE sigue deshabilitado y la Fase 5 sigue pendiente de la puerta de seguridad. [Evidencia](docs/evidencias/FASE4.md)
+- `qualify-linux` repitió la prueba de OpenCode desde el lanzador fijo del supervisor. Ante un fallo real de Bubblewrap, salió con código 1 e informó aislamiento no verificado y disponibilidad de PLAN/DIAG. El flujo integrado funcionó en un entorno que permite los namespaces. `mcp list` en frío queda como incidencia de inventario no bloqueante para la sesión probada. [Evidencia](docs/evidencias/FASE4.md)
+
+## Fase 5
+
+- Se abrió con una edición y validación sintéticas en una copia desechable. El original se montó de solo lectura y se produjo un diff para revisión.
+- Siguiente acción: definir el flujo de copias de trabajo del producto y los validadores autorizados, y comprobar reconciliación de diff antes de cualquier integración. El comando de producto WORKSPACE sigue deshabilitado mientras se califica ese flujo. [Evidencia](docs/PRUEBAS.md)
 
 ## Reanudar el trabajo
 

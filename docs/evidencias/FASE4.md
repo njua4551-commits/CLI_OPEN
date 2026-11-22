@@ -16,22 +16,15 @@ Entorno observado: CachyOS Linux x86_64, OpenCode v2.3.2 en `c0ad18b402eb2827fc1
 Desde la raíz del proyecto, con Bubblewrap, Bun y el artefacto fijado ya disponibles:
 
 ```bash
-bwrap --die-with-parent --unshare-user --unshare-pid --unshare-ipc \
-  --unshare-net --unshare-uts --disable-userns \
-  --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib /lib64 \
-  --dev /dev --proc /proc --tmpfs /tmp \
-  --ro-bind "$PWD/.fase1" /fase1 --ro-bind "$PWD/tests" /tests \
-  --ro-bind "$PWD/implementacion" /implementacion \
-  --clearenv --setenv PATH /usr/bin:/bin \
-  /usr/bin/timeout 45 /fase1/tools/bun-linux-x64-baseline/bun \
-  /tests/fase1-loopback.ts /fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode \
-  /implementacion/supervisor --qualification
+python3 -I -B implementacion/supervisor qualify-linux
 ```
+
+El supervisor monta el binario, Bun, el fixture y la implementación como solo lectura. El comando es fijo y no acepta programas o argumentos arbitrarios. Si el backend falla, sale con error y conserva PLAN y DIAG. La prueba negativa observada en el entorno restringido fue un error NETLINK_ROUTE al configurar loopback.
 
 La prueba devuelve `PASS diag`, `PASS cancel`, `PASS restricted catalog, unapproved plugin and process cleanup` y `PASS standalone decoy: 0 requests`. El diseño de montajes para otras distribuciones aún debe ejecutarse allí.
 
 ## Límites de la calificación
 
-`mcp list` en frío sigue siendo una observación de la consulta de inventario. La sesión calificada sí descubrió, invocó y obtuvo el resultado del broker. Consultar [Fase 3](FASE3.md) para el análisis del registro en memoria.
+Incidencia no bloqueante de inventario: `mcp list` en frío puede devolver una lista vacía. La sesión calificada sí descubrió, invocó y obtuvo el resultado del broker. Consultar [Fase 3](FASE3.md) para el análisis del registro en memoria.
 
-El montaje escribible del probe y la sesión compilada se calificaron en pruebas distintas. La sesión de OpenCode se lanzó desde el fixture, fuera del punto de entrada de producto del supervisor. Falta calificar un lanzador de supervisor que use esta frontera y comprobar la degradación ante un fallo de arranque del backend. La autorización condicional de Fase 5 sigue sin activarse.
+La calificación corresponde a la topología sintética del supervisor en Linux. El montaje escribible se ejercitó como una copia desechable al inicio de la Fase 5. No se habilitó todavía un comando de producto WORKSPACE.
