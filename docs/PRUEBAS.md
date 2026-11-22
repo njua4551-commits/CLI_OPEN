@@ -80,3 +80,7 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 - `python3 -I -B tests/fase5-review.py` pasó a través del supervisor y Bubblewrap. Validó creación y reemplazo, diffs, rechazo de JSON inválido y conservación del original.
 - Nueve pruebas unitarias pasaron. Las carreras sintéticas de creación y reemplazo invalidaron la revisión y descartaron la copia. La edición de agente mediante OpenCode sigue pendiente. [Alcance](evidencias/FASE5.md)
 - Cierre P4: diez pruebas automatizadas, más la prueba integrada de OpenCode nativo, Bubblewrap, revisión y publicación Git. La prueba rechazó un cambio concurrente, JSON inválido y una referencia de revisión existente, y preservó el árbol de trabajo. [Evidencia](evidencias/FASE5.md)
+
+## Gateway local de Fase 6
+
+- `tests/fase6-gateway.py` pasó en Bubblewrap con loopback privado. Verificó una llamada a herramienta en la respuesta, límites de tokens y tamaño, destino y modelo fijos, rechazo de costo positivo, respuesta de modelo distinto, redirección y caída del endpoint sin fallback. La prueba no invocó servicios externos. Sigue pendiente el recorrido desde la CLI de OpenCode y un modelo físico local.

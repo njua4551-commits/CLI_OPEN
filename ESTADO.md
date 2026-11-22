@@ -50,7 +50,9 @@ Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en
 
 ## Fase 6
 
-- Se abrió el contrato del gateway con rechazo por defecto, modo local y permiso de inferencia separado. Siguiente acción: implementar y probar la política de destino y costo antes de habilitar conexiones de producto. [Inicio](docs/evidencias/FASE6.md)
+- Se implementó el adaptador local de una solicitud, con destino fijo a loopback, tamaño y tiempo acotados, modelo explícito, rechazo de costos inesperados y sin fallback. Pasó la prueba HTTP sintética en Bubblewrap.
+- Siguiente acción: integrar este adaptador con el transporte OpenAI-compatible de la CLI de OpenCode, primero con un solo caso sintético dentro del namespace privado. La inferencia física local sigue sin calificar y las conexiones remotas de producto están deshabilitadas.
+- La Fase 6 sigue abierta. [Evidencia](docs/evidencias/FASE6.md) · [Traspaso](CONTINUAR.md)
 
 ## Reanudar el trabajo
 

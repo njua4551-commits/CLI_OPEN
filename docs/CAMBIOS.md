@@ -24,3 +24,4 @@
 - Se incorporó `qualify-linux` al supervisor, la prueba inicial de copia y diff en `tests/fase5-workspace.py`, y el registro de la incidencia no bloqueante de inventario MCP.
 - Se añadió `review-workspace`, el trabajador aislado y la cobertura de creación, reemplazo, concurrencia, reversión por descarte y diff. [Evidencia](evidencias/FASE5.md)
 - Se sustituyó la escritura propia por la herramienta nativa de OpenCode y se añadió la publicación Git de revisiones aprobadas. Se inició el contrato del gateway de Fase 6.
+- Se añadió el adaptador de loopback en `implementacion/gateway/__main__.py`, su fixture HTTP en `tests/fase6-gateway.py` y el punto de reanudación en `CONTINUAR.md`.
