@@ -31,3 +31,9 @@
 - `implementacion/gateway/__main__.py` añade `--listen`: endpoint OpenAI-compatible local que reutiliza el validador y el destino fijo del modo stdin. Acepta `model`, `max_completion_tokens`, `stream_options` y mensajes con `tool_calls`/rol `tool`; limita `max_tokens` a 512, el cuerpo a 128 KiB y la respuesta a 64 KiB, y valida modelo y costo cero también en SSE.
 - `tests/fase6-cli-gateway.ts` cubre `CLI → gateway → endpoint de loopback` con llamada a herramienta, sin credenciales reenviadas, costo distinto de cero y endpoint caído sin proveedor alternativo.
 - Corrección de la ruta de build: en `v2.3.2` el script es `packages/cli/script/build.ts`, no `script/build.ts` en la raíz.
+
+## 2026-11-21 · Cierre de Fase 6
+
+- Se verificaron de nuevo las diez pruebas unitarias, el fixture HTTP y los tres casos de CLI con gateway.
+- Se cerró la Fase 6 para el perfil local sintético y se aplazaron presupuesto remoto, aprobación por contenido y modelo físico local (D07).
+- La Fase 7 queda autorizada y sin comenzar.

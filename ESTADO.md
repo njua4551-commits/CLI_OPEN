@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fase autorizada y en curso: 6 (P3). No iniciar Fase 7 sin aprobación explícita.
+Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 autorizada y sin comenzar.
 
 ## Cerrado
 
@@ -8,10 +8,15 @@ Fase autorizada y en curso: 6 (P3). No iniciar Fase 7 sin aprobación explícita
 - Base: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`, sin cambios en el núcleo. Copia, Bun 1.4.4 y binario Linux en `.fase1/`, excluidos de Git.
 - Gateway local en `implementacion/gateway/__main__.py`: modo stdin de una solicitud y modo `--listen` OpenAI-compatible. Destino fijo `127.0.0.1`, sin proxy, redirecciones, reintentos ni proveedor alternativo; límites de cuerpo, tokens, respuesta y plazo; costo distinto de cero rechazado.
 
-## Fase 6 en curso
+## Fase 6 cerrada
 
 - `bun tests/fase6-cli-gateway.ts RUTA_AL_BINARIO` pasó: la CLI completó una llamada a herramienta a través del gateway, no se reenvió la credencial, un costo `0.001` fue rechazado y un endpoint caído no produjo salida alternativa.
-- Pendiente: seguimiento de presupuesto remoto y aprobación por contenido; modelo físico local o decisión explícita de aplazarlo. La inferencia remota de producto sigue deshabilitada.
+- Aceptación verificada en el perfil local sintético: destino y límites fijados, sin ruta remota alternativa y sin fallback ante fallo local.
+- El modelo físico local y el presupuesto remoto se aplazan por decisión explícita (D07). La inferencia remota de producto sigue deshabilitada.
+
+## Siguiente
+
+Fase 7 autorizada y sin comenzar: memoria, contexto y automatización, solo tras medir la ruta de lectura y escritura ya calificada. Leer su alcance en `PLAN_PARA_CODEX.md` antes de actuar.
 
 ## Reanudar el trabajo
 

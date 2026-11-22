@@ -23,4 +23,6 @@ El gateway incorpora un transporte `--listen` que expone `/v1/chat/completions` 
 - Un costo de `0.001` en la respuesta fue rechazado y la CLI no completó.
 - Con el endpoint detenido, el gateway rechazó la solicitud y el proveedor señuelo recibió cero solicitudes.
 
-Quedan el seguimiento de presupuesto remoto y su control de aprobación por contenido. No se habilitó inferencia remota de producto ni se calificó un runtime de inferencia física local.
+## Cierre
+
+La aceptación de la fase se cumple en el perfil local sintético: destino y límites verificados, ausencia de ruta remota alternativa y fallo local sin fallback. El seguimiento de presupuesto remoto, la aprobación por contenido y la calificación de un modelo físico local se aplazan por decisión explícita D07. No se habilitó inferencia remota de producto.
