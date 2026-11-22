@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en CachyOS Linux x86_64. Fase 5 (P4) en curso.
+Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en CachyOS Linux x86_64. Fase 5 (P4) completada para el flujo acotado de revisión y publicación Git. Fase 6 iniciada.
 
 ## Fase 0 cerrada
 
@@ -46,7 +46,11 @@ Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en
 
 - Se abrió con una edición y validación sintéticas en una copia desechable. El original se montó de solo lectura y se produjo un diff para revisión.
 - El supervisor ofrece `review-workspace` para propuestas explícitas. Pasó creación, reemplazo, validación, diff, detección de concurrencia y descarte sin modificar el original.
-- Siguiente acción: integrar las herramientas de edición de OpenCode en la misma transacción acotada y calificar su recorrido. WORKSPACE para el agente y Fase 6 siguen pendientes. [Evidencia](docs/evidencias/FASE5.md)
+- La herramienta nativa `write` de OpenCode pasó creación y reemplazo con un proveedor simulado, validación, descarte y generación de diff. `apply-workspace` publica el commit aprobado en una rama Git separada, con verificación de base y referencia atómica. El árbol de trabajo original conserva el estado del usuario. [Evidencia](docs/evidencias/FASE5.md)
+
+## Fase 6
+
+- Se abrió el contrato del gateway con rechazo por defecto, modo local y permiso de inferencia separado. Siguiente acción: implementar y probar la política de destino y costo antes de habilitar conexiones de producto. [Inicio](docs/evidencias/FASE6.md)
 
 ## Reanudar el trabajo
 

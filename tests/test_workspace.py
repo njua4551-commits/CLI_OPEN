@@ -24,6 +24,11 @@ class WorkspaceTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 WORKSPACE["parse_request"](io.BytesIO(json.dumps({"edits": [edit]}).encode()))
 
+    def test_diff_reports_missing_final_newlines(self):
+        difference = WORKSPACE["review_diff"]("fixture.txt", (None, "before"), "after")
+        self.assertIn("-before\n\\ No newline at end of file\n", difference)
+        self.assertIn("+after\n\\ No newline at end of file\n", difference)
+
     def test_source_change_aborts_review_and_discards_copy(self):
         for changed in ("replace", "create"):
             with self.subTest(changed=changed), tempfile.TemporaryDirectory() as directory:

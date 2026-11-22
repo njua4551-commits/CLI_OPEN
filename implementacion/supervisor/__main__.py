@@ -101,16 +101,33 @@ def main(argv=None):
     commands.add_parser("qualify-linux", help="Calificar el aislamiento con una sesión sintética fija")
     review = commands.add_parser("review-workspace", help="Revisar una copia desechable con cambios explícitos")
     review.add_argument("source", type=Path)
+    apply = commands.add_parser("apply-workspace", help="Publicar una revisión aprobada en una rama Git separada")
+    apply.add_argument("source", type=Path)
+    apply.add_argument("--approve", required=True)
     options = parser.parse_args(argv)
     if options.command == "doctor":
         print(json.dumps(doctor(), ensure_ascii=True, indent=2))
     elif options.command == "qualify-linux":
         return qualify_linux()
-    elif options.command == "review-workspace":
+    elif options.command in ("review-workspace", "apply-workspace"):
         workspace = runpy.run_path(str(Path(__file__).with_name("workspace.py")))
+        git_workspace = runpy.run_path(str(Path(__file__).with_name("workspace_git.py")))
         try:
+            source = options.source.absolute()
             edits = workspace["parse_request"](sys.stdin.buffer)
-            changes = workspace["review"](options.source, edits, bubblewrap_command)
+            base = git_workspace["base_commit"](source)
+            changes = workspace["review"](source, edits, bubblewrap_command)
+            if git_workspace["base_commit"](source) != base:
+                raise workspace["SourceChanged"]("Git base changed")
+            digest = git_workspace["approval"](source, base, changes, edits)
+            report = {"mode": "review-only", "base": base, "approval": digest, "changes": changes}
+            if options.command == "apply-workspace":
+                if not base or options.approve != digest:
+                    raise workspace["SourceChanged"]("missing Git base or approval mismatch")
+                reference, commit = git_workspace["publish"](
+                    source, base, edits, changes, digest, workspace["verify_sources"],
+                )
+                report = {"mode": "published-review", "reference": reference, "commit": commit}
         except workspace["SourceChanged"]:
             print("Revisión rechazada: el original cambió durante la operación.", file=sys.stderr)
             return 1
@@ -120,7 +137,7 @@ def main(argv=None):
         except (ValueError, OSError, RecursionError):
             print("Revisión rechazada: entrada u origen inválido, o aislamiento no disponible.", file=sys.stderr)
             return 1
-        print(json.dumps({"mode": "review-only", "changes": changes}))
+        print(json.dumps(report))
     elif options.command == "diag":
         broker = Path(__file__).resolve().parent.parent / "broker"
         return subprocess.run([sys.executable, "-I", "-B", str(broker)], env={}, check=False).returncode

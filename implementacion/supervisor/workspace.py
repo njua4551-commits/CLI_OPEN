@@ -1,5 +1,6 @@
 """Prepare a bounded, disposable workspace review without modifying its source."""
 import difflib
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -70,6 +71,27 @@ def snapshot(directory, name):
         os.close(descriptor)
 
 
+def verify_sources(root, changes):
+    directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for change in changes:
+            current = snapshot(directory, change["path"])
+            digest = hashlib.sha256(current[1].encode("utf-8")).hexdigest() if current else None
+            if digest != change["before_sha256"]:
+                raise SourceChanged("source changed before publication")
+    finally:
+        os.close(directory)
+
+
+def review_diff(name, original, edited):
+    before = original[1] if original else ""
+    lines = difflib.unified_diff(
+        before.splitlines(keepends=True), edited.splitlines(keepends=True),
+        fromfile=f"a/{name}" if original else "/dev/null", tofile=f"b/{name}",
+    )
+    return "".join(line if line.endswith("\n") else line + "\n\\ No newline at end of file\n" for line in lines)
+
+
 def review(root, edits, bubblewrap_command):
     if platform.system() != "Linux" or platform.machine() != "x86_64" or os.geteuid() == 0:
         raise ValueError("workspace requires standard-user Linux x86_64")
@@ -89,13 +111,20 @@ def review(root, edits, bubblewrap_command):
             for name, original in originals.items():
                 if original is not None:
                     (copy / name).write_bytes(original[1].encode("utf-8"))
-            worker = Path(__file__).with_name("workspace_worker.py")
-            command = bubblewrap_command(backend, [(worker, "/worker.py")], [
-                "/usr/bin/python3", "-I", "-B", "/worker.py",
+            supervisor = Path(__file__).resolve().parent
+            artifacts = supervisor.parents[1] / ".fase1"
+            mounts = [
+                (supervisor / "workspace_worker.py", "/worker.py"),
+                (supervisor / "workspace_opencode.ts", "/fixture/editor.ts"),
+                (artifacts / "tools/bun-linux-x64-baseline/bun", "/fixture/bun"),
+                (artifacts / "opencode/packages/cli/dist/cli-linux-x64/bin/opencode", "/fixture/opencode"),
+            ]
+            command = bubblewrap_command(backend, mounts, [
+                "/fixture/bun", "/fixture/editor.ts",
             ], writable_workspace=copy)
             result = subprocess.run(
                 command, env={}, input=json.dumps(edits).encode("ascii"),
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15, check=False,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=35, check=False,
             )
             if result.returncode:
                 raise IsolatedEditFailed("isolated editing or validation failed; copy discarded")
@@ -111,11 +140,9 @@ def review(root, edits, bubblewrap_command):
                 {
                     "path": name,
                     "operation": "replace" if originals[name] else "create",
-                    "diff": "".join(difflib.unified_diff(
-                        (originals[name][1] if originals[name] else "").splitlines(keepends=True),
-                        (copy / name).read_bytes().decode("utf-8").splitlines(keepends=True),
-                        fromfile=f"a/{name}" if originals[name] else "/dev/null", tofile=f"b/{name}",
-                    )),
+                    "before_sha256": hashlib.sha256(originals[name][1].encode("utf-8")).hexdigest()
+                    if originals[name] else None,
+                    "diff": review_diff(name, originals[name], (copy / name).read_bytes().decode("utf-8")),
                 }
                 for name in originals
             ]
