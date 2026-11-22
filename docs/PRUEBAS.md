@@ -50,7 +50,7 @@ Para reproducir, ejecutar `bun tests/fase1-loopback.ts RUTA_AL_BINARIO` en un en
 
 ## Pendiente
 
-La comprobación de presencia de `OPENROUTER_API_KEY` en la sesión de ejecución devolvió ausente. Se comprobó únicamente el estado de la variable. No hubo solicitudes de inferencia ni gasto.
+Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1/key` devolvió HTTP 200. La consulta de endpoints para `openai/gpt-oss-20b:free` devolvió cero y el ID está ausente del catálogo autenticado. La consulta pública de `liquid/lfm-3-1.7b:free` devolvió el endpoint `liquid`, soporte de herramientas y precios cero para entrada y salida. No hubo solicitudes de inferencia ni gasto.
 
-- Inyectar una clave nueva de OpenRouter desde el entorno de ejecución. Antes de enviar el fixture sintético, verificar que el modelo exacto está disponible, admite herramientas y tiene precio cero. Aplicar límite de tokens, deshabilitar fallbacks y herramientas alojadas y registrar costo reportado. Detenerse si el precio, la autenticación o el uso no se pueden comprobar.
+- Aprobar un nuevo modelo fijo. Antes de enviar el fixture sintético, comprobar disponibilidad, soporte de herramientas y precio cero. Aplicar límite de tokens, deshabilitar fallbacks y herramientas alojadas y registrar costo reportado.
 - Inferencia física local pendiente de validar en un entorno adecuado, fuera de la puerta de P-1. Aislamiento de producto pendiente de su fase.

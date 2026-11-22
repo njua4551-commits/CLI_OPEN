@@ -15,3 +15,4 @@
 - Se registraron los resultados de replay HTTP, MCP sintético, herramientas y resolución de servidor. No había un modelo o runtime de inferencia instalado que retirar.
 - El checkpoint revisado `5ec7fa4` se publicó en `origin/main` mediante fast-forward. Se añadió `tests/fase1-loopback.ts` para los ocho casos y el señuelo. El núcleo permanece intacto.
 - El checkpoint `d0dee98` se revisó y se publicó en `origin/main` mediante fast-forward.
+- Se registró la autenticación correcta y el bloqueo de disponibilidad del modelo fijado.

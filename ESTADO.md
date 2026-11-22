@@ -20,7 +20,7 @@ Fase en curso: 1 (P-1). El usuario autorizó iniciar la Fase 2 automáticamente 
 - El smoke test del servicio compilado y la prueba de terminación standalone pasaron en Bubblewrap con red privada. Pasaron también 23 pruebas no interactivas de upstream.
 - La calificación usa una API simulada en loopback y, por separado, OpenRouter con el modelo fijo `openai/gpt-oss-20b:free` y presupuesto de USD 0. La inferencia física local queda pendiente fuera de esta puerta. No hay modelo ni runtime de inferencia local instalado para retirar.
 - Pasaron los ocho casos de CLI contra el simulador de chat y el señuelo recibió cero solicitudes en modo standalone. Las 440 pruebas anteriores y la invocación MCP sintética conservan su evidencia.
-- Siguiente acción: ejecutar la prueba de inferencia real cuando el entorno de ejecución reciba `OPENROUTER_API_KEY`. La comprobación de presencia en esta sesión sigue indicando que está ausente. La Fase 1 sigue abierta. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+- OpenRouter autenticó `OPENROUTER_API_KEY` con HTTP 200. El modelo fijado está ausente del catálogo y su consulta devolvió cero endpoints. La Fase 1 sigue abierta. Siguiente acción: obtener aprobación para sustituir el modelo fijado por `liquid/lfm-3-1.7b:free`, cuyo endpoint anuncia herramientas y precio cero para entrada y salida. Véase [PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Reanudar el trabajo
 
