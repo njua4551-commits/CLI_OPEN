@@ -1,46 +1,64 @@
-"""One bounded, offline-profile request to an OpenAI-compatible loopback endpoint."""
+"""Bounded, offline-profile request to an OpenAI-compatible loopback endpoint.
+
+Two transports share one validator and one fixed destination:
+- stdin: a single JSON request, one response on stdout;
+- --listen: a local OpenAI-compatible endpoint for the fixed CLI provider.
+No redirects, retries, proxies or alternative providers are used.
+"""
 import argparse
 from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import http.client
 import json
 import re
 import signal
 import sys
 
-MAX_REQUEST = 16_384
+MAX_REQUEST = 131_072
 MAX_RESPONSE = 65_536
 MAX_TOKENS = 512
+MAX_MESSAGES = 24
+MAX_TOOLS = 64
 TIMEOUT = 10
 MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
+REQUEST_FIELDS = {"model", "messages", "max_tokens", "max_completion_tokens", "tools", "stream", "stream_options",
+                  "tool_choice", "temperature", "top_p"}
+MESSAGE_FIELDS = {"role", "content", "tool_calls", "tool_call_id", "name"}
+ROLES = ("system", "developer", "user", "assistant", "tool")
 
 
 class Rejected(ValueError):
     pass
 
 
-def read_request(source):
-    data = source.read(MAX_REQUEST + 1)
-    if len(data) > MAX_REQUEST:
-        raise Rejected("request too large")
+def parse_request(data, clamp=False):
     request = json.loads(data)
-    if not isinstance(request, dict) or request.keys() - {"messages", "max_tokens", "tools"}:
-        raise Rejected("unexpected request fields")
+    if not isinstance(request, dict) or request.keys() - REQUEST_FIELDS:
+        raise Rejected(f"unexpected request fields {sorted(request.keys() - REQUEST_FIELDS)}")
     messages = request.get("messages")
-    limit = request.get("max_tokens")
-    if type(limit) is not int or not 1 <= limit <= MAX_TOKENS:
+    limit = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
+    if type(limit) is not int or limit < 1 or (limit > MAX_TOKENS and not clamp):
         raise Rejected("invalid token limit")
-    if not isinstance(messages, list) or not 1 <= len(messages) <= 12:
+    request["max_tokens"] = min(limit, MAX_TOKENS)
+    if not isinstance(messages, list) or not 1 <= len(messages) <= MAX_MESSAGES:
         raise Rejected("invalid message list")
     for message in messages:
         if (
-            not isinstance(message, dict) or set(message) != {"role", "content"}
-            or message["role"] not in ("system", "user", "assistant")
-            or not isinstance(message["content"], str)
+            not isinstance(message, dict) or message.keys() - MESSAGE_FIELDS
+            or message.get("role") not in ROLES
         ):
             raise Rejected("invalid message")
+        content = message.get("content")
+        if content is not None and not isinstance(content, str):
+            raise Rejected("invalid message content")
+        calls = message.get("tool_calls")
+        if calls is not None and not isinstance(calls, list):
+            raise Rejected("invalid tool calls")
+        if message["role"] == "tool" and not isinstance(message.get("tool_call_id"), str):
+            raise Rejected("invalid tool result")
     if "tools" in request:
         tools = request["tools"]
-        if not isinstance(tools, list) or not 1 <= len(tools) <= 8:
+        if not isinstance(tools, list) or not 1 <= len(tools) <= MAX_TOOLS:
             raise Rejected("invalid tool list")
         for tool in tools:
             if (
@@ -48,7 +66,28 @@ def read_request(source):
                 or tool["type"] != "function" or not isinstance(tool["function"], dict)
             ):
                 raise Rejected("only function definitions are allowed")
+    choice = request.get("tool_choice")
+    if choice is not None and not (isinstance(choice, str) or isinstance(choice, dict)):
+        raise Rejected("invalid tool choice")
+    for field in ("temperature", "top_p"):
+        if field in request and type(request[field]) not in (int, float):
+            raise Rejected("invalid sampling parameter")
+    if "stream" in request and not isinstance(request["stream"], bool):
+        raise Rejected("invalid stream flag")
+    options = request.get("stream_options")
+    if options is not None and (
+        not isinstance(options, dict) or set(options) - {"include_usage"}
+        or not isinstance(options.get("include_usage"), bool)
+    ):
+        raise Rejected("invalid stream options")
     return request
+
+
+def read_request(source):
+    data = source.read(MAX_REQUEST + 1)
+    if len(data) > MAX_REQUEST:
+        raise Rejected("request too large")
+    return parse_request(data)
 
 
 @contextmanager
@@ -64,10 +103,48 @@ def deadline():
         signal.signal(signal.SIGALRM, previous)
 
 
-def complete(port, model, request):
+def check_usage(value):
+    if not isinstance(value, dict) or ("cost" in value and (
+        type(value["cost"]) not in (int, float) or value["cost"] != 0
+    )):
+        raise Rejected("unexpected cost in local response")
+
+
+def check_json(data, model):
+    report = json.loads(data)
+    if not isinstance(report, dict) or report.get("model") != model or not isinstance(report.get("choices"), list):
+        raise Rejected("invalid response or unexpected model")
+    check_usage(report.get("usage", {}))
+    return report
+
+
+def check_stream(data, model):
+    text = data.decode("utf-8")
+    seen = 0
+    for line in text.splitlines():
+        if not line.startswith("data: "):
+            continue
+        raw = line[6:].strip()
+        if raw == "[DONE]":
+            continue
+        chunk = json.loads(raw)
+        if not isinstance(chunk, dict) or chunk.get("model") != model:
+            raise Rejected("invalid stream or unexpected model")
+        check_usage(chunk.get("usage") or {})
+        seen += 1
+    if not seen:
+        raise Rejected("empty stream")
+    return data
+
+
+def complete(port, model, request, stream=None):
     if not 1 <= port <= 65535 or not MODEL_NAME.fullmatch(model):
         raise Rejected("invalid loopback port or model")
-    payload = json.dumps({**request, "model": model, "stream": False}, allow_nan=False).encode("ascii")
+    forwarded = {key: request[key] for key in ("messages", "tools", "tool_choice", "temperature", "top_p", "stream_options") if key in request}
+    forwarded["model"] = model
+    forwarded["max_tokens"] = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
+    forwarded["stream"] = request.get("stream", False) if stream is None else stream
+    payload = json.dumps(forwarded, allow_nan=False).encode("ascii")
     if len(payload) > MAX_REQUEST:
         raise Rejected("encoded request too large")
     # Fixed host/path, direct connection, no proxy, redirects, retries or provider fallback.
@@ -78,37 +155,115 @@ def complete(port, model, request):
             with connection.getresponse() as response:
                 if response.status != 200:
                     raise Rejected("local endpoint rejected the request")
+                content_type = response.getheader("Content-Type", "application/json")
                 data = response.read(MAX_RESPONSE + 1)
                 if len(data) > MAX_RESPONSE:
                     raise Rejected("response too large")
     finally:
         connection.close()
-    report = json.loads(data)
-    if not isinstance(report, dict) or report.get("model") != model or not isinstance(report.get("choices"), list):
-        raise Rejected("invalid response or unexpected model")
-    usage = report.get("usage", {})
-    if not isinstance(usage, dict) or ("cost" in usage and (
-        type(usage["cost"]) not in (int, float) or usage["cost"] != 0
-    )):
-        raise Rejected("unexpected cost in local response")
-    return report
+    if content_type.split(";")[0].strip() == "text/event-stream":
+        check_stream(data, model)
+    else:
+        check_json(data, model)
+    return content_type, data
+
+
+def read_body(handler):
+    if handler.headers.get("Transfer-Encoding"):
+        if handler.headers["Transfer-Encoding"].lower() != "chunked":
+            raise Rejected("unsupported transfer encoding")
+        chunks, total = [], 0
+        while True:
+            line = handler.rfile.readline(1024)
+            if not line:
+                raise Rejected("truncated chunked request")
+            size = int(line.split(b";")[0].strip(), 16)
+            if size == 0:
+                while handler.rfile.readline(1024) not in (b"\r\n", b"\n", b""):
+                    pass
+                break
+            total += size
+            if total > MAX_REQUEST:
+                raise Rejected("request too large")
+            chunk = handler.rfile.read(size)
+            if len(chunk) != size:
+                raise Rejected("truncated chunked request")
+            chunks.append(chunk)
+            handler.rfile.read(2)
+        return b"".join(chunks)
+    length = handler.headers.get("Content-Length", "")
+    if not length.isdigit() or not 1 <= int(length) <= MAX_REQUEST:
+        raise Rejected("invalid content length")
+    data = handler.rfile.read(int(length))
+    if len(data) != int(length):
+        raise Rejected("truncated request")
+    return data
+
+
+def serve(listen, port, model):
+    if not MODEL_NAME.fullmatch(model):
+        raise Rejected("invalid model")
+
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def reply(self, status, body=b""):
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_POST(self):
+            try:
+                if self.path != "/v1/chat/completions":
+                    raise Rejected("unexpected path")
+                content_type, body = complete(port, model, parse_request(read_body(self), clamp=True))
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(body)
+            except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
+                print(f"rejected: {exc!r}", file=sys.stderr, flush=True)
+                self.reply(502, b'{"error":"local gateway rejected the request"}')
+            self.close_connection = True
+
+        def do_GET(self):
+            self.reply(405)
+
+        def log_message(self, *_):
+            pass
+
+    server = HTTPServer(("127.0.0.1", listen), Handler)
+    print(f"LISTEN {server.server_port}", flush=True)
+    server.serve_forever()
 
 
 def main():
     parser = argparse.ArgumentParser(description="Consulta local y acotada. Sin destinos remotos.")
     parser.add_argument("--port", type=int, required=True, help="Puerto del endpoint IPv4 de loopback")
     parser.add_argument("--model", required=True, help="Identificador exacto del modelo")
+    parser.add_argument("--listen", type=int, metavar="PUERTO",
+                        help="Sirve un endpoint OpenAI-compatible local (0 elige puerto)")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
         print("Gateway local sin calificar en este entorno.", file=sys.stderr)
         return 2
     try:
+        if args.listen is not None:
+            if not 0 <= args.listen <= 65535:
+                raise Rejected("invalid listen port")
+            serve(args.listen, args.port, args.model)
+            return 0
         request = read_request(sys.stdin.buffer)
-        report = json.dumps(complete(args.port, args.model, request), ensure_ascii=True, allow_nan=False)
-    except (ValueError, OSError, http.client.HTTPException, RecursionError):
+        _, report = complete(args.port, args.model, request, stream=False)
+    except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError):
         print("Consulta local rechazada o fallida. Sin conexión alternativa.", file=sys.stderr)
         return 1
-    print(report)
+    sys.stdout.buffer.write(report)
     return 0
 
 
