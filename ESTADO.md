@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fase autorizada y en curso: 1 (P-1). Fase 2 requiere aprobación al cierre.
+Fase en curso: 1 (P-1). El usuario autorizó iniciar la Fase 2 automáticamente cuando se cumplan los criterios de aceptación de P-1. La Fase 3 requiere autorización aparte.
 
 ## Fase 0 cerrada
 
@@ -20,7 +20,7 @@ Fase autorizada y en curso: 1 (P-1). Fase 2 requiere aprobación al cierre.
 - El smoke test del servicio compilado y la prueba de terminación standalone pasaron en Bubblewrap con red privada. Pasaron también 23 pruebas no interactivas de upstream.
 - La calificación usa una API simulada en loopback y, por separado, OpenRouter con el modelo fijo `openai/gpt-oss-20b:free` y presupuesto de USD 0. La inferencia física local queda pendiente fuera de esta puerta. No hay modelo ni runtime de inferencia local instalado para retirar.
 - Pasaron los ocho casos de CLI contra el simulador de chat y el señuelo recibió cero solicitudes en modo standalone. Las 440 pruebas anteriores y la invocación MCP sintética conservan su evidencia.
-- Siguiente acción: ejecutar la prueba de inferencia real cuando el entorno reciba `OPENROUTER_API_KEY`. La variable está ausente. La Fase 1 sigue abierta; la Fase 2 requiere una aprobación posterior. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+- Siguiente acción: ejecutar la prueba de inferencia real cuando el entorno de ejecución reciba `OPENROUTER_API_KEY`. La comprobación de presencia en esta sesión sigue indicando que está ausente. La Fase 1 sigue abierta. Véase [PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Reanudar el trabajo
 
