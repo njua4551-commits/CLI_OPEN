@@ -30,9 +30,25 @@ Ejecutadas sobre el SHA fijado con Bun 1.4.4, `OPENCODE_VERSION=2.3.2` y Bubblew
 | OpenRouter | Sin solicitudes. `OPENROUTER_API_KEY` ausente. La credencial comunicada corresponde a otro proveedor y no se guardó. |
 | Preparación de inferencia física local | Sin binarios, pesos ni directorio de inferencia local detectado. Se conservaron Bun y el build de OpenCode para las pruebas. |
 
+## CLI con loopback
+
+Pasó la prueba [fase1-loopback.ts](../tests/fase1-loopback.ts) usando el artefacto Linux fijado y Bun 1.4.4 en Bubblewrap, con loopback privado y sin red externa. El sandbox de la sesión rechazó `listen` con EPERM. Se reutilizaron las 440 pruebas ya registradas.
+
+| Caso | Aserción aprobada |
+|---|---|
+| Argumento inválido | `read` rechaza el límite cero. |
+| Ruta Windows escapada | El resultado conserva los separadores de la ruta sintética. Se ejecutó en Linux. |
+| Ruta Unicode | Lee el archivo sintético y devuelve su marcador. |
+| Lectura acotada | Devuelve solo la línea solicitada. |
+| Respuesta extensa | Devuelve contenido inicial y excluye el marcador final fuera del límite. |
+| Llamada múltiple | Recibe dos resultados con los marcadores correspondientes. |
+| Cancelación | SIGINT interrumpe la CLI y cierra el stream del proveedor. |
+| Fallo recuperable | Un 429 sintético seguido de una respuesta correcta produce dos solicitudes de sesión y un resultado válido. |
+| Servidor señuelo | El servicio HTTP señuelo permanece activo y registrado durante las ejecuciones `--standalone`; recibe cero solicitudes. |
+
+Para reproducir, ejecutar `bun tests/fase1-loopback.ts RUTA_AL_BINARIO` en un entorno con loopback privado permitido. La prueba usa un directorio temporal, registra el señuelo en XDG y monta el binario como solo lectura en la ejecución de referencia.
+
 ## Pendiente
 
-- Completar la sesión de lectura de CLI contra un simulador de chat en loopback con la matriz de ocho casos. Hay cobertura por componentes de argumento inválido, lectura acotada, salida extensa, llamadas múltiples, cancelación y fallo recuperable. La ruta Windows escapada, la ruta Unicode y el recorrido completo siguen pendientes.
-- Probar `--standalone` con un señuelo activo y comprobar que el señuelo no recibe solicitudes.
 - Inyectar una clave nueva de OpenRouter desde el entorno de ejecución. Antes de enviar el fixture sintético, verificar que el modelo exacto está disponible, admite herramientas y tiene precio cero. Aplicar límite de tokens, deshabilitar fallbacks y herramientas alojadas y registrar costo reportado. Detenerse si el precio, la autenticación o el uso no se pueden comprobar.
 - Inferencia física local pendiente de validar en un entorno adecuado, fuera de la puerta de P-1. Aislamiento de producto pendiente de su fase.
