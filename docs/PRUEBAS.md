@@ -81,6 +81,10 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 - Nueve pruebas unitarias pasaron. Las carreras sintéticas de creación y reemplazo invalidaron la revisión y descartaron la copia. La edición de agente mediante OpenCode sigue pendiente. [Alcance](evidencias/FASE5.md)
 - Cierre P4: diez pruebas automatizadas, más la prueba integrada de OpenCode nativo, Bubblewrap, revisión y publicación Git. La prueba rechazó un cambio concurrente, JSON inválido y una referencia de revisión existente, y preservó el árbol de trabajo. [Evidencia](evidencias/FASE5.md)
 
+## CLI con gateway de Fase 6
+
+`bun tests/fase6-cli-gateway.ts RUTA_AL_BINARIO` pasó en CachyOS x86_64 con Bun 1.4.4 y el binario `v2.3.2` recompilado desde `packages/cli/script/build.ts`. Tres casos: la CLI completó una llamada a herramienta a través del gateway contra un endpoint sintético sin recibir la credencial del cliente; un costo `0.001` fue rechazado; y con el endpoint detenido la CLI no completó y el proveedor señuelo recibió cero solicitudes. El gateway sirvió con `--listen 0`, cuerpo de hasta 128 KiB y respuesta de hasta 64 KiB.
+
 ## Gateway local de Fase 6
 
 - `tests/fase6-gateway.py` pasó en Bubblewrap con loopback privado. Verificó una llamada a herramienta en la respuesta, límites de tokens y tamaño, destino y modelo fijos, rechazo de costo positivo, respuesta de modelo distinto, redirección y caída del endpoint sin fallback. La prueba no invocó servicios externos. Sigue pendiente el recorrido desde la CLI de OpenCode y un modelo físico local.

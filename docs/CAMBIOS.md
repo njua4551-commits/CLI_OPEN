@@ -25,3 +25,9 @@
 - Se añadió `review-workspace`, el trabajador aislado y la cobertura de creación, reemplazo, concurrencia, reversión por descarte y diff. [Evidencia](evidencias/FASE5.md)
 - Se sustituyó la escritura propia por la herramienta nativa de OpenCode y se añadió la publicación Git de revisiones aprobadas. Se inició el contrato del gateway de Fase 6.
 - Se añadió el adaptador de loopback en `implementacion/gateway/__main__.py`, su fixture HTTP en `tests/fase6-gateway.py` y el punto de reanudación en `CONTINUAR.md`.
+
+## 2026-11-21 · Transporte CLI → gateway de Fase 6
+
+- `implementacion/gateway/__main__.py` añade `--listen`: endpoint OpenAI-compatible local que reutiliza el validador y el destino fijo del modo stdin. Acepta `model`, `max_completion_tokens`, `stream_options` y mensajes con `tool_calls`/rol `tool`; limita `max_tokens` a 512, el cuerpo a 128 KiB y la respuesta a 64 KiB, y valida modelo y costo cero también en SSE.
+- `tests/fase6-cli-gateway.ts` cubre `CLI → gateway → endpoint de loopback` con llamada a herramienta, sin credenciales reenviadas, costo distinto de cero y endpoint caído sin proveedor alternativo.
+- Corrección de la ruta de build: en `v2.3.2` el script es `packages/cli/script/build.ts`, no `script/build.ts` en la raíz.

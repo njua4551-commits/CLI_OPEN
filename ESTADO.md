@@ -1,61 +1,20 @@
 # Estado del proyecto
 
-Fases 1 (P-1), 2 (P0), 3 (P1) y 4 (P2) completadas para la topología probada en CachyOS Linux x86_64. Fase 5 (P4) completada para el flujo acotado de revisión y publicación Git. Fase 6 iniciada.
+Fase autorizada y en curso: 6 (P3). No iniciar Fase 7 sin aprobación explícita.
 
-## Fase 0 cerrada
+## Cerrado
 
-- Clon oficial existente en `upstream/upstream/opencode`. Historial no superficial, árbol limpio, rama `dev` alineada con la referencia local `origin/dev`, SHA `73a0eae88de47f10068a0f9dc7a743638fa3d830`.
-- Licencia MIT. Monorepo con Bun 1.4.4, `bun.lock` y `flake.lock`. La guía documenta `bun install` y `bun dev [directory]`.
-- Entorno observado: CachyOS, Linux 7.3.3-1-cachyos, x86_64, Bash 5.3.20, Codex CLI 0.171.0, UID 1000. Sin indicadores WSL en el kernel consultado.
-- La inspección inicial terminó sin escrituras. Ninguna plataforma tiene arranque, diagnóstico o escritura aislada calificados.
+- Fases 0 a 5 cerradas para los flujos acotados de `docs/PRUEBAS.md` y `docs/evidencias/`. Entorno calificado: CachyOS Linux x86_64.
+- Base: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`, sin cambios en el núcleo. Copia, Bun 1.4.4 y binario Linux en `.fase1/`, excluidos de Git.
+- Gateway local en `implementacion/gateway/__main__.py`: modo stdin de una solicitud y modo `--listen` OpenAI-compatible. Destino fijo `127.0.0.1`, sin proxy, redirecciones, reintentos ni proveedor alternativo; límites de cuerpo, tokens, respuesta y plazo; costo distinto de cero rechazado.
 
-## Fase 1
+## Fase 6 en curso
 
-- Base seleccionada: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`. La publicación oficial del 18 de noviembre de 2026 coincide con el tag local.
-- El usuario autorizó Bun 1.4.4 y las dependencias fijadas en `bun.lock`, previa revisión de scripts. Se revisó el postinstall raíz y la ruta de build de CI. Queda por revisar cualquier script de terceros que se vaya a ejecutar.
-- Git propio inicializado. El checkpoint inicial `cf7e0f9` se publicó en `origin/main` mediante push normal tras verificar el índice y las referencias remotas.
-- Copia separada del SHA fijado en `.fase1/opencode`. El binario oficial de Bun 1.4.4 está en `.fase1/tools` y pasó la verificación SHA-256.
-- Dependencias congeladas instaladas dentro de Bubblewrap con `--ignore-scripts`. El lockfile coincide con el SHA fijado.
-- Build de CLI Linux x86_64 completado con `OPENCODE_VERSION=2.3.2`. El artefacto reporta `opencode v2.3.2` y ofrece `--standalone` y `--server`.
-- El smoke test del servicio compilado y la prueba de terminación standalone pasaron en Bubblewrap con red privada. Pasaron también 23 pruebas no interactivas de upstream.
-- La calificación usa una API simulada en loopback y, por separado, OpenRouter con el modelo fijo `liquid/lfm-3-1.7b:free` y presupuesto de USD 0. La inferencia física local queda pendiente fuera de esta puerta. No hay modelo ni runtime de inferencia local instalado para retirar.
-- Pasaron los ocho casos de CLI contra el simulador de chat y el señuelo recibió cero solicitudes en modo standalone. Las 440 pruebas anteriores y la invocación MCP sintética conservan su evidencia.
-
-- OpenRouter confirmó costo USD 0 en las dos respuestas de la prueba final. Pasaron los argumentos de la herramienta y la devolución del marcador sintético. La prueba remota usó directamente la API; la CLI se calificó con loopback.
-
-## Fase 2
-
-- Supervisor mínimo en `implementacion/supervisor` con `doctor` y `plan`. Sin dependencias adicionales. OpenCode conserva su función de motor y su CLI original.
-- El doctor identifica entorno, arquitectura, shell configurada, WSL y elevación. Reporta el aislamiento como no verificado. `PLAN` rechaza comandos y escrituras.
-- Pruebas automatizadas aprobadas en CachyOS x86_64. Las rutas macOS, Windows y WSL quedan pendientes de ejecución en sus entornos.
-- PLAN se mantiene separado de la entrada explícita DIAG.
-
-## Fase 3
-
-- Broker MCP local de solo lectura con cinco consultas tipadas, entrada y salida limitadas, y auditoría sin argumentos ni valores. Se comprobó con pruebas Python y con el SDK MCP instalado en el checkout fijado.
-- Prioridad Linux x86_64. Probado en CachyOS; Arch, Ubuntu, Debian, Fedora, WSL2, macOS y Windows quedan pendientes de validación propia.
-- La CLI compilada descubrió e invocó el broker desde una sesión privada. El proveedor simulado recibió el resultado y el señuelo recibió cero solicitudes. [Evidencia](docs/evidencias/FASE3.md)
-
-## Fase 4
-
-- Se inició la calificación en CachyOS x86_64. La prueba sintética Bubblewrap verificó escritura en el montaje permitido, rechazo en montajes protegidos, traversal y enlaces, red privada, entorno limpio y fin de la carga hija tras timeout.
-- La sesión de OpenCode dentro de Bubblewrap pasó con el broker, rechazo de escritura, catálogo restringido, cancelación, descarte de extensiones de prueba y cero solicitudes al señuelo.
-- `qualify-linux` repitió la prueba de OpenCode desde el lanzador fijo del supervisor. Ante un fallo real de Bubblewrap, salió con código 1 e informó aislamiento no verificado y disponibilidad de PLAN/DIAG. El flujo integrado funcionó en un entorno que permite los namespaces. `mcp list` en frío queda como incidencia de inventario no bloqueante para la sesión probada. [Evidencia](docs/evidencias/FASE4.md)
-
-## Fase 5
-
-- Se abrió con una edición y validación sintéticas en una copia desechable. El original se montó de solo lectura y se produjo un diff para revisión.
-- El supervisor ofrece `review-workspace` para propuestas explícitas. Pasó creación, reemplazo, validación, diff, detección de concurrencia y descarte sin modificar el original.
-- La herramienta nativa `write` de OpenCode pasó creación y reemplazo con un proveedor simulado, validación, descarte y generación de diff. `apply-workspace` publica el commit aprobado en una rama Git separada, con verificación de base y referencia atómica. El árbol de trabajo original conserva el estado del usuario. [Evidencia](docs/evidencias/FASE5.md)
-
-## Fase 6
-
-- Se implementó el adaptador local de una solicitud, con destino fijo a loopback, tamaño y tiempo acotados, modelo explícito, rechazo de costos inesperados y sin fallback. Pasó la prueba HTTP sintética en Bubblewrap.
-- Siguiente acción: integrar este adaptador con el transporte OpenAI-compatible de la CLI de OpenCode, primero con un solo caso sintético dentro del namespace privado. La inferencia física local sigue sin calificar y las conexiones remotas de producto están deshabilitadas.
-- La Fase 6 sigue abierta. [Evidencia](docs/evidencias/FASE6.md) · [Traspaso](CONTINUAR.md)
+- `bun tests/fase6-cli-gateway.ts RUTA_AL_BINARIO` pasó: la CLI completó una llamada a herramienta a través del gateway, no se reenvió la credencial, un costo `0.001` fue rechazado y un endpoint caído no produjo salida alternativa.
+- Pendiente: seguimiento de presupuesto remoto y aprobación por contenido; modelo físico local o decisión explícita de aplazarlo. La inferencia remota de producto sigue deshabilitada.
 
 ## Reanudar el trabajo
 
-Leer `AGENTS.md`, el plan y el informe antes de actuar. Revisar [decisiones](docs/DECISIONES.md), [cambios](docs/CAMBIOS.md), [pruebas](docs/PRUEBAS.md), el estado Git propio y el SHA upstream. Reutilizar la evidencia de la misma revisión y entorno. Revalidar cuando cambien el SHA, el entorno o las entradas de la prueba.
+Leer `AGENTS.md`, `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `CONTINUAR.md` antes de actuar. Revisar [decisiones](docs/DECISIONES.md), [cambios](docs/CAMBIOS.md), [pruebas](docs/PRUEBAS.md), el estado Git y el SHA fijado. Reutilizar la evidencia de la misma revisión y entorno.
 
-Después de cada hito, actualizar este archivo con la siguiente acción y anotar decisiones, cambios y resultados en su registro correspondiente. Guardar el checkpoint en Git local cuando esté disponible. Los registros aportan contexto y evidencia. Las autorizaciones se comprueban con el usuario y los permisos efectivos de la sesión.
+Después de cada hito, actualizar este archivo con la siguiente acción y anotar decisiones, cambios y resultados en su registro. Guardar el checkpoint en Git local; publicar solo con autorización. Los registros aportan contexto y evidencia.
