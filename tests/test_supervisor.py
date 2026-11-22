@@ -37,6 +37,7 @@ class SupervisorTest(unittest.TestCase):
                 ("execute", sys.executable, "-c", payload),
                 ("write", "marker", "contents"),
                 ("plan", "--execute", payload),
+                ("plan", "diag"),
             ):
                 result = self.run_supervisor(*args, cwd=workdir)
                 self.assertEqual(result.returncode, 2, result.stderr)

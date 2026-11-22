@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Fases 1 (P-1) y 2 (P0) completadas en el entorno Linux de prueba. La Fase 3 queda pendiente de aprobación.
+Fases 1 (P-1) y 2 (P0) completadas. El broker de Fase 3 (P1) está implementado y verificado sobre stdio en CachyOS x86_64. El descubrimiento desde la CLI compilada queda pendiente.
 
 ## Fase 0 cerrada
 
@@ -28,7 +28,13 @@ Fases 1 (P-1) y 2 (P0) completadas en el entorno Linux de prueba. La Fase 3 qued
 - Supervisor mínimo en `implementacion/supervisor` con `doctor` y `plan`. Sin dependencias adicionales. OpenCode conserva su función de motor y su CLI original.
 - El doctor identifica entorno, arquitectura, shell configurada, WSL y elevación. Reporta el aislamiento como no verificado. `PLAN` rechaza comandos y escrituras.
 - Pruebas automatizadas aprobadas en CachyOS x86_64. Las rutas macOS, Windows y WSL quedan pendientes de ejecución en sus entornos.
-- Siguiente puerta: aprobación explícita de Fase 3 para diseñar el broker de diagnóstico tipado. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+- PLAN se mantiene separado de la entrada explícita DIAG.
+
+## Fase 3
+
+- Broker MCP local de solo lectura con cinco consultas tipadas, entrada y salida limitadas, y auditoría sin argumentos ni valores. Se comprobó con pruebas Python y con el SDK MCP instalado en el checkout fijado.
+- Prioridad Linux x86_64. Probado en CachyOS; Arch, Ubuntu, Debian, Fedora, WSL2, macOS y Windows quedan pendientes de validación propia.
+- Siguiente acción: confirmar el descubrimiento del broker por la CLI compilada. La Fase 4 requiere aprobación explícita. [Evidencia](docs/evidencias/FASE3.md)
 
 ## Reanudar el trabajo
 

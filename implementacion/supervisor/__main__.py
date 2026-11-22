@@ -5,6 +5,9 @@ import json
 import os
 import platform
 import shutil
+import subprocess
+import sys
+from pathlib import Path
 
 
 def elevated(system):
@@ -44,9 +47,13 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Inspeccionar el entorno efectivo")
     commands.add_parser("plan", help="Mostrar capacidades del perfil activo")
+    commands.add_parser("diag", help="Iniciar el broker MCP de solo lectura sobre stdio")
     options = parser.parse_args(argv)
     if options.command == "doctor":
         print(json.dumps(doctor(), ensure_ascii=True, indent=2))
+    elif options.command == "diag":
+        broker = Path(__file__).resolve().parent.parent / "broker"
+        return subprocess.run([sys.executable, "-I", "-B", str(broker)], env={}, check=False).returncode
     else:
         print("PLAN activo. Ejecución, escritura e inferencia remota deshabilitadas.")
     return 0

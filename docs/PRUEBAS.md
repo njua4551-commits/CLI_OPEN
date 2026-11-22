@@ -59,3 +59,10 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 
 - OpenRouter: el usuario aprobó `liquid/lfm-3-1.7b:free`. El endpoint `liquid` anunció herramientas y precio cero. El primer intento obtuvo una llamada a herramienta con costo cero y HTTP 404 en la continuación con `tool_choice: none`. El fixture definitivo omitió ese parámetro en la continuación y pasó ambas solicitudes. Se verificaron el proveedor, el modelo, el argumento, el marcador final y costo USD 0 en cada respuesta. Reproducción: `python3 tests/fase1-openrouter.py` con `OPENROUTER_API_KEY` inyectada. Es una prueba de API directa; la cobertura real de la CLI corresponde a la matriz de loopback.
 - Supervisor: `python3 -B tests/test_supervisor.py` pasó dos pruebas de integración local. `python3 -B implementacion/supervisor doctor` detectó Linux x86_64, usuario estándar y Bubblewrap en PATH, con aislamiento no verificado. `PLAN` rechazó las operaciones y argumentos de ejecución y escritura. macOS, Windows y WSL requieren validación en sus entornos.
+
+## Broker DIAG de Fase 3
+
+- `python3 -B -m unittest discover -s tests`: cinco pruebas, cero fallos, en CachyOS x86_64. Pasaron las cinco consultas, errores de protocolo, rechazo de comandos, rutas y parámetros, auditoría sin valores y separación de PLAN.
+- Cliente `@modelcontextprotocol/client` 2.4.0 del checkout fijado, ejecutado con Node: inicializó, listó y ejecutó las cinco herramientas con resultados estructurados. El transporte stdio del SDK ejecutado directamente con Bun cerró la conexión durante el handshake; la prueba con Node sí pasó.
+- `opencode --standalone mcp list` dentro de Bubblewrap no descubrió el servidor en las configuraciones temporales ensayadas. La integración verificada es la del cliente MCP. Queda pendiente el descubrimiento desde la CLI compilada.
+- [Configuración y alcance](evidencias/FASE3.md).
