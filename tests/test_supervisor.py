@@ -1,4 +1,6 @@
 import json
+import os
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -10,10 +12,11 @@ SUPERVISOR = ROOT / "implementacion" / "supervisor"
 
 
 class SupervisorTest(unittest.TestCase):
-    def run_supervisor(self, *args, cwd=None):
+    def run_supervisor(self, *args, cwd=None, env=None):
         return subprocess.run(
             [sys.executable, "-B", str(SUPERVISOR), *args],
             cwd=cwd,
+            env=env,
             capture_output=True,
             text=True,
             check=False,
@@ -28,6 +31,16 @@ class SupervisorTest(unittest.TestCase):
         self.assertTrue(report["architecture"])
         self.assertFalse(report["isolation"]["verified"])
         self.assertEqual(report["capabilities"], {"execute": False, "write": False, "remote": False})
+
+    @unittest.skipUnless(platform.system() == "Linux", "Bubblewrap detection is Linux-specific")
+    def test_missing_backend_keeps_plan_without_access(self):
+        result = self.run_supervisor("doctor", env={**os.environ, "PATH": ""})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["profile"], "PLAN")
+        self.assertEqual(report["isolation"], {"bubblewrap_on_path": False, "verified": False})
+        self.assertFalse(report["capabilities"]["write"])
+        self.assertFalse(report["capabilities"]["execute"])
 
     def test_plan_denies_command_execution_and_writes(self):
         with tempfile.TemporaryDirectory() as workdir:

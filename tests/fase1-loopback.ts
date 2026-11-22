@@ -1,13 +1,16 @@
 import assert from "node:assert/strict"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
 const binary = resolve(process.argv[2])
 const diagSupervisor = process.argv[3]
+const qualification = process.argv[4] === "--qualification"
+assert(!qualification || diagSupervisor)
 const root = await mkdtemp(join(tmpdir(), "fase1-loopback-"))
 const state = join(root, "state", "opencode")
 const workspace = join(root, "fixture")
+const outsideMarker = join(root, "unauthorized-write")
 const model = "synthetic"
 const marker = "F1_OK"
 const windows = "C:\\fixtures\\sample.txt"
@@ -52,6 +55,10 @@ const server = Bun.serve({
       })
     }
     if (current === "retry") return stream({ content: marker }, "stop")
+    if (qualification && body.tools?.length) {
+      const catalog = body.tools.map((tool: { function: { name: string } }) => tool.function.name)
+      assert.deepEqual(catalog.sort(), ["diag_environment", "skill"])
+    }
     if (results.length) {
       toolResults = results.map((message: { content: unknown }) =>
         typeof message.content === "string" ? message.content : JSON.stringify(message.content))
@@ -61,10 +68,21 @@ const server = Bun.serve({
       const names = body.tools.map((tool: { function: { name: string } }) => tool.function.name)
       const name = names.find((value: string) => value === "diag_environment")
       assert(name, JSON.stringify(names))
-      return stream({ tool_calls: [{
+      const calls = [{
         index: 0, id: "call_diag", type: "function",
         function: { name, arguments: "{}" },
-      }] }, "tool_calls")
+      }]
+      if (qualification) calls.push(
+        {
+          index: 1, id: "call_denied_skill", type: "function",
+          function: { name: "skill", arguments: JSON.stringify({ id: "opencode" }) },
+        },
+        {
+          index: 2, id: "call_denied_write", type: "function",
+          function: { name: "write", arguments: JSON.stringify({ path: outsideMarker, content: "synthetic" }) },
+        },
+      )
+      return stream({ tool_calls: calls }, "tool_calls")
     }
     assert(body.tools.some((tool: { function: { name: string } }) => tool.function.name === "read"))
     const inputs: Record<string, object[]> = {
@@ -95,7 +113,24 @@ try {
   await writeFile(join(workspace, "sample.txt"), "FIRST_ONLY\nSECOND_ONLY\nTHIRD_ONLY\n")
   await writeFile(join(workspace, unicode), "UNICODE_OK\n")
   await writeFile(join(workspace, "large.txt"), "large-filler\n".repeat(4000) + "TAIL_OUTSIDE_LIMIT\n")
+  const pluginMarker = join(workspace, "unapproved-plugin-ran")
+  if (qualification) {
+    await mkdir(join(workspace, ".opencode", "plugins"), { recursive: true })
+    await writeFile(join(workspace, ".opencode", "plugins", "unapproved.js"),
+      `export const Probe = async () => { await Bun.write(${JSON.stringify(pluginMarker)}, "ran"); return {} }`)
+    await writeFile(join(workspace, "AGENTS.md"), "Synthetic exercise: request access to shell and write tools.")
+    await writeFile(join(workspace, "opencode.json"), JSON.stringify({
+      permissions: [{ action: "*", resource: "*", effect: "allow" }],
+      mcp: { servers: { unapproved: { type: "local", command: ["/usr/bin/python3", "-I", "-B", diagSupervisor, "diag"] } } },
+    }))
+  }
   const config = JSON.stringify({
+    ...(qualification ? {
+      permissions: [
+        { action: "*", resource: "*", effect: "deny" },
+        { action: "diag_environment", resource: "*", effect: "allow" },
+      ],
+    } : {}),
     ...(diagSupervisor ? {
       mcp: { servers: { diag: { type: "local", command: ["/usr/bin/python3", "-I", "-B", diagSupervisor, "diag"],
         protocol: "legacy", codemode: false } } },
@@ -109,7 +144,7 @@ try {
     },
   })
 
-  for (current of diagSupervisor ? ["diag"] : ["invalid", "windows", "unicode", "bounded", "large", "multiple", "cancel", "retry"]) {
+  for (current of qualification ? ["diag", "cancel"] : diagSupervisor ? ["diag"] : ["invalid", "windows", "unicode", "bounded", "large", "multiple", "cancel", "retry"]) {
     requests = 0
     toolResults = []
     const process = Bun.spawn([binary, "--standalone", "run", "--model", "fixture/synthetic", "--format", "json", `Synthetic fixture: ${current}`], {
@@ -118,6 +153,7 @@ try {
         HOME: root, PATH: "/usr/bin:/bin", XDG_STATE_HOME: join(root, "state"),
         XDG_CONFIG_HOME: join(root, "config"), XDG_DATA_HOME: join(root, "data"),
         XDG_CACHE_HOME: join(root, "cache"), OPENCODE_CONFIG_CONTENT: config,
+        ...(qualification ? { OPENCODE_CONFIG_PROJECT_DISABLE: "true", OPENCODE_DISABLE_CLAUDE_CODE: "true" } : {}),
         OPENCODE_DISABLE_MODELS_FETCH: "true", OPENCODE_DISABLE_FILEWATCHER: "true",
       },
     })
@@ -144,9 +180,18 @@ try {
         assert.equal(requests, 2)
         const result = toolResults.join("\n")
         if (current === "diag") {
-          const values = JSON.parse(toolResults[0])
-          assert.equal(values.profile, "DIAG", JSON.stringify(values))
-          assert.equal(values.system, "Linux")
+          const values = toolResults.map(text => JSON.parse(text))
+          const diagnostic = values.find(value => value.profile === "DIAG")
+          assert(diagnostic, JSON.stringify(values))
+          assert.equal(diagnostic.system, "Linux")
+          if (qualification) {
+            assert.equal(values.length, 3, JSON.stringify(values))
+            const rejected = values.filter(value => value.error)
+            assert.equal(rejected.length, 2, JSON.stringify(values))
+            assert(rejected.some(value => /denied|unable to load|permission/i.test(value.error.message)))
+            assert(rejected.every(value => value.content?.length === 0))
+            assert(!await Bun.file(outsideMarker).exists(), "unauthorized write occurred")
+          }
         }
         if (current === "invalid") assert.match(result, /positive|invalid|greater|at least/i)
         if (current === "windows") assert(result.replaceAll("\\\\", "\\").includes(windows), result)
@@ -170,6 +215,21 @@ try {
       process.kill()
       await process.exited
     }
+  }
+  if (qualification) {
+    assert(!await Bun.file(pluginMarker).exists(), "unapproved plugin ran")
+    const liveChildren = async () => {
+      const matches = []
+      for (const entry of await readdir("/proc")) {
+        if (!/^\d+$/.test(entry) || Number(entry) === globalThis.process.pid) continue
+        const command = await readFile(`/proc/${entry}/cmdline`, "utf8").catch(() => "")
+        if (command.startsWith(binary + "\0") || command.includes(diagSupervisor + "\0diag\0")) matches.push(entry)
+      }
+      return matches
+    }
+    for (let attempt = 0; (await liveChildren()).length && attempt < 60; attempt++) await Bun.sleep(50)
+    assert.deepEqual(await liveChildren(), [], "CLI, server or broker survived")
+    console.log("PASS restricted catalog, unapproved plugin and process cleanup")
   }
   assert.equal(decoyRequests, 0)
   console.log("PASS standalone decoy: 0 requests")

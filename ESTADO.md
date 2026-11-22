@@ -39,7 +39,8 @@ Fases 1 (P-1), 2 (P0) y 3 (P1) completadas. Fase 4 (P2) en curso para Linux x86_
 ## Fase 4
 
 - Se inició la calificación en CachyOS x86_64. La prueba sintética Bubblewrap verificó escritura en el montaje permitido, rechazo en montajes protegidos, traversal y enlaces, red privada, entorno limpio y fin de la carga hija tras timeout.
-- Siguiente acción: calificar la frontera con la sesión completa de OpenCode, incluido el control de extensiones y configuraciones no aprobadas. WORKSPACE sigue deshabilitado y el doctor conserva el estado de aislamiento no verificado.
+- La sesión de OpenCode dentro de Bubblewrap pasó con el broker, rechazo de escritura, catálogo restringido, cancelación, descarte de extensiones de prueba y cero solicitudes al señuelo.
+- Siguiente acción: trasladar la frontera verificada al punto de entrada de lanzamiento del supervisor y probar su degradación ante un backend fallido. WORKSPACE sigue deshabilitado y la Fase 5 sigue pendiente de la puerta de seguridad. [Evidencia](docs/evidencias/FASE4.md)
 
 ## Reanudar el trabajo
 

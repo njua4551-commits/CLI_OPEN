@@ -70,4 +70,5 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 ## Inicio de Fase 4
 
 - `python3 -B tests/fase4-linux.py` pasó en CachyOS x86_64 con Bubblewrap. La sesión de herramientas necesitó permiso para crear el listener local de control. El primer intento de Bubblewrap exigió `--unshare-user` explícito; el reintento con namespaces explícitos pasó.
-- Los fixtures verificaron un destino permitido, denegación en ruta absoluta, traversal, enlaces y política protegida, desconexión del loopback del host, entorno limpio y ausencia de actividad del hijo tras timeout. Pendiente validar la sesión integrada y la no ampliación de capacidades mediante configuración y plugins. La prueba sintética no califica la escritura de producto.
+- Los fixtures verificaron un destino permitido, denegación en ruta absoluta, traversal, enlaces y política protegida, desconexión del loopback del host, entorno limpio y ausencia de actividad del hijo tras timeout.
+- Pasó la sesión integrada con el catálogo restringido, el broker aprobado, denegación de escritura y `skill`, exclusión del plugin local y MCP de prueba, SIGINT y limpieza de procesos. Tres pruebas del supervisor pasaron, incluida la degradación con Bubblewrap ausente del PATH. Queda pendiente validar el arrancador del supervisor ante fallo efectivo del backend. [Evidencia](evidencias/FASE4.md)

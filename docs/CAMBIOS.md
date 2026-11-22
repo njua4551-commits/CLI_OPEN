@@ -20,3 +20,4 @@
 - Se añadieron `implementacion/supervisor/__main__.py` y `tests/test_supervisor.py` para el doctor y el perfil PLAN de Fase 2.
 - Se añadió `implementacion/broker/__main__.py` con cinco consultas de solo lectura, una entrada DIAG explícita en el supervisor y pruebas de catálogo, rechazo y límites.
 - Se adaptó el sobre MCP del broker y se añadió la prueba focalizada de integración CLI con DIAG. Se inició P2 con `tests/fase4-linux.py`.
+- Se añadió un recorrido de calificación de OpenCode y el broker en Bubblewrap y una prueba de degradación con Bubblewrap ausente del PATH. [Evidencia](evidencias/FASE4.md)
