@@ -4,6 +4,10 @@
 
 **Versión:** 3.0 — Roadmap estratégico consolidado y definitivo. Este plan gobierna el orden de ejecución, puertas y criterios de aceptación; INFORME_TECNICO.md gobierna requisitos técnicos y arquitectura.
 
+## Directiva vigente (prevalece sobre el orden de este plan)
+
+Prioriza estabilizar CLI_OPEN antes de continuar el roadmap: auditar y corregir límites del gateway, streaming, concurrencia, compatibilidad de APIs, conectividad segura del sandbox, edición real de código, CI y pruebas reproducibles. Después, validar un modelo local real y preparar la integración remota segura con presupuestos y autorización explícita. Conservar F0–F7, las capacidades originales de OpenCode y las protecciones existentes; los límites de seguridad se hacen configurables y verificables, no se eliminan. No duplicar componentes. Módulos pequeños, pruebas y regresiones tras cada cambio, documentación actualizada y checkpoints Git revisados; ninguna función se declara completada sin evidencia real. Posponer nuevas funcionalidades, incluido Computer Use, hasta estabilizar lo fundamental. Texto íntegro en `AGENTS.md`.
+
 ## Principio arquitectónico obligatorio
 
 **REUTILIZAR ANTES DE EXTENDER. EXTENDER ANTES DE REEMPLAZAR.**

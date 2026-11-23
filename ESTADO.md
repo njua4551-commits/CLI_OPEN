@@ -1,5 +1,7 @@
 # Estado del proyecto
 
+**Directiva vigente:** estabilizar CLI_OPEN antes de continuar el roadmap (gateway, streaming, concurrencia, APIs, sandbox, edición real, CI, pruebas reproducibles); luego modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
+
 Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 en curso.
 
 ## Cerrado

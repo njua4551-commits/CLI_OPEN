@@ -1,5 +1,19 @@
 # Instrucciones para Codex y Agentes Desarrolladores
 
+## Directiva vigente · Prioridad sobre el roadmap
+
+Prioriza estabilizar CLI_OPEN antes de continuar el roadmap.
+
+Audita y corrige los fallos detectados: límites del gateway, streaming, concurrencia, compatibilidad de APIs, conectividad segura del sandbox, edición real de código, CI y pruebas reproducibles.
+
+Después valida un modelo local real y prepara la integración remota segura con presupuestos y autorización explícita.
+
+Conserva F0–F7, todas las capacidades originales de OpenCode y las protecciones existentes. No elimines límites de seguridad: hazlos configurables y verificables. No dupliques componentes.
+
+Trabaja por módulos pequeños, con pruebas y regresiones después de cada cambio. Actualiza la documentación y crea checkpoints Git revisados. No declares completada una función sin evidencia real.
+
+Pospón nuevas funcionalidades, incluido Computer Use, hasta estabilizar lo fundamental.
+
 - Leer `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `ESTADO.md` antes de actuar. El plan define orden y puertas; el informe define requisitos. Si hay contradicción material, detener la parte afectada y explicarla.
 - OpenCode es la base; Codex/Antigravity es el desarrollador. No duplicar CLI/TUI ni reemplazar el motor sin aprobación.
 - Principio arquitectónico obligatorio: **REUTILIZAR ANTES DE EXTENDER. EXTENDER ANTES DE REEMPLAZAR.** Antes de implementar cualquier funcionalidad, auditar primero el código de OpenCode V2 y clasificar cada propuesta como: `EXISTENTE`, `CONFIGURABLE`, `EXTENSIBLE`, `PARCIAL`, `AUSENTE`, `DESCARTADA` o `APLAZADA`.

@@ -2,6 +2,8 @@
 
 ## Punto de reanudación
 
+**Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
+
 El proyecto cerró la **Fase 6 (P3)** para el perfil local sintético. La **Fase 7 está en curso** (módulo 1 de 5 cerrado). Las fases 1–5 se cerraron para los flujos acotados descritos en la evidencia. CachyOS Linux x86_64 es el entorno probado. Arch, Ubuntu, Debian, Fedora, WSL2, Windows y macOS requieren validación propia. Continuar la Fase 7 en el orden aprobado: contexto, enrutador, autocorrección y subagentes.
 
 1. Leer `AGENTS.md`, `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `ESTADO.md`. Consultar `docs/DECISIONES.md`, `docs/CAMBIOS.md` y `docs/PRUEBAS.md` para decisiones y pruebas ya verificadas.

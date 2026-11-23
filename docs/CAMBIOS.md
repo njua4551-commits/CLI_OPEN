@@ -53,3 +53,9 @@
 - `tests/test_supervisor.py` amplía la suite unitaria (11 pruebas) validando la encapsulación del sobre y el rechazo inmediato de autoridades no autorizadas.
 - `tests/fase1-loopback.ts` añade el caso `context`: verifica que la CLI fijada de OpenCode en loopback recibe el sobre no confiable en sus mensajes de payload, no amplía permisos ni expone herramientas administrativas, rechaza inyecciones adversarias de escritura exterior (`outsideMarker`), completa la lectura segura de `sample.txt` y no envía solicitudes al señuelo (0 solicitudes).
 - `tests/fase7-contexto-loopback.ts`: suite dedicada de integración de contexto en loopback con ejecución focalizada.
+
+## 2026-11-23 · Directiva de estabilización
+
+- `AGENTS.md` incorpora al inicio la directiva vigente: estabilizar CLI_OPEN (límites del gateway, streaming, concurrencia, compatibilidad de APIs, conectividad segura del sandbox, edición real de código, CI y pruebas reproducibles) antes de continuar el roadmap; después validar un modelo local real y preparar la integración remota segura con presupuestos y autorización explícita.
+- Conserva F0–F7, capacidades originales de OpenCode y protecciones; los límites de seguridad se hacen configurables y verificables. Sin duplicar componentes. Posposición de nuevas funcionalidades, incluido Computer Use.
+- `PLAN_PARA_CODEX.md`, `CONTINUAR.md` y `ESTADO.md` referencian la directiva para que prevalezca sobre el orden del roadmap.
