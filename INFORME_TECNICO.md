@@ -378,3 +378,85 @@ Los issues son reportes públicos, no pruebas propias ni garantía de que un def
 ## 17. Contrato de ejecución con Codex
 
 OpenCode es la base elegida. Codex implementa el proyecto; no se integra como motor adicional sin aprobación. El orden vinculante está en PLAN_PARA_CODEX.md y AGENTS.md. Los módulos externos se desarrollan en implementacion/; upstream/opencode conserva su historial y no se edita sin ADR y aprobación. La versión V2, flags, hooks, rutas y requisitos de build se verifican contra el SHA seleccionado; no son contratos asumidos. Antes de cualquier instalación, revisar scripts y lockfile. La fase 0 es de solo lectura. El uso de Codex remoto no es inferencia local: no enviar secretos ni incorporar proveedores adicionales sin autorización.
+
+## 18. Roadmap estratégico consolidado: Arquitectura técnica y reutilización
+
+### 18.1 Principio arquitectónico obligatorio y clasificación de propuestas
+
+**REUTILIZAR ANTES DE EXTENDER. EXTENDER ANTES DE REEMPLAZAR.**
+
+Para cada propuesta técnica, mejora o referencia externa, es obligatorio auditar primero el código de OpenCode V2 (`v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`) y la implementación propia de CLI_OPEN. Toda propuesta debe clasificarse formalmente en una de las siguientes categorías antes de escribir código:
+
+1. `EXISTENTE`: Reutilizar directamente la funcionalidad oficial de OpenCode sin duplicar runtime ni bibliotecas.
+2. `CONFIGURABLE`: Resolver mediante opciones de configuración nativas (`opencode.json`, flags, variables de entorno).
+3. `EXTENSIBLE`: Ampliar mediante APIs públicas, hooks de ciclo de vida o plugins soportados por OpenCode.
+4. `PARCIAL`: Implementar exclusivamente la lógica diferencial faltante en la capa de supervisión o adaptación.
+5. `AUSENTE`: Diseñar e implementar un módulo propio en `implementacion/`, justificando necesidad y bajo acoplamiento.
+6. `DESCARTADA`: Desestimar por redundancia, sobrecosto cognitivo, vulnerabilidad o beneficio marginal nulo.
+7. `APLAZADA`: Postergar justificadamente fuera del MVP hacia fases posteriores (F8 o F9).
+
+### 18.2 Auditoría de capacidades nativas de OpenCode V2
+
+OpenCode V2 incorpora un conjunto extenso de capacidades que no deben reimplementarse:
+- **Code Mode / Ejecución de herramientas:** herramienta nativa `execute`, ejecución agrupada y manejo de salida truncada.
+- **Herramientas de contexto y lectura:** `read`, `list`, `grep`, `glob`, con límites de bytes y líneas.
+- **Integración MCP:** clientes stdio y SSE/WebSocket, descubrimiento dinámico y negociación de herramientas.
+- **Sesiones y orquestación multiagente:** subagentes nativos, sesiones hijas (`session`), eventos JSON estructurados y cancelación.
+- **Git y trabajo paralelo:** soporte nativo de worktrees para ramas aisladas sin duplicar storage.
+- **Compactación y contexto:** compactación automática de contexto y variantes de razonamiento (`thinking`).
+- **Interfaces de usuario:** TUI interactiva de alto rendimiento, Pair Device y servidor web integrado.
+- **Proveedores y modelos:** soporte amplio de proveedores compatibles con OpenAI, Ollama, Anthropic, OpenRouter y modelos locales.
+- **LSP y formateo:** cliente LSP y formateadores integrados según lenguaje del proyecto.
+
+### 18.3 Matriz de reutilización vs duplicación de referencias externas
+
+| Proyecto / Referencia | Capacidad analizada | Clasificación | Estrategia de adopción en CLI_OPEN |
+|---|---|---|---|
+| **Cloudflare** (Code Mode) | Descubrimiento dinámico, esquemas bajo demanda, agrupación | `EXTENSIBLE` / `PARCIAL` | Reutilizar `execute` nativo. Agregar descubrimiento selectivo y esquemas bajo demanda en supervisor. No crear un segundo runtime Code Mode. |
+| **Aider** (Repo Map) | Tree-sitter, grafos de dependencias, mapa de repo incremental | `PARCIAL` | Integrar Repo Map con la memoria persistente existente (`implementacion/memoria/`). Asignar presupuesto dinámico de tokens sin duplicar contexto. |
+| **Amp** (Investigación profunda) | Comprensión profunda, análisis de dependencias bajo demanda | `CONFIGURABLE` / `PARCIAL` | Activar investigación profunda solo ante alta complejidad. Reutilizar búsquedas, LSP y subagentes existentes. No crear un segundo indexador. |
+| **Kilo CLI** (Enrutamiento adaptativo) | Selección de modelos por complejidad, costo y latencia | `PARCIAL` | Reutilizar el gateway existente (`implementacion/gateway/`). Implementar únicamente el enrutador de políticas sin duplicar el gestor de proveedores. |
+| **Qwen Code** (Compatibilidad) | Endpoints locales y autogestionados (Ollama, llama.cpp, vLLM) | `CONFIGURABLE` | Reutilizar proveedores OpenAI-compatible nativos de OpenCode. No introducir LiteLLM como dependencia obligatoria. |
+| **OpenHands** (Autocorrección) | Detección de bucles, falta de progreso, replanificación | `PARCIAL` | Auditoría de eventos nativos de sesión y supervisor. Detención objetiva sin reintentos infinitos ni modificar el ciclo central de OpenCode. |
+| **Antigravity** (Orquestación adaptativa) | Coordinación multiagente, subagentes verificadores, worktrees | `EXISTENTE` / `CONFIGURABLE` | Reutilizar subagentes, sesiones hijas y worktrees nativos de OpenCode. Priorizar un solo agente; delegar solo cuando haya paralelismo justificado. |
+| **Goose** (Recipes) | Flujos automatizados reproducibles y parametrizados | `EXISTENTE` / `EXTENSIBLE` | Reutilizar skills y comandos nativos de OpenCode. No crear un nuevo DSL ni lenguaje de automatización. |
+| **Kiro** (Specs) | Especificaciones, diseño técnico y criterios de aceptación | `EXISTENTE` / `CONFIGURABLE` | Reutilizar Markdown estructurado, instrucciones del proyecto y skills. Sin gestor de proyectos redundante. |
+| **Cline** (Headless & Gobernanza) | Ejecución CLI headless, eventos JSON, CI/CD | `EXISTENTE` / `CONFIGURABLE` | Reutilizar `opencode run --format json` y eventos de sesión. Añadir gobernanza estricta de presupuestos en supervisor. |
+| **amux** (Supervisión móvil) | Supervisión remota, visualización de progreso y presupuesto | `EXTENSIBLE` | Ampliar selectivamente Pair Device nativo de OpenCode. No crear otra aplicación móvil ni servidor de sesiones paralelo. |
+| **Warp Oz** (Asíncrono) | Tareas asíncronas, pausa cooperativa, cancelación | `PARCIAL` | Integrar pausa en puntos seguros y reconciliación de estado con el supervisor. No reconstruir el gestor de sesiones. |
+| **Crush** (Rendimiento TUI) | Optimización de latencia, RAM y CPU en consola | `CONFIGURABLE` | Conservar la TUI oficial de OpenCode. Optimizar únicamente cuellos de botella medidos con métricas reales. |
+| **Cursor** (Ejecutores remotos) | Ejecución delegada a servidores autogestionados | `APLAZADA` | Fuera del alcance del MVP. Mantener en Fase 9 como opción futura tras calificar controles de seguridad de red. |
+
+### 18.4 Nuevas mejoras complementarias incorporadas
+
+1. **Filtrado determinista de logs y resultados:**
+   - Procesamiento determinista local en la salida de herramientas: deduplicación de líneas consecutivas o repetidas, conteo de ocurrencias, agrupamiento de errores idénticos, conservación de 5-10 líneas de contexto alrededor del fallo, y redacción de patrones de secretos.
+   - Referencia local a logs extensos sin saturar la ventana de contexto del modelo ni consumir tokens innecesarios. Nunca ocultar fallos críticos ni truncar sin marcar explícitamente `[TRUNCATED / SUMMARIZED]`.
+2. **Restauración y recuperación del sistema:**
+   - Prioridad 1: Recuperación a nivel de proyecto mediante Git, transacciones de copia y worktrees desechables.
+   - Mecanismos de recuperación del SO (Btrfs snapshots, Snapper, Timeshift, APFS, System Restore): deshabilitados por defecto, clasificados como `APLAZADA` (F9), sin operaciones privilegiadas automáticas ni falsas garantías de recuperación integral.
+3. **Compatibilidad controlada con hooks de Claude Code y Codex:**
+   - Adaptador ligero en el supervisor para interpretar eventos y contratos de hooks estándar.
+   - Restricciones obligatorias: lista cerrada de acciones, ejecución sin privilegios, tiempo límite estricto, aislamiento en sandbox y autoridad nula sobre las políticas del supervisor. Deshabilitados por defecto.
+4. **Validación automática según lenguaje:**
+   - Detección determinista del ecosistema del proyecto (Node/TypeScript, Python, Rust, Go, Java, C/C++, Bash).
+   - Detección y ejecución focalizada de validadores existentes en el workspace (linters, formateadores, suites de pruebas específicas para archivos modificados).
+   - No ejecutar suites completas para cambios mínimos; no instalar dependencias de validación sin aprobación.
+5. **Diagnósticos programados de solo lectura:**
+   - Reutilización exclusiva del broker DIAG (`implementacion/broker/`) y planificadores nativos del SO (systemd timers, cron, Task Scheduler, launchd).
+   - Solo lectura, sin llamadas a LLM (cero consumo de tokens), con límites de frecuencia, CPU y tamaño de informe. Inspeccionable y desactivable por el usuario.
+
+### 18.5 Experiencia inicial gratuita y libertad de proveedores
+
+- **Primera ejecución sin fricción:** Detección de modelos gratuitos nativos autorizados en OpenCode y endpoints locales (Ollama/LM Studio).
+- **Control estricto de costos:** Respeto absoluto del presupuesto. Nunca cambiar automáticamente a modelos de pago ni cambiar de endpoint si la cuota gratuita se agota; reportar el límite y solicitar configuración de API propia o modelo local.
+- **Privacidad garantizada:** No compartir API keys, no transmitir datos privados fuera de los límites autorizados y respetar loopback en modo local.
+
+### 18.6 Arquitectura unificada de seguridad y presupuestos
+
+El sistema mantiene una jerarquía unificada e inviolable:
+- **Supervisor confiable (`implementacion/supervisor/`):** Controla políticas, presupuesto, perfiles (PLAN, DIAG, WORKSPACE) y ciclo de vida de procesos.
+- **Broker de diagnóstico (`implementacion/broker/`):** Expone un catálogo tipado y cerrado de 5 consultas de solo lectura mediante MCP.
+- **Aislamiento (`Bubblewrap` en Linux):** Aislamiento de red (loopback privado), filesystem de solo lectura para el host y montajes efímeros para el workspace.
+- **Gateway de inferencia (`implementacion/gateway/`):** Canal único hacia loopback/modelos, con validación de costo cero en modo local, límites de tokens y sin fallback silencioso.
+- **Memoria y contexto (`implementacion/memoria/` + `context.py`):** Base JSONL por proyecto con invalidación automática por hash de archivos y sobre de autoridad nula (`authority: none`). El contexto es estrictamente dato no confiable y jamás confiere permisos ni modifica políticas.

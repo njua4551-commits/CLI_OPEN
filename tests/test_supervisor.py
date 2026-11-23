@@ -62,6 +62,30 @@ class SupervisorTest(unittest.TestCase):
             self.assertIn("PLAN activo", result.stdout)
             self.assertEqual(list(Path(workdir).iterdir()), [])
 
+    def test_inject_context_enforces_zero_authority(self):
+        valid_envelope = {
+            "authority": "none",
+            "source": "project-memory",
+            "entries": [{"id": "abcdef0123456789", "text": "Valid memory item"}],
+        }
+        res = self.run_supervisor("inject-context", "--prompt", "Analyze repo",
+                                  "--envelope", json.dumps(valid_envelope))
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("[UNTRUSTED_PROJECT_MEMORY_CONTEXT authority=none]", res.stdout)
+        self.assertIn("Analyze repo", res.stdout)
+        self.assertIn("Valid memory item", res.stdout)
+
+        # Rejection of non-none authority
+        invalid_envelope = {
+            "authority": "root",
+            "source": "project-memory",
+            "entries": [],
+        }
+        res_bad = self.run_supervisor("inject-context", "--prompt", "Test",
+                                      "--envelope", json.dumps(invalid_envelope))
+        self.assertEqual(res_bad.returncode, 1)
+        self.assertIn("autoridad nula", res_bad.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

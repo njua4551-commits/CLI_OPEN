@@ -1,8 +1,31 @@
 # Plan para construir el agente por módulos con Codex
 
-**Propósito:** usar Codex en la computadora local para evaluar y, si las pruebas lo justifican, construir un agente de desarrollo y diagnóstico multiplataforma, seguro y económico.
+**Propósito:** construir gradualmente CLI_OPEN como un agente de desarrollo, razonamiento y diagnóstico avanzado, seguro, económico y multiplataforma, basado en OpenCode V2 y desarrollado con Codex/Antigravity.
 
-**Versión:** 2.1. Este plan gobierna el orden de ejecución; el informe gobierna requisitos técnicos.
+**Versión:** 3.0 — Roadmap estratégico consolidado y definitivo. Este plan gobierna el orden de ejecución, puertas y criterios de aceptación; INFORME_TECNICO.md gobierna requisitos técnicos y arquitectura.
+
+## Principio arquitectónico obligatorio
+
+**REUTILIZAR ANTES DE EXTENDER. EXTENDER ANTES DE REEMPLAZAR.**
+
+Antes de implementar cualquier funcionalidad:
+1. Inspeccionar el código fuente de la versión fijada de OpenCode (`v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`).
+2. Inspeccionar la implementación actual de CLI_OPEN.
+3. Identificar funcionalidades, APIs, plugins y configuraciones aprovechables.
+4. Comprobar su funcionamiento mediante pruebas.
+5. Identificar exclusivamente capacidades faltantes.
+6. Seleccionar la solución con menor complejidad y mantenimiento sin comprometer calidad ni seguridad.
+
+Clasificar cada propuesta antes de actuar como:
+- `EXISTENTE`: reutilizar directamente sin código adicional.
+- `CONFIGURABLE`: resolver mediante configuración nativa.
+- `EXTENSIBLE`: ampliar mediante APIs públicas, hooks o plugins.
+- `PARCIAL`: implementar exclusivamente el incremento faltante.
+- `AUSENTE`: evaluar un módulo propio justificado.
+- `DESCARTADA`: no aporta beneficios medibles suficientes.
+- `APLAZADA`: posponer fuera del MVP inicial.
+
+No desarrollar otro motor MCP, gestor de sesiones, interfaz web, TUI, compactador, sistema de proveedores, sistema de permisos, servidor LSP ni infraestructura multiagente si las capacidades nativas pueden adaptarse.
 
 ## Cómo usar este documento
 
@@ -168,26 +191,95 @@ Pruebas negativas con datos sintéticos:
 
 **Aceptación:** el destino y los límites se verifican; el modo local no tiene una ruta remota alternativa; una falla local no dispara una llamada remota sin aprobación.
 
-### Fase 7 — Memoria, contexto y automatización (posterior)
+### Fase 7 — Roadmap estratégico consolidado y definitivo
 
-Añadir estas funciones únicamente después de medir una ruta estable de lectura y escritura:
+La Fase 7 actualiza y amplía el alcance de inteligencia, contexto, eficiencia, autonomía y supervisión sin reabrir fases F0–F6 cerradas. Se estructura en subfases ordenadas gobernadas por el principio de reutilización y validación por evidencia:
 
-- Memoria inspeccionable por proyecto, con procedencia, retención y eliminación.
-- Contexto progresivo: búsqueda, fragmentos pertinentes, salidas acotadas y referencias a archivos.
-- Validación automática después de editar, con número de reintentos limitado y detención ante falta de progreso.
-- Subagentes solo para tareas independientes. Evita varios agentes escribiendo los mismos archivos y contabiliza su costo.
-- Tareas programadas y automatizaciones del host quedan fuera hasta que exista una necesidad concreta, aprobación explícita y pruebas de seguridad específicas.
+#### F7.1 — Auditoría y línea base de capacidades nativas
+- Auditar todas las propuestas frente a las capacidades nativas de OpenCode V2 (`execute`, subagentes, sesiones hijas, worktrees, compactador, variantes de razonamiento, Pair Device, TUI, Web UI, LSP, etc.).
+- Elaborar matriz de clasificación estricta (`EXISTENTE`, `CONFIGURABLE`, `EXTENSIBLE`, `PARCIAL`, `AUSENTE`, `DESCARTADA`, `APLAZADA`).
+- Establecer suites de pruebas de referencia y métricas reproducibles previas a extensiones.
 
-**Aceptación:** la memoria no autoriza operaciones ni cambia presupuestos; se demuestra que estas funciones mejoran resultados o costo frente a una línea base.
+#### F7.2 — Contexto inteligente y comprensión de repositorios (Aider / Amp)
+- Integrar con la memoria persistente existente (`implementacion/memoria/`).
+- Repo Map incremental y estructurado mediante Tree-sitter o grafos de símbolos de OpenCode/LSP.
+- Investigación profunda de dependencias y símbolos bajo demanda, activada únicamente cuando la complejidad lo justifique.
+- Presupuesto dinámico de tokens para contexto e invalidación selectiva ante cambios del workspace.
+- No construir un segundo motor de contexto ni un segundo indexador independiente.
 
-### Fase 8 — Empaquetado y soporte anunciado (P6)
+#### F7.3 — Code Mode y optimización determinista de resultados (Cloudflare)
+- Reutilizar y adaptar la herramienta `execute` nativa de OpenCode.
+- Descubrimiento dinámico y selectivo de herramientas con recuperación de esquemas bajo demanda.
+- Ejecución agrupada respetando individualmente permisos, aislamiento y presupuestos.
+- Filtrado determinista de logs y salidas: deduplicación de líneas, agrupamiento de errores equivalentes, conteo de ocurrencias, preservación de contexto alrededor de fallos y redacción de secretos.
+- Caché e invalidación local sin llamadas adicionales al modelo.
 
-- Documentar instalación, actualización y reversión sin asumir que los sistemas son equivalentes.
-- Ejecutar pruebas reales en cada plataforma que se vaya a declarar compatible.
-- Publicar una matriz que separe “arranca”, “diagnóstico de solo lectura”, “escritura aislada” y “no probado”.
-- No declarar soporte de un sistema solo porque el código compila o porque funciona en WSL2.
+#### F7.4 — Modelos, presupuesto unificado y proveedores (Kilo CLI / Qwen Code)
+- Enrutamiento adaptativo de modelos según complejidad, disponibilidad, latencia, privacidad y costo.
+- Reutilizar el gateway existente (`implementacion/gateway/`); no duplicar el gestor de proveedores.
+- Compatibilidad verificada con endpoints compatibles con OpenAI, Ollama, llama.cpp, LM Studio, vLLM, OpenRouter, Groq y servidores autogestionados sin introducir LiteLLM obligatoriamente.
+- Presupuestos compartidos por tarea (tokens de entrada/salida, costo, tiempo, concurrencia, subagentes).
+- Experiencia inicial gratuita: detectar y aprovechar modelos gratuitos nativos autorizados de OpenCode y endpoints locales, informando cuotas y sin cambio silencioso a modelos de pago.
+- Resolver controles de seguridad de D07 antes de habilitar inferencia real de producto.
 
-**Aceptación:** cada capacidad anunciada tiene evidencia para el entorno y versión probados.
+#### F7.5 — Autonomía controlada, validación y recuperación (OpenHands / Antigravity)
+- Autocorrección guiada por evidencia: detección objetiva de bucles y falta de progreso, clasificación de errores y replanificación acotada.
+- Validación automática según lenguaje: compiladores, linters, formateadores y pruebas focalizadas detectadas en el proyecto; sin instalar dependencias automáticamente.
+- Coordinación adaptativa de subagentes y sesiones hijas nativas: delegación justificada únicamente para tareas independientes; uso de Git worktrees nativos para aislamiento de ramas.
+- Revisión transaccional y reversión de cambios del proyecto sin rutas no autorizadas.
+
+#### F7.6 — Automatización reutilizable y gobernanza (Goose / Kiro / Cline)
+- Reutilizar skills nativas, comandos parametrizados y flujos reproducibles.
+- Flujos de especificaciones (Specs/Tasks) orientados a tareas complejas sin burocracia para tareas sencillas.
+- Ejecución headless gobernada por presupuestos, eventos JSON y validación en CI/CD.
+- Compatibilidad controlada con hooks externos (Claude Code / Codex) mediante adaptadores ligeros sujetos a la política del supervisor, tiempo límite y restricciones de red.
+
+#### F7.7 — Supervisión y tareas asíncronas (amux / Warp Oz)
+- Ampliación selectiva de Pair Device y la interfaz web original de OpenCode: visualización de progreso, consumo de tokens, presupuestos restantes, aprobaciones y estado de subagentes.
+- Tareas asíncronas con pausa cooperativa en puntos seguros, cancelación efectiva y reconciliación de estado.
+- Diagnósticos programados de solo lectura mediante planificadores nativos (systemd timers, cron, Task Scheduler, launchd) utilizando el broker DIAG sin consumo de tokens ni acciones destructivas.
+
+#### F7.8 — Compatibilidad integral, rendimiento y seguridad integral (Crush / OpenCode)
+- Rendimiento y optimización de latencia, RAM y CPU en la TUI sin reemplazar el framework de OpenCode.
+- Conservación estricta de funcionalidades originales (Pair Device, TUI, Web, Sesiones, Plugins, MCP, LSP).
+- Matriz integral de compatibilidad y regresión funcional y de seguridad.
+
+### D07 — Puerta de inferencia real de producto (Aplazada)
+- Requiere resolver: presupuesto remoto verificado, aprobación explícita de contenido y destino, protección de credenciales, control de proveedores sin fallback silencioso, y privacidad verificada.
+- No habilitar inferencia remota de producto hasta superar estos controles específicos.
+
+### Fase 8 — Empaquetado, distribución y soporte anunciado
+- Prioridad inicial: Linux x86_64 funcional en CachyOS, Arch Linux, Ubuntu, Debian y Fedora.
+- Entornos posteriores: Windows nativo, macOS y WSL2 con calificación de backends dedicados.
+- Instaladores reproducibles, contenedores de prueba y validación sin dependencias ocultas.
+
+### Fase 9 — Funcionalidades futuras opcionales (Fuera de MVP)
+- Ejecutores remotos autogestionados (estilo Cursor / Warp Oz).
+- Mecanismos avanzados de restauración del sistema operativo (Btrfs snapshots, Snapper, Timeshift, APFS, Windows System Restore) deshabilitados por defecto y posteriores al MVP.
+- Infraestructura distribuida avanzada.
+
+## Benchmarks y criterios de aceptación
+
+Para cada componente evaluado o extendido, comparar cuando corresponda:
+1. **Línea base A:** OpenCode original sin modificaciones.
+2. **Línea base B:** CLI_OPEN actual.
+3. **Candidato C:** CLI_OPEN con la mejora propuesta.
+
+Métricas verificadas:
+- Tokens totales y tokens por tarea resuelta exitosamente.
+- Costo medido en USD.
+- Número de llamadas al modelo.
+- Tiempo de ejecución y latencia.
+- Tasa de éxito y reintentos por fallo.
+- Consumo de CPU y memoria RAM.
+- Regresiones funcionales o de seguridad (0 toleradas).
+
+## Prioridades de entrega
+
+1. **Prioridad crítica:** Memoria persistente integrada, contexto inteligente y Repo Map, inferencia segura con presupuestos, Code Mode adaptado, autocorrección objetiva, validación por lenguaje, filtrado determinista de logs, compatibilidad completa con OpenCode y paquete funcional en Linux.
+2. **Prioridad alta:** Compatibilidad de proveedores locales/gratuitos, investigación profunda justificada, coordinación adaptativa de agentes, recuperación de tareas y supervisión mediante Pair Device.
+3. **Prioridad condicionada a beneficios medidos:** Recipes/Specs, adaptadores de hooks, headless avanzado, diagnósticos programados periódicos y optimización de interfaces.
+4. **Prioridad futura:** Restauración del SO a nivel de sistema, ejecutores remotos e infraestructura distribuida.
 
 ## Instrucciones para dividir el trabajo de Codex
 

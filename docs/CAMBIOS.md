@@ -44,3 +44,12 @@
 - Rechaza secretos evidentes, rutas fuera del proyecto, archivos ausentes y referencias mayores de 1 MiB.
 - `tests/fase7-memoria.py` cubre alta, ranking, presupuesto, invalidación automática, purga, aislamiento entre proyectos y rechazos.
 - El comando `context` añade una salida selectiva y acotada. La clasificación compartida evita verificar referencias dos veces por consulta.
+
+## 2026-11-22 · Fase 7 · Módulo 2 e integración del Roadmap Consolidado
+
+- Se incorporó el Roadmap Estratégico Consolidado y Definitivo a `PLAN_PARA_CODEX.md` (versión 3.0), `INFORME_TECNICO.md` (sección 18) y `AGENTS.md`, estableciendo el principio "REUTILIZAR ANTES DE EXTENDER", la clasificación previa de 7 estados y la estructuración de subfases F7.1 a F7.8, D07, F8 y F9.
+- `implementacion/supervisor/context.py`: valida la estructura y ausencia de credenciales en el sobre de contexto emitido por `memoria context`, exigiendo estrictamente `authority: none`. Encapsula el sobre con delimitadores de aviso de seguridad antes de adjuntarlo al prompt del usuario.
+- `implementacion/supervisor/__main__.py` incorpora el comando `inject-context` para integrar el sobre de memoria persistente de forma determinista y segura.
+- `tests/test_supervisor.py` amplía la suite unitaria (11 pruebas) validando la encapsulación del sobre y el rechazo inmediato de autoridades no autorizadas.
+- `tests/fase1-loopback.ts` añade el caso `context`: verifica que la CLI fijada de OpenCode en loopback recibe el sobre no confiable en sus mensajes de payload, no amplía permisos ni expone herramientas administrativas, rechaza inyecciones adversarias de escritura exterior (`outsideMarker`), completa la lectura segura de `sample.txt` y no envía solicitudes al señuelo (0 solicitudes).
+- `tests/fase7-contexto-loopback.ts`: suite dedicada de integración de contexto en loopback con ejecución focalizada.

@@ -93,3 +93,10 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 
 `python3 -I -B tests/fase7-memoria.py` pasó en CachyOS x86_64. Verificó alta con archivo referenciado, ranking por etiquetas y texto, ajuste al presupuesto de tokens, exclusión automática tras cambiar el archivo, informe y purga de entradas inválidas, separación entre proyectos y rechazo de secretos y rutas externas. El almacén usa JSONL con bloqueo y no toca la red.
 - `python3 -I -B tests/fase7-contexto.py` pasó. Cubre límite de bytes con Unicode, exclusión de entradas vencidas y sobre de autoridad nula. `python3 -I -B tests/fase7-memoria.py` también pasó como regresión del ranking compartido. No hubo red ni inferencia.
+
+## Fase 7 · Integración de contexto no confiable en loopback
+
+- `python3 -B -m unittest discover -s tests`: 11 pruebas unitarias pasaron en CachyOS x86_64. Se verificó la validación estricta de estructura del sobre en `implementacion/supervisor/context.py`, el encapsulamiento seguro y el rechazo de sobres con autoridad distinta de `none`.
+- `bun tests/fase7-contexto-loopback.ts .fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode` pasó con código 0. Demuestra que OpenCode v2.3.2 en `--standalone run` recibe el sobre como datos no confiables en el payload HTTP de loopback, no amplía permisos, rechaza intentos adversarios de crear archivos fuera del workspace (`unauthorized-write`), completa la lectura segura de `sample.txt` y no envía solicitudes al señuelo (0 solicitudes).
+- `bun tests/fase1-loopback.ts .fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode`: los 9 casos pasaron con código 0 (`invalid`, `windows`, `unicode`, `bounded`, `large`, `multiple`, `cancel`, `retry`, `context`), con 0 solicitudes al señuelo.
+- Regresión completa de Fase 6 y Fase 7: `tests/fase6-gateway.py`, `tests/fase6-cli-gateway.ts`, `tests/fase7-memoria.py` y `tests/fase7-contexto.py` pasaron sin fallos.

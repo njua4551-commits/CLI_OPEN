@@ -104,6 +104,9 @@ def main(argv=None):
     apply = commands.add_parser("apply-workspace", help="Publicar una revisión aprobada en una rama Git separada")
     apply.add_argument("source", type=Path)
     apply.add_argument("--approve", required=True)
+    inject = commands.add_parser("inject-context", help="Incorporar sobre de memoria como datos no confiables")
+    inject.add_argument("--prompt", required=True, help="Prompt del usuario")
+    inject.add_argument("--envelope", required=True, help="Sobre JSON de contexto emitido por memoria context")
     options = parser.parse_args(argv)
     if options.command == "doctor":
         print(json.dumps(doctor(), ensure_ascii=True, indent=2))
@@ -141,6 +144,15 @@ def main(argv=None):
     elif options.command == "diag":
         broker = Path(__file__).resolve().parent.parent / "broker"
         return subprocess.run([sys.executable, "-I", "-B", str(broker)], env={}, check=False).returncode
+    elif options.command == "inject-context":
+        context_mod = runpy.run_path(str(Path(__file__).with_name("context.py")))
+        try:
+            envelope_data = json.loads(options.envelope)
+            prompt = context_mod["incorporate_prompt"](options.prompt, envelope_data)
+            print(prompt)
+        except (ValueError, context_mod["InvalidEnvelope"]) as exc:
+            print(f"Sobre de contexto rechazado: {exc}", file=sys.stderr)
+            return 1
     else:
         print("PLAN activo. Ejecución, escritura e inferencia remota deshabilitadas.")
     return 0
