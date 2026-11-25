@@ -59,3 +59,9 @@
 - `AGENTS.md` incorpora al inicio la directiva vigente: estabilizar CLI_OPEN (límites del gateway, streaming, concurrencia, compatibilidad de APIs, conectividad segura del sandbox, edición real de código, CI y pruebas reproducibles) antes de continuar el roadmap; después validar un modelo local real y preparar la integración remota segura con presupuestos y autorización explícita.
 - Conserva F0–F7, capacidades originales de OpenCode y protecciones; los límites de seguridad se hacen configurables y verificables. Sin duplicar componentes. Posposición de nuevas funcionalidades, incluido Computer Use.
 - `PLAN_PARA_CODEX.md`, `CONTINUAR.md` y `ESTADO.md` referencian la directiva para que prevalezca sobre el orden del roadmap.
+
+## 2026-11-24 · Fase 7 · F7.1: línea base y auditoría
+
+- `docs/MATRIZ_F7.md`: matriz de clasificación de propuestas F7.2–F7.8 frente a OpenCode V2 (SHA fijado), con evidencia por archivo.
+- `tests/fase7-lineabase.py`: suite de referencia reproducible (determinismo, presupuesto de bytes, invalidación, rechazo de límites). Pasó en CachyOS x86_64.
+- `D24` en `docs/DECISIONES.md`: Repo Map aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor fijado; sin indexador independiente.

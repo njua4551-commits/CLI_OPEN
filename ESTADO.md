@@ -22,7 +22,8 @@ Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 en curso.
 - Módulo 2 cerrado: `memoria context` recupera entradas vigentes y relevantes dentro de un límite de bytes con un sobre de autoridad nula. El supervisor incorpora el sobre como datos no confiables (`implementacion/supervisor/context.py` y comando `inject-context`).
 - Verificación en loopback cerrada: `tests/fase7-contexto-loopback.ts` y el caso `context` de `tests/fase1-loopback.ts` pasaron con código 0. OpenCode recibe el sobre en sus mensajes sin ampliar permisos, rechaza intentos adversarios de crear archivos fuera del workspace (`unauthorized-write`), completa la lectura segura de `sample.txt` y no envía solicitudes al señuelo (0 solicitudes).
 - Roadmap estratégico consolidado v3.0 incorporado en `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `AGENTS.md`.
-- Siguiente acción: Continuar con F7.1 / F7.2 (auditoría formal de símbolos y APIs nativas de OpenCode para el diseño de Repo Map e integración incremental con la memoria persistente).
+- F7.1 en curso: matriz de clasificación (`docs/MATRIZ_F7.md`) y suite de línea base (`tests/fase7-lineabase.py`) completadas. D24 registra que Repo Map queda aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor fijado; no se crea un indexador independiente.
+- Siguiente acción: completar F7.1 con la validación de métricas reproducibles y abrir F7.2 solo sobre la capa de adaptación al motor fijado (sin indexador propio), o priorizar la directiva de estabilización si el usuario lo prefiere.
 
 ## Reanudar el trabajo
 

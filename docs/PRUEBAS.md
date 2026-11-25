@@ -100,3 +100,7 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 - `bun tests/fase7-contexto-loopback.ts .fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode` pasó con código 0. Demuestra que OpenCode v2.3.2 en `--standalone run` recibe el sobre como datos no confiables en el payload HTTP de loopback, no amplía permisos, rechaza intentos adversarios de crear archivos fuera del workspace (`unauthorized-write`), completa la lectura segura de `sample.txt` y no envía solicitudes al señuelo (0 solicitudes).
 - `bun tests/fase1-loopback.ts .fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode`: los 9 casos pasaron con código 0 (`invalid`, `windows`, `unicode`, `bounded`, `large`, `multiple`, `cancel`, `retry`, `context`), con 0 solicitudes al señuelo.
 - Regresión completa de Fase 6 y Fase 7: `tests/fase6-gateway.py`, `tests/fase6-cli-gateway.ts`, `tests/fase7-memoria.py` y `tests/fase7-contexto.py` pasaron sin fallos.
+
+## Fase 7 · F7.1 línea base
+
+- `python3 -I -B tests/fase7-lineabase.py` pasó en CachyOS x86_64. Verificó determinismo de salida, ajuste al presupuesto de bytes (512, 2048, 8192), exclusión de entradas inválidas tras cambio de archivo y rechazo de presupuesto fuera de rango. No usó red ni inferencia.
