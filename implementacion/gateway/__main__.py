@@ -168,6 +168,65 @@ def complete(port, model, request, stream=None):
     return content_type, data
 
 
+def complete_streaming(port, model, request, sink):
+    """Relay an upstream response to ``sink`` without buffering it whole.
+
+    Validates every SSE event as it arrives and enforces the same size and
+    model/cost limits as :func:`complete`. ``sink`` receives raw bytes.
+    """
+    if not 1 <= port <= 65535 or not MODEL_NAME.fullmatch(model):
+        raise Rejected("invalid loopback port or model")
+    forwarded = {key: request[key] for key in ("messages", "tools", "tool_choice", "temperature", "top_p", "stream_options") if key in request}
+    forwarded["model"] = model
+    forwarded["max_tokens"] = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
+    forwarded["stream"] = True
+    payload = json.dumps(forwarded, allow_nan=False).encode("ascii")
+    if len(payload) > MAX_REQUEST:
+        raise Rejected("encoded request too large")
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=TIMEOUT)
+    total = 0
+    buffer = b""
+    try:
+        with deadline():
+            connection.request("POST", "/v1/chat/completions", payload, {"Content-Type": "application/json"})
+            with connection.getresponse() as response:
+                if response.status != 200:
+                    raise Rejected("local endpoint rejected the request")
+                content_type = response.getheader("Content-Type", "application/json")
+                is_stream = content_type.split(";")[0].strip() == "text/event-stream"
+                while True:
+                    chunk = response.read(4096)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > MAX_RESPONSE:
+                        raise Rejected("response too large")
+                    if is_stream:
+                        buffer += chunk
+                        while b"\n" in buffer:
+                            line, buffer = buffer.split(b"\n", 1)
+                            line = line.rstrip(b"\r")
+                            if not line:
+                                continue
+                            if not line.startswith(b"data: "):
+                                continue
+                            raw = line[6:].strip()
+                            if raw == b"[DONE]":
+                                continue
+                            parsed = json.loads(raw)
+                            if not isinstance(parsed, dict) or parsed.get("model") != model:
+                                raise Rejected("invalid stream or unexpected model")
+                            check_usage(parsed.get("usage") or {})
+                    sink(chunk)
+                if is_stream and buffer.strip():
+                    raise Rejected("truncated stream")
+                if is_stream and total == 0:
+                    raise Rejected("empty stream")
+    finally:
+        connection.close()
+    return content_type
+
+
 def read_body(handler):
     if handler.headers.get("Transfer-Encoding"):
         if handler.headers["Transfer-Encoding"].lower() != "chunked":
@@ -219,13 +278,27 @@ def serve(listen, port, model):
             try:
                 if self.path != "/v1/chat/completions":
                     raise Rejected("unexpected path")
-                content_type, body = complete(port, model, parse_request(read_body(self), clamp=True))
-                self.send_response(200)
-                self.send_header("Content-Type", content_type)
-                self.send_header("Content-Length", str(len(body)))
-                self.send_header("Connection", "close")
-                self.end_headers()
-                self.wfile.write(body)
+                request = parse_request(read_body(self), clamp=True)
+                if request.get("stream") is True:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Connection", "close")
+                    self.end_headers()
+
+                    def sink(data):
+                        self.wfile.write(data)
+                        self.wfile.flush()
+
+                    content_type = complete_streaming(port, model, request, sink)
+                else:
+                    content_type, body = complete(port, model, request)
+                    self.send_response(200)
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Connection", "close")
+                    self.end_headers()
+                    self.wfile.write(body)
             except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
                 print(f"rejected: {exc!r}", file=sys.stderr, flush=True)
                 self.reply(502, b'{"error":"local gateway rejected the request"}')

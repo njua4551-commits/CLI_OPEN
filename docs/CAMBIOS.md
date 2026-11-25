@@ -65,3 +65,8 @@
 - `docs/MATRIZ_F7.md`: matriz de clasificación de propuestas F7.2–F7.8 frente a OpenCode V2 (SHA fijado), con evidencia por archivo.
 - `tests/fase7-lineabase.py`: suite de referencia reproducible (determinismo, presupuesto de bytes, invalidación, rechazo de límites). Pasó en CachyOS x86_64.
 - `D24` en `docs/DECISIONES.md`: Repo Map aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor fijado; sin indexador independiente.
+
+## 2026-11-24 · Estabilización · streaming en gateway
+
+- `implementacion/gateway/__main__.py`: añadido `complete_streaming` que retransmite la respuesta del endpoint de loopback sin bufferizarla por completo, validando cada evento SSE (modelo, costo cero) y aplicando el mismo límite de tamaño. `--listen` usa passthrough cuando el cliente solicita `stream: true`.
+- `tests/fase6-gateway.py` sigue pasando sin cambios.
