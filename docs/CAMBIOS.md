@@ -70,3 +70,7 @@
 
 - `implementacion/gateway/__main__.py`: añadido `complete_streaming` que retransmite la respuesta del endpoint de loopback sin bufferizarla por completo, validando cada evento SSE (modelo, costo cero) y aplicando el mismo límite de tamaño. `--listen` usa passthrough cuando el cliente solicita `stream: true`.
 - `tests/fase6-gateway.py` sigue pasando sin cambios.
+
+## 2026-11-24 · Estabilización · concurrencia en gateway
+
+- `implementacion/gateway/__main__.py`: `--listen` usa `ThreadingHTTPServer` con hilos daemon; se eliminó el deadline basado en `SIGALRM` de las rutas compartidas (`complete`, `complete_streaming`) para evitar interferencia entre solicitudes concurrentes, apoyándose en los timeouts de socket ya configurados. El modo stdin mantiene el deadline por ser proceso único.
