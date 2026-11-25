@@ -23,7 +23,7 @@ Fase 6 (P3) cerrada para el perfil local sintético. Fase 7 en curso.
 - Verificación en loopback cerrada: `tests/fase7-contexto-loopback.ts` y el caso `context` de `tests/fase1-loopback.ts` pasaron con código 0. OpenCode recibe el sobre en sus mensajes sin ampliar permisos, rechaza intentos adversarios de crear archivos fuera del workspace (`unauthorized-write`), completa la lectura segura de `sample.txt` y no envía solicitudes al señuelo (0 solicitudes).
 - Roadmap estratégico consolidado v3.0 incorporado en `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `AGENTS.md`.
 - F7.1 en curso: matriz de clasificación (`docs/MATRIZ_F7.md`) y suite de línea base (`tests/fase7-lineabase.py`) completadas. D24 registra que Repo Map queda aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor fijado; no se crea un indexador independiente.
-- Siguiente acción: completar F7.1 con la validación de métricas reproducibles y abrir F7.2 solo sobre la capa de adaptación al motor fijado (sin indexador propio), o priorizar la directiva de estabilización si el usuario lo prefiere.
+- Estabilización avanzada: gateway con passthrough de streaming, modo `--listen` thread-safe, compatibilidad ampliada de campos OpenAI y rutas de artefactos de edición configurables/validadas. Bubblewrap calificado en este entorno.
 
 ## Reanudar el trabajo
 

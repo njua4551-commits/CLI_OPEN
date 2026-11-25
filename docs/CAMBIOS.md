@@ -82,3 +82,8 @@
 ## 2026-11-24 · Estabilización · edición real
 
 - `implementacion/supervisor/workspace.py`: las rutas de artefactos (Bun y binario de OpenCode) pasan a ser configurables mediante `CLI_OPEN_ARTIFACTS` y se valida su existencia antes de montar, con error claro si faltan.
+
+## 2026-11-24 · Cierre de estabilización
+
+- Regresión completa pasada: `unittest discover` (11), `qualify-linux`, `fase5-review`, `fase5-workspace`, `fase6-gateway`, `fase7-memoria`, `fase7-contexto`, `fase7-lineabase`. `git diff --check` limpio.
+- Áreas tocadas: gateway (streaming, concurrencia, compatibilidad de APIs) y edición real (artefactos configurables).
