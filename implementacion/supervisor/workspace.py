@@ -66,21 +66,32 @@ def signature(info):
 
 
 def snapshot(directory, name):
+    parts = name.split("/")
+    intermediate = []
+    current = directory
     try:
-        descriptor = os.open(name, os.O_PATH | os.O_NOFOLLOW, dir_fd=directory)
-    except FileNotFoundError:
-        return None
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or before.st_size > MAX_FILE:
-            raise ValueError("source file must be a bounded regular file without links")
-        with open(f"/proc/self/fd/{descriptor}", "rb") as file:
-            data = file.read(MAX_FILE + 1)
-        if len(data) > MAX_FILE or signature(before) != signature(os.fstat(descriptor)):
-            raise SourceChanged("source changed while reading")
-        return signature(before), data.decode("utf-8")
+        for part in parts[:-1]:
+            fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=current)
+            intermediate.append(fd)
+            current = fd
+        try:
+            descriptor = os.open(parts[-1], os.O_PATH | os.O_NOFOLLOW, dir_fd=current)
+        except FileNotFoundError:
+            return None
+        try:
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or before.st_size > MAX_FILE:
+                raise ValueError("source file must be a bounded regular file without links")
+            with open(f"/proc/self/fd/{descriptor}", "rb") as file:
+                data = file.read(MAX_FILE + 1)
+            if len(data) > MAX_FILE or signature(before) != signature(os.fstat(descriptor)):
+                raise SourceChanged("source changed while reading")
+            return signature(before), data.decode("utf-8")
+        finally:
+            os.close(descriptor)
     finally:
-        os.close(descriptor)
+        for fd in reversed(intermediate):
+            os.close(fd)
 
 
 def verify_sources(root, changes):

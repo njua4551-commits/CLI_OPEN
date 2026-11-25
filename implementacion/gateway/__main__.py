@@ -9,6 +9,7 @@ import argparse
 import os
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
 import http.client
 import json
 import re
@@ -138,14 +139,18 @@ def check_usage(value):
 
 
 def model_matches(actual, expected):
-    if not isinstance(actual, str):
+    if not isinstance(actual, str) or not isinstance(expected, str):
         return False
     if actual == expected:
         return True
     aliases = [item.strip() for item in os.environ.get("CLI_OPEN_GATEWAY_MODEL_ALIASES", "").split(",") if item.strip()]
-    if actual in aliases:
-        return True
-    return actual.startswith(expected) or expected.startswith(actual)
+    # Explicit, authorized alias pairs only: "alias=canonical".
+    for entry in aliases:
+        if "=" in entry:
+            left, right = (part.strip() for part in entry.split("=", 1))
+            if (left == actual and right == expected) or (right == actual and left == expected):
+                return True
+    return False
 
 
 def check_json(data, model):
@@ -360,7 +365,21 @@ def serve(listen, port, model):
         def log_message(self, *_):
             pass
 
-    server = ThreadingHTTPServer(("127.0.0.1", listen), Handler)
+    class _BoundedThreadingHTTPServer(ThreadingHTTPServer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._concurrency = threading.BoundedSemaphore(
+                _env_int("CLI_OPEN_GATEWAY_MAX_CONCURRENCY", 4, 1, 64)
+            )
+
+        def process_request_thread(self, request, client_address):
+            self._concurrency.acquire()
+            try:
+                super().process_request_thread(request, client_address)
+            finally:
+                self._concurrency.release()
+
+    server = _BoundedThreadingHTTPServer(("127.0.0.1", listen), Handler)
     server.daemon_threads = True
     print(f"LISTEN {server.server_port}", flush=True)
     server.serve_forever()

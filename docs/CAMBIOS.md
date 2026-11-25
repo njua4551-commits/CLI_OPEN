@@ -93,3 +93,9 @@
 - Gateway: límites configurables por entorno (`CLI_OPEN_GATEWAY_*`), timeout por defecto 30 s (hasta 300), manejo de errores durante streaming (evento SSE de error y cierre) y compatibilidad de alias de modelos (`model_matches`, env `CLI_OPEN_GATEWAY_MODEL_ALIASES`).
 - Edición: `MAX_FILE` subido a 256 KiB, ampliación de extensiones de código y subdirectorios con validación de ruta segura (sin `..`, sin absolutas, sin segmentos vacíos) y creación de directorios padre en la copia.
 - Regresión completa pasada y `git diff --check` limpio.
+
+## 2026-11-24 · Auditoría profunda · gateway y edición
+
+- Gateway: `model_matches` corregido para aceptar solo identificadores exactos o alias explícitos (`alias=canonical`); eliminada la coincidencia por prefijo. Concurrencia acotada mediante `_BoundedThreadingHTTPServer` (`CLI_OPEN_GATEWAY_MAX_CONCURRENCY`).
+- Edición: `snapshot` valida cada componente intermedio de la ruta mediante `openat` con `O_NOFOLLOW`/`O_DIRECTORY`, impidiendo redirecciones por enlaces simbólicos en subdirectorios.
+- Regresión completa pasada y `git diff --check` limpio.
