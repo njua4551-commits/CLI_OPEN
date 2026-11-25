@@ -78,3 +78,7 @@
 ## 2026-11-24 · Estabilización · compatibilidad de APIs en gateway
 
 - `implementacion/gateway/__main__.py`: ampliado el conjunto de campos OpenAI-compatible reenviados y validados (`frequency_penalty`, `presence_penalty`, `seed`, `stop`, `tool_stream`, `store`, `parallel_tool_calls`, `reasoning_effort`, `response_format`, y `reasoning_content`/`refusal` en mensajes) para no rechazar solicitudes reales del proveedor fijado.
+
+## 2026-11-24 · Estabilización · edición real
+
+- `implementacion/supervisor/workspace.py`: las rutas de artefactos (Bun y binario de OpenCode) pasan a ser configurables mediante `CLI_OPEN_ARTIFACTS` y se valida su existencia antes de montar, con error claro si faltan.

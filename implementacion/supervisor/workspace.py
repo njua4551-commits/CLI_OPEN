@@ -112,13 +112,16 @@ def review(root, edits, bubblewrap_command):
                 if original is not None:
                     (copy / name).write_bytes(original[1].encode("utf-8"))
             supervisor = Path(__file__).resolve().parent
-            artifacts = supervisor.parents[1] / ".fase1"
+            artifacts = Path(os.environ.get("CLI_OPEN_ARTIFACTS", str(supervisor.parents[1] / ".fase1")))
             mounts = [
                 (supervisor / "workspace_worker.py", "/worker.py"),
                 (supervisor / "workspace_opencode.ts", "/fixture/editor.ts"),
                 (artifacts / "tools/bun-linux-x64-baseline/bun", "/fixture/bun"),
                 (artifacts / "opencode/packages/cli/dist/cli-linux-x64/bin/opencode", "/fixture/opencode"),
             ]
+            missing = [str(path) for path, _ in mounts if not path.is_file()]
+            if missing:
+                raise ValueError("missing editing artifacts: " + ", ".join(missing))
             command = bubblewrap_command(backend, mounts, [
                 "/fixture/bun", "/fixture/editor.ts",
             ], writable_workspace=copy)
