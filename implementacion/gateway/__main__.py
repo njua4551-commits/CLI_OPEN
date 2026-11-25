@@ -22,8 +22,9 @@ MAX_TOOLS = 64
 TIMEOUT = 10
 MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 REQUEST_FIELDS = {"model", "messages", "max_tokens", "max_completion_tokens", "tools", "stream", "stream_options",
-                  "tool_choice", "temperature", "top_p"}
-MESSAGE_FIELDS = {"role", "content", "tool_calls", "tool_call_id", "name"}
+                  "tool_choice", "temperature", "top_p", "frequency_penalty", "presence_penalty", "seed", "stop",
+                  "tool_stream", "store", "parallel_tool_calls", "reasoning_effort", "response_format"}
+MESSAGE_FIELDS = {"role", "content", "tool_calls", "tool_call_id", "name", "reasoning_content", "refusal"}
 ROLES = ("system", "developer", "user", "assistant", "tool")
 
 
@@ -69,9 +70,23 @@ def parse_request(data, clamp=False):
     choice = request.get("tool_choice")
     if choice is not None and not (isinstance(choice, str) or isinstance(choice, dict)):
         raise Rejected("invalid tool choice")
-    for field in ("temperature", "top_p"):
+    for field in ("temperature", "top_p", "frequency_penalty", "presence_penalty"):
         if field in request and type(request[field]) not in (int, float):
             raise Rejected("invalid sampling parameter")
+    if "seed" in request and type(request["seed"]) is not int:
+        raise Rejected("invalid seed")
+    if "store" in request and not isinstance(request["store"], bool):
+        raise Rejected("invalid store flag")
+    if "parallel_tool_calls" in request and not isinstance(request["parallel_tool_calls"], bool):
+        raise Rejected("invalid parallel_tool_calls flag")
+    if "stop" in request:
+        stop = request["stop"]
+        if not (isinstance(stop, str) or (isinstance(stop, list) and all(isinstance(item, str) for item in stop))):
+            raise Rejected("invalid stop value")
+    if "reasoning_effort" in request and not isinstance(request["reasoning_effort"], str):
+        raise Rejected("invalid reasoning_effort")
+    if "response_format" in request and not isinstance(request["response_format"], dict):
+        raise Rejected("invalid response_format")
     if "stream" in request and not isinstance(request["stream"], bool):
         raise Rejected("invalid stream flag")
     options = request.get("stream_options")
@@ -140,7 +155,9 @@ def check_stream(data, model):
 def complete(port, model, request, stream=None):
     if not 1 <= port <= 65535 or not MODEL_NAME.fullmatch(model):
         raise Rejected("invalid loopback port or model")
-    forwarded = {key: request[key] for key in ("messages", "tools", "tool_choice", "temperature", "top_p", "stream_options") if key in request}
+    forwarded = {key: request[key] for key in ("messages", "tools", "tool_choice", "temperature", "top_p", "stream_options",
+                                               "frequency_penalty", "presence_penalty", "seed", "stop", "tool_stream",
+                                               "store", "parallel_tool_calls", "reasoning_effort", "response_format") if key in request}
     forwarded["model"] = model
     forwarded["max_tokens"] = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
     forwarded["stream"] = request.get("stream", False) if stream is None else stream
@@ -175,7 +192,9 @@ def complete_streaming(port, model, request, sink):
     """
     if not 1 <= port <= 65535 or not MODEL_NAME.fullmatch(model):
         raise Rejected("invalid loopback port or model")
-    forwarded = {key: request[key] for key in ("messages", "tools", "tool_choice", "temperature", "top_p", "stream_options") if key in request}
+    forwarded = {key: request[key] for key in ("messages", "tools", "tool_choice", "temperature", "top_p", "stream_options",
+                                               "frequency_penalty", "presence_penalty", "seed", "stop", "tool_stream",
+                                               "store", "parallel_tool_calls", "reasoning_effort", "response_format") if key in request}
     forwarded["model"] = model
     forwarded["max_tokens"] = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
     forwarded["stream"] = True

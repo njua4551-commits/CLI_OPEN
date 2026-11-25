@@ -74,3 +74,7 @@
 ## 2026-11-24 · Estabilización · concurrencia en gateway
 
 - `implementacion/gateway/__main__.py`: `--listen` usa `ThreadingHTTPServer` con hilos daemon; se eliminó el deadline basado en `SIGALRM` de las rutas compartidas (`complete`, `complete_streaming`) para evitar interferencia entre solicitudes concurrentes, apoyándose en los timeouts de socket ya configurados. El modo stdin mantiene el deadline por ser proceso único.
+
+## 2026-11-24 · Estabilización · compatibilidad de APIs en gateway
+
+- `implementacion/gateway/__main__.py`: ampliado el conjunto de campos OpenAI-compatible reenviados y validados (`frequency_penalty`, `presence_penalty`, `seed`, `stop`, `tool_stream`, `store`, `parallel_tool_calls`, `reasoning_effort`, `response_format`, y `reasoning_content`/`refusal` en mensajes) para no rechazar solicitudes reales del proveedor fijado.
