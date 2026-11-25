@@ -87,3 +87,9 @@
 
 - Regresión completa pasada: `unittest discover` (11), `qualify-linux`, `fase5-review`, `fase5-workspace`, `fase6-gateway`, `fase7-memoria`, `fase7-contexto`, `fase7-lineabase`. `git diff --check` limpio.
 - Áreas tocadas: gateway (streaming, concurrencia, compatibilidad de APIs) y edición real (artefactos configurables).
+
+## 2026-11-24 · Estabilización · gateway y edición real (segunda pasada)
+
+- Gateway: límites configurables por entorno (`CLI_OPEN_GATEWAY_*`), timeout por defecto 30 s (hasta 300), manejo de errores durante streaming (evento SSE de error y cierre) y compatibilidad de alias de modelos (`model_matches`, env `CLI_OPEN_GATEWAY_MODEL_ALIASES`).
+- Edición: `MAX_FILE` subido a 256 KiB, ampliación de extensiones de código y subdirectorios con validación de ruta segura (sin `..`, sin absolutas, sin segmentos vacíos) y creación de directorios padre en la copia.
+- Regresión completa pasada y `git diff --check` limpio.

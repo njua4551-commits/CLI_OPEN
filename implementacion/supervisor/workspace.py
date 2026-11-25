@@ -11,9 +11,17 @@ import stat
 import subprocess
 import tempfile
 
-MAX_FILE = 65536
+MAX_FILE = 262_144
 MAX_REQUEST = 8 * (MAX_FILE * 6 + 256)
-NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,90}\.(?:txt|md|json)")
+CODE_EXTENSIONS = (
+    "txt", "md", "json", "py", "ts", "tsx", "js", "jsx", "mjs", "cjs",
+    "go", "rs", "java", "c", "h", "cpp", "hpp", "cc", "cs", "rb", "php",
+    "sh", "bash", "yaml", "yml", "toml", "ini", "cfg", "conf", "sql",
+    "css", "html", "htm", "xml", "lock", "env", "gitignore",
+)
+NAME = re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9_.\-/]{0,240}\.(?:" + "|".join(CODE_EXTENSIONS) + r")"
+)
 
 
 class SourceChanged(ValueError):
@@ -39,7 +47,11 @@ def parse_request(source):
         if not isinstance(edit, dict) or set(edit) != {"operation", "path", "text"}:
             raise ValueError("invalid edit schema")
         name, operation, text = edit["path"], edit["operation"], edit["text"]
-        if not isinstance(name, str) or not NAME.fullmatch(name) or name in seen:
+        if (
+            not isinstance(name, str) or not NAME.fullmatch(name) or name in seen
+            or name.startswith("/") or ".." in name.split("/")
+            or any(part == "" for part in name.split("/"))
+        ):
             raise ValueError("invalid or duplicate file name")
         if operation not in ("create", "replace") or not isinstance(text, str):
             raise ValueError("invalid operation or text")
@@ -110,7 +122,9 @@ def review(root, edits, bubblewrap_command):
             copy = Path(temporary)
             for name, original in originals.items():
                 if original is not None:
-                    (copy / name).write_bytes(original[1].encode("utf-8"))
+                    target = copy / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(original[1].encode("utf-8"))
             supervisor = Path(__file__).resolve().parent
             artifacts = Path(os.environ.get("CLI_OPEN_ARTIFACTS", str(supervisor.parents[1] / ".fase1")))
             mounts = [

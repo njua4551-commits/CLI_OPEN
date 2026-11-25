@@ -6,6 +6,7 @@ Two transports share one validator and one fixed destination:
 No redirects, retries, proxies or alternative providers are used.
 """
 import argparse
+import os
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import http.client
@@ -14,12 +15,23 @@ import re
 import signal
 import sys
 
-MAX_REQUEST = 131_072
-MAX_RESPONSE = 65_536
-MAX_TOKENS = 512
-MAX_MESSAGES = 24
-MAX_TOOLS = 64
-TIMEOUT = 10
+def _env_int(name, default, minimum=1, maximum=None):
+    try:
+        value = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        value = default
+    if value < minimum:
+        value = minimum
+    if maximum is not None and value > maximum:
+        value = maximum
+    return value
+
+MAX_REQUEST = _env_int("CLI_OPEN_GATEWAY_MAX_REQUEST", 131_072, 1024, 1_048_576)
+MAX_RESPONSE = _env_int("CLI_OPEN_GATEWAY_MAX_RESPONSE", 65_536, 1024, 1_048_576)
+MAX_TOKENS = _env_int("CLI_OPEN_GATEWAY_MAX_TOKENS", 512, 1, 8192)
+MAX_MESSAGES = _env_int("CLI_OPEN_GATEWAY_MAX_MESSAGES", 24, 1, 256)
+MAX_TOOLS = _env_int("CLI_OPEN_GATEWAY_MAX_TOOLS", 64, 1, 512)
+TIMEOUT = _env_int("CLI_OPEN_GATEWAY_TIMEOUT", 30, 1, 300)
 MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 REQUEST_FIELDS = {"model", "messages", "max_tokens", "max_completion_tokens", "tools", "stream", "stream_options",
                   "tool_choice", "temperature", "top_p", "frequency_penalty", "presence_penalty", "seed", "stop",
@@ -125,9 +137,20 @@ def check_usage(value):
         raise Rejected("unexpected cost in local response")
 
 
+def model_matches(actual, expected):
+    if not isinstance(actual, str):
+        return False
+    if actual == expected:
+        return True
+    aliases = [item.strip() for item in os.environ.get("CLI_OPEN_GATEWAY_MODEL_ALIASES", "").split(",") if item.strip()]
+    if actual in aliases:
+        return True
+    return actual.startswith(expected) or expected.startswith(actual)
+
+
 def check_json(data, model):
     report = json.loads(data)
-    if not isinstance(report, dict) or report.get("model") != model or not isinstance(report.get("choices"), list):
+    if not isinstance(report, dict) or not model_matches(report.get("model"), model) or not isinstance(report.get("choices"), list):
         raise Rejected("invalid response or unexpected model")
     check_usage(report.get("usage", {}))
     return report
@@ -143,7 +166,7 @@ def check_stream(data, model):
         if raw == "[DONE]":
             continue
         chunk = json.loads(raw)
-        if not isinstance(chunk, dict) or chunk.get("model") != model:
+        if not isinstance(chunk, dict) or not model_matches(chunk.get("model"), model):
             raise Rejected("invalid stream or unexpected model")
         check_usage(chunk.get("usage") or {})
         seen += 1
@@ -231,7 +254,7 @@ def complete_streaming(port, model, request, sink):
                         if raw == b"[DONE]":
                             continue
                         parsed = json.loads(raw)
-                        if not isinstance(parsed, dict) or parsed.get("model") != model:
+                        if not isinstance(parsed, dict) or not model_matches(parsed.get("model"), model):
                             raise Rejected("invalid stream or unexpected model")
                         check_usage(parsed.get("usage") or {})
                 sink(chunk)
@@ -307,7 +330,17 @@ def serve(listen, port, model):
                         self.wfile.write(data)
                         self.wfile.flush()
 
-                    content_type = complete_streaming(port, model, request, sink)
+                    try:
+                        content_type = complete_streaming(port, model, request, sink)
+                    except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
+                        print(f"rejected: {exc!r}", file=sys.stderr, flush=True)
+                        try:
+                            self.wfile.write(b'data: {"error":"local gateway rejected the request"}\\n\\n')
+                            self.wfile.flush()
+                        except OSError:
+                            pass
+                        self.close_connection = True
+                        return
                 else:
                     content_type, body = complete(port, model, request)
                     self.send_response(200)
