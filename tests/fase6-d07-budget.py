@@ -20,20 +20,23 @@ REQUEST = json.dumps({"messages": [{"role": "user", "content": "fixture"}],
 
 
 @contextmanager
-def listener(upstream, *budget, token=TOKEN, seconds=120, expires=False):
+def listener(upstream, *budget, token=TOKEN, seconds=120, expires=False, extra=(), with_process=False,
+             rejected=False):
     env = {**os.environ, "CLI_OPEN_GATEWAY_TASK_TOKEN": token, "CLI_OPEN_GATEWAY_TIMEOUT_SECONDS": "10"}
     command = [sys.executable, "-I", "-B", str(GATEWAY), "--port", str(upstream),
                "--listen", "0", "--model", "fixture", "--task-budget", *map(str, budget),
                "--task-seconds", str(seconds)]
+    command.extend(extra)
     with subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         try:
             line = process.stdout.readline()
-            if not token:
+            if not token or rejected:
                 assert process.wait(timeout=5) == 1 and not line
                 yield None
             else:
                 assert line.startswith(b"LISTEN "), line
-                yield int(line.split()[1])
+                port = int(line.split()[1])
+                yield (port, process) if with_process else port
                 if expires:
                     assert process.wait(timeout=5) == 124
         finally:

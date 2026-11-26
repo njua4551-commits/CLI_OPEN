@@ -13,11 +13,24 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import threading
 import http.client
 import json
+from pathlib import Path
 import re
+import runpy
 import selectors
 import signal
 import socket
+import sqlite3
 import sys
+import time
+
+UNKNOWN_USAGE = (None, None)
+
+
+def reported_usage(value):
+    if not isinstance(value, dict):
+        return UNKNOWN_USAGE
+    counts = (value.get("prompt_tokens"), value.get("completion_tokens"))
+    return counts if all(type(count) is int and 0 <= count < 2**31 for count in counts) else UNKNOWN_USAGE
 
 def _env_int(name, default, minimum=1, maximum=None):
     try:
@@ -216,9 +229,10 @@ def complete(port, model, request, stream=None):
         connection.close()
     if content_type.split(";")[0].strip() == "text/event-stream":
         check_stream(data, model)
+        usage = UNKNOWN_USAGE
     else:
-        check_json(data, model)
-    return content_type, data
+        usage = reported_usage(check_json(data, model).get("usage"))
+    return content_type, data, usage
 
 
 @contextmanager
@@ -284,6 +298,7 @@ def relay_stream(response, model, sink, cancelled, *, require_done=False):
     buffer = b""
     seen_event = False
     done = False
+    usage = UNKNOWN_USAGE
     if response.status != 200:
         raise Rejected("local endpoint rejected the request")
     content_type = response.getheader("Content-Type", "application/json")
@@ -318,17 +333,19 @@ def relay_stream(response, model, sink, cancelled, *, require_done=False):
                 if not isinstance(parsed, dict) or not model_matches(parsed.get("model"), model):
                     raise Rejected("invalid stream or unexpected model")
                 check_usage(parsed.get("usage") or {})
+                if parsed.get("usage") is not None:
+                    usage = reported_usage(parsed["usage"])
                 seen_event = True
         sink(chunk)
     if cancelled.is_set():
-        return content_type
+        return "cancelled", UNKNOWN_USAGE
     if is_stream and buffer.strip():
         raise Rejected("truncated stream")
     if is_stream and total == 0:
         raise Rejected("empty stream")
     if require_done and not done:
         raise Rejected("missing stream terminator")
-    return content_type
+    return "complete", usage if done else UNKNOWN_USAGE
 
 
 def read_body(handler):
@@ -376,6 +393,7 @@ class TaskBudget:
         self.input_bytes = input_bytes
         self.output_tokens = output_tokens
         self.lock = threading.Lock()
+        self.ledger = None
 
     def allows(self, headers):
         return (len(headers) == 1
@@ -383,8 +401,10 @@ class TaskBudget:
 
     def reserve(self, size, tokens):
         with self.lock:
+            if self.ledger is not None:
+                return self.ledger.reserve(size, tokens)
             if self.requests == 0 or size > self.input_bytes or tokens > self.output_tokens:
-                return False
+                return None
             self.requests -= 1
             self.input_bytes -= size
             self.output_tokens -= tokens
@@ -407,6 +427,8 @@ def serve(listen, port, model, task=None):
             self.wfile.write(body)
 
         def do_POST(self):
+            operation = None
+            outcome, usage = "failed", UNKNOWN_USAGE
             try:
                 if task is not None and not task.allows(self.headers.get_all("Authorization", [])):
                     self.close_connection = True
@@ -416,10 +438,12 @@ def serve(listen, port, model, task=None):
                     raise Rejected("unexpected path")
                 raw = read_body(self)
                 request = parse_request(raw, clamp=task is None)
-                if task is not None and not task.reserve(len(raw), request["max_tokens"]):
-                    self.close_connection = True
-                    self.reply(429, b'{"error":"task budget exhausted"}')
-                    return
+                if task is not None:
+                    operation = task.reserve(len(raw), request["max_tokens"])
+                    if operation is None:
+                        self.close_connection = True
+                        self.reply(429, b'{"error":"task budget exhausted"}')
+                        return
                 if request.get("stream") is True:
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
@@ -432,8 +456,9 @@ def serve(listen, port, model, task=None):
                         self.wfile.flush()
 
                     try:
-                        complete_streaming(port, model, request, sink, self.connection,
-                                           require_done=task is not None)
+                        outcome, usage = complete_streaming(
+                            port, model, request, sink, self.connection, require_done=task is not None,
+                        )
                     except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
                         print(f"rejected: {type(exc).__name__}", file=sys.stderr, flush=True)
                         try:
@@ -444,17 +469,27 @@ def serve(listen, port, model, task=None):
                         self.close_connection = True
                         return
                 else:
-                    content_type, body = complete(port, model, request)
+                    content_type, body, usage = complete(port, model, request)
+                    outcome = "complete"
+                    if operation is not None and task.ledger is not None:
+                        task.ledger.finish(operation, outcome, usage)
+                        operation = None
                     self.send_response(200)
                     self.send_header("Content-Type", content_type)
                     self.send_header("Content-Length", str(len(body)))
                     self.send_header("Connection", "close")
                     self.end_headers()
                     self.wfile.write(body)
-            except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
+            except (Rejected, ValueError, OSError, sqlite3.Error, http.client.HTTPException, RecursionError) as exc:
                 print(f"rejected: {type(exc).__name__}", file=sys.stderr, flush=True)
                 self.reply(502, b'{"error":"local gateway rejected the request"}')
-            self.close_connection = True
+            finally:
+                self.close_connection = True
+                if operation is not None and task.ledger is not None:
+                    try:
+                        task.ledger.finish(operation, outcome, usage)
+                    except (sqlite3.Error, ValueError, OSError):
+                        print("task ledger outcome unknown; reservation retained", file=sys.stderr)
 
         def do_GET(self):
             self.reply(405)
@@ -537,12 +572,19 @@ def main():
                         help="Presupuesto acumulado para un listener autenticado (CLI_OPEN_GATEWAY_TASK_TOKEN)")
     parser.add_argument("--task-seconds", type=int, metavar="SECONDS",
                         help="Vida máxima del listener autenticado (1–300, predeterminado 120)")
+    parser.add_argument("--task-state", type=Path, help="Base SQLite privada de la tarea")
+    parser.add_argument("--task-id", help="Identidad verificable de la tarea persistente")
+    parser.add_argument("--create-task", action="store_true", help="Crear un presupuesto persistente nuevo")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
         print("Gateway local sin calificar en este entorno.", file=sys.stderr)
         return 2
     try:
         task = None
+        persistent = args.task_state is not None
+        if (persistent != (args.task_id is not None) or args.create_task and not persistent
+                or persistent and args.task_budget is None):
+            raise Rejected("incomplete task state configuration")
         seconds = 120 if args.task_seconds is None else args.task_seconds
         if args.task_seconds is not None and (args.task_budget is None or not 1 <= seconds <= 300):
             raise Rejected("invalid task deadline")
@@ -557,16 +599,24 @@ def main():
                 serve(args.listen, args.port, args.model)
             else:
                 try:
-                    with deadline(seconds):
-                        serve(args.listen, args.port, args.model, task)
+                    if persistent:
+                        ledger_type = runpy.run_path(str(Path(__file__).with_name("task_ledger.py")))["Ledger"]
+                        with ledger_type.open(args.task_state, args.task_id, (*args.task_budget, args.model, args.port),
+                                              seconds, create=args.create_task) as ledger:
+                            task.ledger = ledger
+                            with deadline(max(0.001, ledger.expires - time.time())):
+                                serve(args.listen, args.port, args.model, task)
+                    else:
+                        with deadline(seconds):
+                            serve(args.listen, args.port, args.model, task)
                 except TimeoutError:
                     print("Plazo global de la tarea agotado.", file=sys.stderr)
                     return 124
             return 0
         with deadline():
             request = read_request(sys.stdin.buffer)
-            _, report = complete(args.port, args.model, request, stream=False)
-    except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError):
+            _, report, _ = complete(args.port, args.model, request, stream=False)
+    except (Rejected, ValueError, OSError, sqlite3.Error, http.client.HTTPException, RecursionError):
         print("Consulta local rechazada o fallida. Sin conexión alternativa.", file=sys.stderr)
         return 1
     sys.stdout.buffer.write(report)

@@ -181,3 +181,7 @@
 ## D07 · Plazo global y detección de SSE incompleto
 
 - El listener autenticado vence con código 124 y cierra sus conexiones. Detecta streams incompletos, conserva reservas al cancelar y deja sólo el tipo de error en logs del handler.
+
+## D07 · Persistencia de reservas y recuperación
+
+- Registro optativo SQLite por tarea. Añade reserva duradera antes de despacho, recuperación conservadora y métricas reportadas para JSON y SSE completos. El gateway local mantiene su interfaz.

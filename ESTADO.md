@@ -111,3 +111,5 @@ F7.2 cuenta con el preset optativo `contexto-selectivo` y un fixture de integrac
 Autenticación OAuth nativa **DISPONIBLE** en el motor fijado. Acceso de cuenta, catálogo efectivo y pruebas remotas **BLOCKED** para CLI_OPEN. El perfil local de tarea pasa autenticación y reserva acumulada por listener contra un proveedor simulado. El canal supervisado hasta ChatGPT aún no está calificado.
 
 El perfil autenticado tiene plazo de proceso, retención de reservas ante fallos y terminación SSE estricta. Se calificó cancelación del cliente y expiración con upstream simulado. OAuth real, contabilización de tokens del proveedor y recuperación de una reserva tras reinicio siguen pendientes.
+
+El perfil loopback D07 puede usar una base SQLite privada por tarea. Se calificó reinicio, rechazo de estado corrupto, plazo persistido y uso reportado separado del presupuesto. Sigue **BLOCKED** la inferencia real de ChatGPT con supervisión.

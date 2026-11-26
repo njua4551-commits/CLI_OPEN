@@ -1,0 +1,137 @@
+"""Verify that loopback task reservations survive process failure and restart."""
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
+from http.client import HTTPConnection
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
+from pathlib import Path
+import runpy
+import sqlite3
+import stat
+import tempfile
+import threading
+
+FIXTURE = runpy.run_path(str(Path(__file__).with_name("fase6-d07-budget.py")))
+HEADERS = {"Authorization": "Bearer " + FIXTURE["TOKEN"]}
+
+
+def main():
+    started = threading.Event()
+    disconnected = threading.Event()
+
+    class Provider(BaseHTTPRequestHandler):
+        def do_POST(self):
+            message = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream" if message["stream"] else "application/json")
+            self.end_headers()
+            usage = {"prompt_tokens": 3, "completion_tokens": 2}
+            if not message["stream"]:
+                scenario = message["messages"][0]["content"]
+                result = {"model": "fixture", "choices": []}
+                if scenario != "unreported":
+                    if scenario == "overrun":
+                        usage["completion_tokens"] = 9
+                    result["usage"] = usage
+                self.wfile.write(json.dumps(result).encode())
+            elif message["messages"][0]["content"] == "reported":
+                event = json.dumps({"model": "fixture", "choices": [], "usage": usage})
+                self.wfile.write(f"data: {event}\n\ndata: [DONE]\n\n".encode())
+            else:
+                self.wfile.flush()
+                started.set()
+                self.connection.settimeout(5)
+                try:
+                    if not self.rfile.read(1):
+                        disconnected.set()
+                except ConnectionResetError:
+                    disconnected.set()
+                except TimeoutError:
+                    pass
+
+        def log_message(self, *args):
+            pass
+
+    with tempfile.TemporaryDirectory() as temporary, ThreadingHTTPServer(("127.0.0.1", 0), Provider) as provider:
+        thread = threading.Thread(target=provider.serve_forever, daemon=True)
+        thread.start()
+        path = Path(temporary) / "task.sqlite"
+        state = ("--task-state", str(path), "--task-id", "fixture_task")
+        settings = (provider.server_port, 3, 1000, 24)
+
+        def operations():
+            with closing(sqlite3.connect(path)) as db:
+                return db.execute(
+                    "SELECT status, output_limit, prompt_tokens, completion_tokens FROM operation ORDER BY id"
+                ).fetchall()
+
+        stream = json.loads(FIXTURE["REQUEST"])
+        stream["stream"] = True
+        try:
+            with FIXTURE["listener"](*settings, extra=state, rejected=True):
+                pass
+            with FIXTURE["listener"](*settings, extra=(*state, "--create-task")) as port:
+                assert FIXTURE["request"](port) == 200
+                assert stat.S_IMODE(path.stat().st_mode) == 0o600
+                with FIXTURE["listener"](*settings, extra=state, rejected=True):
+                    pass
+            assert operations() == [("complete", 8, 3, 2)]
+            with FIXTURE["listener"](provider.server_port, 4, 1000, 24, extra=state, rejected=True):
+                pass
+            with FIXTURE["listener"](*settings, extra=(*state, "--create-task"), rejected=True):
+                pass
+            with FIXTURE["listener"](*settings, extra=state, with_process=True) as (port, gateway):
+                with closing(HTTPConnection("127.0.0.1", port, timeout=5)) as client:
+                    client.request("POST", "/v1/chat/completions", json.dumps(stream), HEADERS)
+                    assert started.wait(3)
+                    assert operations()[-1] == ("reserved", 8, None, None)
+                    gateway.kill()
+                    gateway.wait(timeout=5)
+                assert disconnected.wait(2)
+            with FIXTURE["listener"](*settings, extra=state) as port:
+                assert operations()[-1] == ("uncertain", 8, None, None)
+                stream["messages"][0]["content"] = "reported"
+                with closing(HTTPConnection("127.0.0.1", port, timeout=5)) as client:
+                    client.request("POST", "/v1/chat/completions", json.dumps(stream), HEADERS)
+                    assert b"data: [DONE]" in client.getresponse().read()
+                assert FIXTURE["request"](port) == 429
+            assert operations() == [("complete", 8, 3, 2), ("uncertain", 8, None, None), ("complete", 8, 3, 2)]
+
+            policy_path = Path(temporary) / "policy.sqlite"
+            policy = ("--task-state", str(policy_path), "--task-id", "policy")
+            with FIXTURE["listener"](*settings, extra=(*policy, "--create-task")) as port:
+                payload = json.loads(FIXTURE["REQUEST"])
+                for scenario in ("unreported", "overrun"):
+                    payload["messages"][0]["content"] = scenario
+                    assert FIXTURE["request"](port, body=json.dumps(payload).encode()) == 200
+                assert FIXTURE["request"](port) == 429
+            with closing(sqlite3.connect(policy_path)) as db:
+                assert db.execute("SELECT prompt_tokens, completion_tokens FROM operation ORDER BY id").fetchall() == [
+                    (None, None), (3, 9),
+                ]
+            with FIXTURE["listener"](*settings, extra=policy, rejected=True):
+                pass
+
+            race_path = Path(temporary) / "race.sqlite"
+            race = ("--task-state", str(race_path), "--task-id", "race")
+            with FIXTURE["listener"](provider.server_port, 1, 1000, 8, extra=(*race, "--create-task")) as port:
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    assert sorted(pool.map(lambda _: FIXTURE["request"](port), range(2))) == [200, 429]
+
+            closed = ("--task-state", str(Path(temporary) / "closed.sqlite"), "--task-id", "closed")
+            with FIXTURE["listener"](*settings, extra=(*closed, "--create-task"), seconds=1, expires=True):
+                pass
+            with FIXTURE["listener"](*settings, extra=closed, seconds=1, rejected=True):
+                pass
+
+            path.write_bytes(b"database corrupted")
+            with FIXTURE["listener"](*settings, extra=state, rejected=True):
+                pass
+        finally:
+            provider.shutdown()
+            thread.join(timeout=2)
+    print("PASS D07 persisted reservation, crash recovery, usage, expiry and corruption rejection")
+
+
+if __name__ == "__main__":
+    main()

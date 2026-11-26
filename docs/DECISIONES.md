@@ -72,3 +72,7 @@ OAuth de ChatGPT es **EXISTENTE** en OpenCode v2.3.2. El gateway es **EXTENSIBLE
 ### D07 · Vida de tarea y reconciliación conservadora
 
 El listener autenticado termina al agotar su plazo global. Cada instancia representa una única tarea. Se reserva después de autenticar y validar ruta y cuerpo, antes de despachar. Error previo a la reserva no consume cuota de tarea. Desde la reserva, el máximo permanece consumido con éxito, fallo, truncado, desconexión o cancelación. El proceso no reintenta. Una instancia nueva requiere un token nuevo y un presupuesto explícito. Evitar reiniciar automáticamente una tarea anterior. Reconciliación por uso real, durabilidad y autorización remota siguen pendientes. Los perfiles locales existentes conservan su contrato SSE.
+
+### D07 · Registro de tarea duradero
+
+Usar SQLite de la biblioteca estándar para el registro local y un lock exclusivo del archivo. Mantener un archivo privado por tarea y exigir creación explícita. El supervisor elige el archivo, ID y perfil. El registro no da permisos al agente y no contiene prompts, tokens de autenticación ni cabeceras. El proceso retiene la reserva original en todas las transiciones. Las métricas estructuradas reportadas se guardan como evidencia aparte. Si la salida reportada supera su reserva, cerrar la tarea para nuevas operaciones. El proceso no reconstruye una operación previa ni inicia un reintento. Se presupone un estado privado y el reloj del host confiables.
