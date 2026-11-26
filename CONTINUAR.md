@@ -2,7 +2,7 @@
 
 ## Punto de reanudación
 
-**Referencia pública:** `5505ef1130b0aec22af04e395b3e96c704cd55da`.
+**Referencia pública:** `c777a16a49547ac040cf35d2cb6d40e109bced8f`.
 
 **Checkpoint técnico de la prueba HTTP física:** `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
 **Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Posponer funcionalidades nuevas, incluido Computer Use.
@@ -79,3 +79,13 @@ git diff --check
 - La lectura permitida y la denegada ya pasaron. La respuesta final quedó vacía. La próxima prueba debe reproducir fuera de OpenCode, mediante el mismo gateway privado, la petición posterior a `read` para distinguir plantilla o modelo de serialización de la sesión.
 - La auditoría nativa y la línea base HTML están en [DECISIONES.md](docs/DECISIONES.md) y [PRUEBAS.md](docs/PRUEBAS.md). Medir el candidato de filtrado en fixtures aislados después de cerrar la validación local. La recuperación externa requiere calificación propia.
 - D07 remoto y Repo Map conservan sus puertas vigentes.
+
+## Validación con API · Perfil preparado, ejecución bloqueada
+
+Candidato de prueba: OpenRouter, `google/gemma-4-26b-a4b-it:free`, endpoint `google-ai-studio`. Revalidar precio cero, disponibilidad, privacidad, cuota y compatibilidad antes de cada corrida. Autorizar explícitamente ese destino y este contenido: instrucciones, esquema de `read`, nombres de archivos y resultados creados para el fixture. Mantener la credencial fuera de Bubblewrap e inyectarla únicamente en el componente remoto de confianza. La credencial no se introduce en archivos del repositorio ni en el chat.
+
+Configurar el proveedor nativo `@opencode/ai/providers/openai-compatible` con el alias `fixture`, herramientas habilitadas, `baseURL` igual al loopback privado del gateway con sufijo `/v1` y una clave ficticia local. El destino HTTPS y la clave real pertenecen al lado confiable. El gateway de este checkpoint solo reenvía a loopback. El script `tests/fase1-openrouter.py` demuestra un patrón reutilizable de HTTPS con verificación de precio y selección fija de proveedor, pero está fijado a Liquid y no califica un canal desde Bubblewrap.
+
+Para esta prueba, proponer concurrencia 1, hasta 6 solicitudes de inferencia, 4096 tokens de entrada y 384 de salida por solicitud, plazo global 120 s y cero reintentos o fallback. Reservar cada solicitud y su presupuesto antes de enviar. Fallar si OpenCode intenta llamadas auxiliares fuera del presupuesto, si la cuota o precio no se confirma, o si el componente remoto no puede impedir rutas alternativas. Cancelar el upstream al cancelar el cliente. Verificar el costo y uso reportados o registrar que no se pudieron confirmar. El control de entrada requiere una cota verificable para el modelo o rechazo antes de enviar.
+
+A y B deben usar el fixture temporal y la misma política de lectura que la sesión física. C debe repetir el historial sintético con roles y el mismo identificador en `assistant.tool_calls` y `tool.tool_call_id`. Usar SSE en A y B para D y reservar la solicitud restante para cancelar un stream controlado. El error de transporte puede probarse con fixture local. Antes de usar la API, calificar con un upstream simulado un canal de destino fijo desde el espacio de red privado y comprobar cancelación, bloqueo de ruta directa, redirecciones y ausencia de credenciales dentro del sandbox.

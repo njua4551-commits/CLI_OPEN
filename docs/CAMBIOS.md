@@ -1,5 +1,9 @@
 # Cambios
 
+## 2026-11-26 · Prevalidación comparativa con API
+
+- Se verificó el catálogo público, se documentó un perfil de prueba con Gemma y se registraron los bloqueos de credencial, consentimiento y transporte D07. Sin cambios de ejecución ni solicitudes de inferencia.
+
 ## 2026-11-26 · Continuidad de inferencia local y lectura web
 
 - Se añadió un fixture físico de OpenCode y llama.cpp dentro del Bubblewrap del supervisor. Usa el proveedor y la herramienta de lectura nativos y una regla por archivo.

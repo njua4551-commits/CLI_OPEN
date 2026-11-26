@@ -2,7 +2,7 @@
 
 **Directiva vigente:** estabilizar CLI_OPEN antes de continuar el roadmap (gateway, streaming, concurrencia, APIs, sandbox, edición real, CI, pruebas reproducibles); luego modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
 
-Referencia pública: `5505ef1130b0aec22af04e395b3e96c704cd55da`.
+Referencia pública: `c777a16a49547ac040cf35d2cb6d40e109bced8f`.
 
 Checkpoint técnico de la prueba HTTP física: `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
 
@@ -72,3 +72,7 @@ La lectura permitida y el rechazo de una lectura fuera de la regla pasaron con O
 ## Lectura web y documentos
 
 Auditoría nativa y línea base HTML aislada ejecutadas. Adaptador, recuperación externa y conversión adicional aplazados. Véanse [decisiones](docs/DECISIONES.md) y [mediciones](docs/PRUEBAS.md).
+
+## Comparación con API real
+
+**BLOCKED.** El catálogo público mostró un endpoint gratuito de Gemma con herramientas. La cuenta y cuota de OpenRouter no pudieron verificarse. La integración OpenAI activa en OpenCode carece de evidencia de acceso autorizado a una API de costo cero para este fixture. D07 sigue pendiente de consentimiento específico y de una ruta supervisada calificada con presupuesto compartido. A–D remotas sin ejecutar. El diagnóstico comparativo con Llama 3.2 1B sigue **INCONCLUSIVE**. Véase [continuidad](CONTINUAR.md).
