@@ -104,3 +104,11 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 ## Fase 7 · F7.1 línea base
 
 - `python3 -I -B tests/fase7-lineabase.py` pasó en CachyOS x86_64. Verificó determinismo de salida, ajuste al presupuesto de bytes (512, 2048, 8192), exclusión de entradas inválidas tras cambio de archivo y rechazo de presupuesto fuera de rango. No usó red ni inferencia.
+
+## Validación real de pendientes · 2026-11-25
+
+- `python3 -I -B tests/fase6-concurrencia.py` pasó en CachyOS x86_64. Clientes HTTP reales (`http.client`, no CLI): 12 solicitudes simultáneas con límite 2 dieron pico medido 2 y 12 respuestas 200; 8 solicitudes en streaming dieron todas `data: [DONE]` con pico ≤ 2; con `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS=1` y endpoint de 2 s el gateway respondió 502 en ~1 s.
+- `python3 -I -B tests/fase7-repomap.py` pasó. Informe: 36 `highlights.scm`, 0 consultas de símbolos, sin LSP, ripgrep disponible, sin runtime Tree-sitter (CLI ni binding Python) y sin gramáticas `.wasm` en el checkout fijado; `implementacion/repomap/` inexistente. F7.2 queda bloqueado sin duplicar indexador (D24).
+- Modelo local físico: bloqueado. `ollama`, `vllm`, `llama-server` y `llama-cli` no están en PATH; `127.0.0.1:11434` y `127.0.0.1:8000` no responden; 0 archivos `*.gguf`/`*.safetensors` bajo `$HOME` (profundidad 5). No se ejecutó inferencia.
+- D07 remoto: bloqueado. Sin autorización explícita nueva ni credencial/entorno remoto; no se realizaron solicitudes externas.
+- Regresión: 11 unittest, `qualify-linux`, `fase5-review`, `fase5-workspace`, `fase6-gateway`, `fase6-concurrencia`, `fase7-memoria`, `fase7-contexto`, `fase7-lineabase`, `fase7-repomap` y `git diff --check` limpios.

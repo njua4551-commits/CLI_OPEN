@@ -5,7 +5,7 @@ Ruta del clon: `upstream/upstream/opencode`. Clasificación obligatoria antes de
 
 | Propuesta F7 | Clasificación | Evidencia en el SHA fijado |
 |---|---|---|
-| Repo Map incremental con Tree-sitter / grafos de símbolos | APLAZADA | `packages/cli-rs/assets/queries/manifest.json` contiene gramáticas Tree-sitter para resaltado; `packages/core/src/tool/plugin/grep.ts` (`Ripgrep`) y `packages/core/src/ripgrep.ts` cubren búsqueda textual. No hay índice de símbolos ni servicio LSP expuesto al agente (`packages/core/src/tool/plugin/` no incluye `lsp`). |
+| Repo Map incremental con Tree-sitter / grafos de símbolos | APLAZADA (bloqueo verificado) | `packages/cli-rs/assets/queries/manifest.json` contiene gramáticas Tree-sitter para resaltado; `packages/core/src/tool/plugin/grep.ts` (`Ripgrep`) y `packages/core/src/ripgrep.ts` cubren búsqueda textual. No hay índice de símbolos ni servicio LSP expuesto al agente (`packages/core/src/tool/plugin/` no incluye `lsp`). `tests/fase7-repomap.py`: 36 `highlights.scm`, 0 consultas de símbolos, sin runtime Tree-sitter ni `.wasm` de gramáticas. |
 | Investigación profunda de dependencias bajo demanda | EXTENSIBLE | `packages/core/src/tool/plugin/subagent.ts`, `packages/core/src/tool/plugin/session-search.ts` y `packages/core/src/tool/plugin/mcp.ts`. |
 | Presupuesto dinámico de tokens para contexto | PARCIAL | `implementacion/memoria/__main__.py` (`context`, `tokens`) implementa el sobre acotado; falta adaptación al presupuesto de la sesión. |
 | Code Mode / `execute` nativo | EXISTENTE | `packages/core/src/codemode/tool.ts` (`name = "execute"`). |
@@ -28,4 +28,4 @@ Ruta del clon: `upstream/upstream/opencode`. Clasificación obligatoria antes de
 
 ## Decisión derivada
 
-Repo Map no se implementa como indexador independiente. Debe reutilizar las gramáticas Tree-sitter y las capacidades LSP/ripgrep del motor fijado mediante un adaptador ligero, o clasificarse `AUSENTE` con justificación en una decisión posterior. Hasta entonces, F7.2 avanza únicamente con la línea base y la auditoría.
+Repo Map no se implementa como indexador independiente. Debe reutilizar las gramáticas Tree-sitter y las capacidades LSP/ripgrep del motor fijado mediante un adaptador ligero, o clasificarse `AUSENTE` con justificación en una decisión posterior. Hasta entonces, F7.2 avanza únicamente con la línea base y la auditoría. Verificación 2026-11-25 (`tests/fase7-repomap.py`): el entorno no dispone de runtime Tree-sitter ni LSP; la compuerta bloquea la implementación y prohíbe `implementacion/repomap/`.

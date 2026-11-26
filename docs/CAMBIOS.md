@@ -1,5 +1,12 @@
 # Cambios
 
+## 2026-11-25 · Validación de pendientes reales · gateway y F7.2
+
+- `implementacion/gateway/__main__.py`: `TIMEOUT` acepta `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (nombre documentado) y conserva `CLI_OPEN_GATEWAY_TIMEOUT` como alias; límites 1–300 s.
+- `tests/fase6-concurrencia.py`: carga con clientes HTTP reales (`http.client`) contra el listener; 12 solicitudes y 8 en streaming, límite 2 con pico medido 2, todas las respuestas completas y timeout de 1 s aplicado.
+- `tests/fase7-repomap.py`: compuerta de reutilización F7.2. Verifica 36 gramáticas limitadas a `highlights.scm`, cero consultas de símbolos, ausencia de LSP y ripgrep nativo disponible; sin runtime Tree-sitter el Repo Map queda bloqueado sin crear indexador independiente.
+- Validación bloqueada (sin cambios de código): modelo local físico ausente (sin `ollama`/`vllm`/`llama.cpp`, puertos 11434/8000 cerrados, 0 artefactos `*.gguf`/`*.safetensors`); D07 remoto requiere autorización explícita nueva.
+
 ## 2026-11-25 · Consolidación documental para traspaso
 
 - `ESTADO.md` y `CONTINUAR.md` reescritos: checkpoint `26aea30`, mapa de equivalencias documentales, estado por fase y clasificación verificado/pendiente.
