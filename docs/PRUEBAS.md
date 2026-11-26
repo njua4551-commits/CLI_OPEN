@@ -196,3 +196,9 @@ Pico RSS del proceso completo A/B y C: 80032 → 82972 KiB. Son observaciones de
 - **PASS local** perfiles portable y Linux en CachyOS x86_64. El portable ejecuta unitarias, memoria, contexto, línea base F7.1 y el hook HTML con Node. Linux añade edición de copia, namespaces, gateway, concurrencia, SSE y cancelación.
 - La CI de GitHub tiene jobs separados en Ubuntu 24.04, checkout fijado por SHA y permisos de lectura. No ejecuta modelos físicos, proveedores remotos ni el perfil con binario de OpenCode. La ejecución en el runner alojado requiere observar GitHub Actions después de publicar.
 - El preflight de OpenCode compara SHA-256 de Bun y CLI contra la pareja calificada, comprueba versiones con HOME desechable y ejecuta las pruebas de artefactos con Bubblewrap. Un paquete reconstruido con otro hash queda explícitamente bloqueado.
+
+### Presupuesto y deduplicación de memoria
+
+**PASS** 12 unitarias, memoria, contexto, línea base F7.1 y prueba del filtro HTML. La regresión verifica que los escapes Unicode consumen presupuesto, que se puede elegir una entrada posterior que quepa y que se omiten duplicados por ID y texto. El perfil portable también pasó desde una exportación limpia del índice sin `.fase1`. Los tests unitarios de edición aíslan los artefactos simulados en un temporal.
+
+Microbenchmark de `incorporate_prompt`: 1000 iteraciones de un sobre con 40 entradas «Observación repetida.» con IDs únicos y una «Requisito independiente.». Comparación entre `5323a87` y la versión actual, en el mismo proceso. El sobre JSON pasó de 2598 a 180 bytes (650 a 45 tokens estimados a 4 caracteres por token). Una corrida tomó 506,56 → 251,73 ms de pared y 445,52 → 221,73 ms de CPU. Pico RSS acumulado: 13348 KiB para el proceso compartido. No se puede atribuir RAM por variante a esa medición. El ahorro corresponde al fixture repetitivo y no pronostica rendimiento general.

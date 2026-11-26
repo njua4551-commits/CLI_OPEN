@@ -86,6 +86,26 @@ class SupervisorTest(unittest.TestCase):
         self.assertEqual(res_bad.returncode, 1)
         self.assertIn("autoridad nula", res_bad.stderr)
 
+    def test_inject_context_applies_encoded_budget_and_deduplicates(self):
+        envelope = {
+            "authority": "none",
+            "source": "project-memory",
+            "entries": [
+                {"id": "0" * 16, "text": "雪" * 100},
+                {"id": "1" * 16, "text": "Keep this"},
+                {"id": "2" * 16, "text": "Keep this"},
+                {"id": "1" * 16, "text": "Duplicate id"},
+                {"id": "3" * 16, "text": "Second item"},
+            ],
+        }
+        args = ("inject-context", "--prompt", "Analyze repo", "--envelope", json.dumps(envelope))
+        result = self.run_supervisor(*args, "--max-context-bytes", "180")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        serialized = next(line for line in result.stdout.splitlines() if line.startswith("{"))
+        self.assertLessEqual(len(serialized.encode()) + 1, 180)
+        self.assertEqual(json.loads(serialized)["entries"], [envelope["entries"][1], envelope["entries"][4]])
+        self.assertEqual(self.run_supervisor(*args, "--max-context-bytes", "127").returncode, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

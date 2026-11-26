@@ -87,3 +87,7 @@ Auditoría nativa y línea base HTML aislada ejecutadas. Filtro HTML opt-in impl
 ## Reproducibilidad y CI
 
 Runner por perfiles portable, Linux y OpenCode precompilado. GitHub Actions ejecuta portable y Linux en jobs separados. En el perfil OpenCode se verifican los hashes de los binarios calificados antes de ejecutarlos. La construcción desde cero y la integración de artefactos en CI siguen pendientes.
+
+## Contexto selectivo y Repo Map
+
+El supervisor comprueba el presupuesto del sobre de memoria en la incorporación al prompt. Esto cubre memoria. El presupuesto compartido con código, web y salidas de herramientas sigue pendiente. Repo Map F7.2 permanece **BLOCKED**. El stash conserva un indexador separado con AST y expresiones regulares, incompatible con D24. No se aplicó al checkout.

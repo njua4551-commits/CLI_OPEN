@@ -149,3 +149,7 @@
 ## Suites deterministas y CI
 
 - Runner por perfiles, prueba del plugin HTML con Node sin artefactos de build y workflow de GitHub Actions limitado a permisos de lectura.
+
+## Presupuesto de memoria en el supervisor
+
+- El sobre de contexto se limita a 16 KiB por defecto y admite un presupuesto menor. La selección conserva el orden de recuperación y omite duplicados por identificador o texto.

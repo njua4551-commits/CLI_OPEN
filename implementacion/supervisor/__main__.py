@@ -107,6 +107,7 @@ def main(argv=None):
     inject = commands.add_parser("inject-context", help="Incorporar sobre de memoria como datos no confiables")
     inject.add_argument("--prompt", required=True, help="Prompt del usuario")
     inject.add_argument("--envelope", required=True, help="Sobre JSON de contexto emitido por memoria context")
+    inject.add_argument("--max-context-bytes", type=int, help="Presupuesto del sobre de memoria, 128–16384 bytes")
     options = parser.parse_args(argv)
     if options.command == "doctor":
         print(json.dumps(doctor(), ensure_ascii=True, indent=2))
@@ -147,10 +148,15 @@ def main(argv=None):
     elif options.command == "inject-context":
         context_mod = runpy.run_path(str(Path(__file__).with_name("context.py")))
         try:
+            if len(options.envelope.encode("utf-8")) > 65536:
+                raise ValueError("entrada mayor que 64 KiB")
             envelope_data = json.loads(options.envelope)
-            prompt = context_mod["incorporate_prompt"](options.prompt, envelope_data)
+            budget = options.max_context_bytes
+            if budget is None:
+                budget = context_mod["MAX_CONTEXT_BYTES"]
+            prompt = context_mod["incorporate_prompt"](options.prompt, envelope_data, budget)
             print(prompt)
-        except (ValueError, context_mod["InvalidEnvelope"]) as exc:
+        except (ValueError, RecursionError) as exc:
             print(f"Sobre de contexto rechazado: {exc}", file=sys.stderr)
             return 1
     else:
