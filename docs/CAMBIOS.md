@@ -161,3 +161,7 @@
 ## Preparación de Bubblewrap en GitHub Actions
 
 - El job Linux carga el perfil oficial de AppArmor para Bubblewrap si la restricción de namespaces está activa. Ambos jobs fijan checkout v5.0.1, que usa Node.js 24.
+
+## Montajes de bibliotecas en el fixture F4
+
+- F4 reutiliza el constructor Bubblewrap del supervisor y registra las rutas de Python y su cargador. Elimina la suposición de que `/lib64` corresponde siempre a `/usr/lib`.

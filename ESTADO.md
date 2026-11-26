@@ -97,3 +97,5 @@ El perfil OpenCode pasó con los artefactos existentes. Se verificó reanudar un
 ## Diagnóstico de GitHub Actions
 
 La primera ejecución en `f74ab48` dio **PASS** en portable y **FAIL** en Linux al configurar el loopback de Bubblewrap. El ajuste local prepara el perfil de AppArmor empaquetado por Ubuntu y conserva las pruebas estrictas. CI remota de la corrección **PENDIENTE DE VALIDACIÓN**.
+
+`810af0c` llegó a ejecutar Bubblewrap en CI y superó el bloqueo del loopback. El error siguiente de arranque ELF se reprodujo con un layout de bibliotecas separado. El ajuste de F4 está preparado para recalificación remota.

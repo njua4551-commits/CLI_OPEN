@@ -2,11 +2,14 @@
 import os
 from pathlib import Path
 import platform
+import runpy
 import shutil
 import socket
 import subprocess
 import tempfile
 import time
+
+SUPERVISOR = Path(__file__).resolve().parents[1] / "implementacion" / "supervisor" / "__main__.py"
 
 PROBE = """
 import errno, os, socket, sys
@@ -14,6 +17,9 @@ from pathlib import Path
 
 assert os.geteuid() != 0
 assert not os.environ.get("F4_PRIVATE_FIXTURE")
+for path in ("/usr/bin/python3", "/lib", "/lib64", "/usr/lib", "/lib64/ld-linux-x86-64.so.2"):
+    resolved = Path(path).resolve(strict=True)
+    print(f"sandbox runtime: {path} -> {resolved}")
 assert Path("/outside/marker").read_text() == "outside"
 Path("/work/allowed").write_text("inside")
 for target in ("/outside/marker", "/work/../outside/marker", "/work/link",
@@ -49,6 +55,7 @@ def main():
         raise SystemExit("Bubblewrap missing; isolation unverified")
     if os.geteuid() == 0:
         raise SystemExit("Qualification requires a standard user")
+    sandbox = runpy.run_path(str(SUPERVISOR))["bubblewrap_command"]
 
     with tempfile.TemporaryDirectory(prefix="cli-open-p2-") as root, socket.socket() as listener:
         root = Path(root)
@@ -67,24 +74,18 @@ def main():
             connection, _ = listener.accept()
             connection.close()
 
-        command = [
-            bwrap, "--die-with-parent", "--unshare-user", "--unshare-pid", "--unshare-ipc",
-            "--unshare-net", "--unshare-uts", "--disable-userns",
-            "--ro-bind", "/usr", "/usr",
-            "--symlink", "usr/lib", "/lib", "--symlink", "usr/lib", "/lib64",
-            "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
-            "--bind", str(work), "/work", "--ro-bind", str(outside), "/outside",
-            "--ro-bind", str(policy), "/protected", "--clearenv", "--chdir", "/work",
-            "/usr/bin/python3", "-I", "-B", "-c", PROBE, str(port),
-        ]
-        subprocess.run(command, env={"F4_PRIVATE_FIXTURE": "synthetic"}, check=True, timeout=20)
+        mounts = [(outside, "/outside"), (policy, "/protected")]
+        python = ["/usr/bin/python3", "-I", "-B", "-c"]
+        probe = sandbox(bwrap, mounts, [*python, PROBE, str(port)], writable_workspace=work)
+        subprocess.run(probe, env={"F4_PRIVATE_FIXTURE": "synthetic"}, check=True, timeout=20)
         assert (work / "allowed").read_text() == "inside"
         assert (outside / "marker").read_text() == "outside"
         assert (policy / "policy").read_text() == "policy"
 
         heartbeat = work / "heartbeat"
         try:
-            subprocess.run(command[:-2] + [CHILDREN], env={}, check=True, timeout=2)
+            command = sandbox(bwrap, mounts, [*python, CHILDREN], writable_workspace=work)
+            subprocess.run(command, env={}, check=True, timeout=2)
         except subprocess.TimeoutExpired:
             assert heartbeat.exists(), "child did not start before timeout"
         else:
