@@ -2,7 +2,7 @@
 
 ## Punto de reanudación
 
-**Checkpoint de código y pruebas verificado:** `0e4fa4ee216e153a3634e8e0ace594fe66102b1e` (`0e4fa4e`); commit documental posterior sin cambios de código. Anterior: `26aea308fcf6dae2e3deeb4f3b4d22170e394a14` (`26aea30`). Rama `fase-1` / `origin/main`.
+**Checkpoint de código y pruebas verificado:** `242c3b11e54da84d2e1805a0180e137a69f8e384` (`242c3b1`); commit documental posterior sin cambios de código. Anterior: `0e4fa4e`. Rama `fase-1` / `origin/main`.
 **Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Posponer funcionalidades nuevas, incluido Computer Use.
 
 ## Mapa de Documentación y Equivalencias
@@ -74,5 +74,5 @@ git diff --check
 ## Prompt para iniciar la siguiente sesión
 
 ```text
-Lee AGENTS.md, ESTADO.md, CONTINUAR.md y docs/DECISIONES.md. Confirma git status limpio con HEAD posterior a 0e4fa4e. Ejecuta la suite de regresión completa (unittest discover, qualify-linux, fase6-gateway, fase6-concurrencia, fase7-lineabase, fase7-repomap) y continúa con el siguiente paso autorizado: proveer un modelo local físico o autorizar D07, o incorporar el runtime de símbolos del motor para F7.2.
+Lee AGENTS.md, ESTADO.md, CONTINUAR.md y docs/DECISIONES.md. Confirma git status limpio con HEAD posterior a 242c3b1. Ejecuta la suite de regresión completa (unittest discover, qualify-linux, fase6-gateway, fase6-concurrencia, fase7-lineabase, fase7-repomap) y continúa con el siguiente paso autorizado: proveer un modelo local físico o autorizar D07, o incorporar el runtime de símbolos del motor para F7.2.
 ```

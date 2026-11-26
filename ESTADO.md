@@ -2,7 +2,7 @@
 
 **Directiva vigente:** estabilizar CLI_OPEN antes de continuar el roadmap (gateway, streaming, concurrencia, APIs, sandbox, edición real, CI, pruebas reproducibles); luego modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
 
-Checkpoint de código y pruebas verificado: `0e4fa4ee216e153a3634e8e0ace594fe66102b1e` (`0e4fa4e`); el commit documental posterior no altera código. Anterior: `26aea308fcf6dae2e3deeb4f3b4d22170e394a14` (`26aea30`). Rama `fase-1` / `origin/main`.
+Checkpoint de código y pruebas verificado: `242c3b11e54da84d2e1805a0180e137a69f8e384` (`242c3b1`); el commit documental posterior no altera código. Anterior: `0e4fa4e`. Rama `fase-1` / `origin/main`.
 
 ## Equivalencia de Documentación Principal
 - **PROJECT_STATE.md** → `ESTADO.md` (Estado actual, SHAs, módulos cerrados y activos).
@@ -50,7 +50,7 @@ Checkpoint de código y pruebas verificado: `0e4fa4ee216e153a3634e8e0ace594fe661
 
 ## Reanudar el trabajo
 1. Leer `AGENTS.md`, `CONTINUAR.md`, `ESTADO.md` y `docs/DECISIONES.md`.
-2. Verificar `git status` limpio (HEAD posterior a `0e4fa4e`, solo documentación).
+2. Verificar `git status` limpio (HEAD posterior a `242c3b1`, solo documentación).
 3. Ejecutar las pruebas de regresión:
    ```sh
    python3 -B -m unittest discover -s tests
