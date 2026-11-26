@@ -1,5 +1,10 @@
 # Cambios
 
+## 2026-11-26 · Continuidad de inferencia local y lectura web
+
+- Se añadió un fixture físico de OpenCode y llama.cpp dentro del Bubblewrap del supervisor. Usa el proveedor y la herramienta de lectura nativos y una regla por archivo.
+- Se midió el conversor HTML del tag fijado con seis fixtures sin red y se documentó el posible uso de un hook aprobado. La optimización de producto y la recuperación externa quedan aplazadas.
+
 ## 2026-11-26 · Inferencia física local verificada
 
 - `tests/fase6-modelo-local.py`: prueba real CPU-only contra `llama.cpp` `b12753` y Llama 3.2 1B Instruct Q4_K_M (~771 MiB). Pasaron chat, streaming SSE y tool call a través del gateway; sin GPU ni red durante la inferencia.

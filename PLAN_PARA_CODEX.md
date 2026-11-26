@@ -248,6 +248,12 @@ La Fase 7 actualiza y amplía el alcance de inteligencia, contexto, eficiencia, 
 - Conservación estricta de funcionalidades originales (Pair Device, TUI, Web, Sesiones, Plugins, MCP, LSP).
 - Matriz integral de compatibilidad y regresión funcional y de seguridad.
 
+### Puerta de estabilización · Sesión física local y lectura eficiente
+
+- Calificar la lectura real con OpenCode, gateway y llama.cpp en el espacio de red privado de Bubblewrap. Confirmar permisos sobre el archivo, rechazo de la lectura no autorizada y respuesta final derivada del contenido.
+- Usar la línea base HTML y la matriz de reutilización de [pruebas](docs/PRUEBAS.md) y [decisiones](docs/DECISIONES.md). Un candidato opcional debe conservar fidelidad técnica y mejorar la estimación de tokens antes de integrarse.
+- Limitar la evaluación a fixtures aislados hasta calificar la recuperación externa. La puerta de lectura web es independiente de D07 y no autoriza inferencia remota.
+
 ### D07 — Puerta de inferencia real de producto (Aplazada)
 - Requiere resolver: presupuesto remoto verificado, aprobación explícita de contenido y destino, protección de credenciales, control de proveedores sin fallback silencioso, y privacidad verificada.
 - No habilitar inferencia remota de producto hasta superar estos controles específicos.

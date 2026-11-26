@@ -2,7 +2,9 @@
 
 ## Punto de reanudación
 
-**Checkpoint de código y pruebas verificado:** `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
+**Referencia pública:** `5505ef1130b0aec22af04e395b3e96c704cd55da`.
+
+**Checkpoint técnico de la prueba HTTP física:** `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
 **Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Posponer funcionalidades nuevas, incluido Computer Use.
 
 ## Mapa de Documentación y Equivalencias
@@ -71,8 +73,9 @@ python3 -I -B tests/fase7-repomap.py
 git diff --check
 ```
 
-## Prompt para iniciar la siguiente sesión
+## Siguiente puerta de estabilización
 
-```text
-Lee AGENTS.md, ESTADO.md, CONTINUAR.md y docs/DECISIONES.md. Confirma git status limpio en 5335b70. Ejecuta la suite de regresión completa (unittest discover, qualify-linux, fase6-gateway, fase6-concurrencia, fase7-lineabase, fase7-repomap) y continúa con el siguiente paso autorizado: autorizar D07 o incorporar el runtime de símbolos del motor para F7.2.
-```
+- Ejecutar `python3 -I -B tests/fase6-agente-local.py` con los artefactos existentes. El supervisor construye el aislamiento y fija la regla de lectura. OpenCode, gateway y llama.cpp comparten únicamente el loopback privado. Mantener la distinción entre operación HTTP, llamada generada, lectura efectiva y respuesta final.
+- La lectura permitida y la denegada ya pasaron. La respuesta final quedó vacía. La próxima prueba debe reproducir fuera de OpenCode, mediante el mismo gateway privado, la petición posterior a `read` para distinguir plantilla o modelo de serialización de la sesión.
+- La auditoría nativa y la línea base HTML están en [DECISIONES.md](docs/DECISIONES.md) y [PRUEBAS.md](docs/PRUEBAS.md). Medir el candidato de filtrado en fixtures aislados después de cerrar la validación local. La recuperación externa requiere calificación propia.
+- D07 remoto y Repo Map conservan sus puertas vigentes.

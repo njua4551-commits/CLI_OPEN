@@ -2,7 +2,9 @@
 
 **Directiva vigente:** estabilizar CLI_OPEN antes de continuar el roadmap (gateway, streaming, concurrencia, APIs, sandbox, edición real, CI, pruebas reproducibles); luego modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
 
-Checkpoint de código y pruebas verificado: `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
+Referencia pública: `5505ef1130b0aec22af04e395b3e96c704cd55da`.
+
+Checkpoint técnico de la prueba HTTP física: `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
 
 ## Equivalencia de Documentación Principal
 - **PROJECT_STATE.md** → `ESTADO.md` (Estado actual, SHAs, módulos cerrados y activos).
@@ -44,13 +46,13 @@ Checkpoint de código y pruebas verificado: `5335b70c2bece3a3d8c0256358e1d16e19c
 6. Regresión automatizada completa (11 unittest, qualify-linux, review, workspace, gateway, concurrencia, memoria, contexto, lineabase, compuerta repomap).
 
 ### Pendientes de Validación Física Real (Requieren Entorno / Hardware / Autorización)
-1. Inferencia con modelo físico local: **verificada** en CPU. `llama.cpp` `b12753` + Llama 3.2 1B Instruct Q4_K_M (~771 MiB), aislados en `/tmp/opencode`; `tests/fase6-modelo-local.py` pasó chat, streaming SSE y tool call real a través del gateway. No usa GPU ni red durante la inferencia. El entorno temporal puede limpiar esos artefactos; repetir la descarga antes de reanudar.
+1. Inferencia con modelo físico local: **verificada** en CPU. `llama.cpp` `b12753` + Llama 3.2 1B Instruct Q4_K_M (~771 MiB), aislados en `/tmp/opencode`; `tests/fase6-modelo-local.py` pasó chat, streaming SSE y tool call real a través del gateway. Usa loopback y CPU. Verificar primero si los artefactos temporales aún existen antes de considerar otra descarga.
 2. Presupuesto y autorización para integración remota externa (D07): **bloqueado**. Requiere autorización explícita nueva y credencial/entorno remoto; no se habilitó ninguna ruta remota.
 3. Adaptación Repo Map (F7.2): **bloqueado con evidencia ejecutada** (`tests/fase7-repomap.py`). Reutilizar Tree-sitter/LSP no es posible en este entorno y crear un indexador independiente viola D24; siguiente paso: incorporar el runtime/consultas de símbolos del motor o clasificar `AUSENTE` con aprobación.
 
 ## Reanudar el trabajo
 1. Leer `AGENTS.md`, `CONTINUAR.md`, `ESTADO.md` y `docs/DECISIONES.md`.
-2. Verificar `git status` limpio en `5335b70`.
+2. Verificar `git status` y contrastar HEAD con la referencia pública.
 3. Ejecutar las pruebas de regresión:
    ```sh
    python3 -B -m unittest discover -s tests
@@ -62,3 +64,11 @@ Checkpoint de código y pruebas verificado: `5335b70c2bece3a3d8c0256358e1d16e19c
    git diff --check
    ```
 4. Consultar `CONTINUAR.md` para las siguientes acciones autorizadas de la directiva de estabilización.
+
+## Sesión física local con OpenCode
+
+La lectura permitida y el rechazo de una lectura fuera de la regla pasaron con OpenCode, gateway y llama.cpp en el mismo loopback privado de Bubblewrap. La respuesta final quedó vacía tras ejecutar la herramienta. La sesión completa sigue abierta. La evidencia y la cobertura están en [PRUEBAS.md](docs/PRUEBAS.md).
+
+## Lectura web y documentos
+
+Auditoría nativa y línea base HTML aislada ejecutadas. Adaptador, recuperación externa y conversión adicional aplazados. Véanse [decisiones](docs/DECISIONES.md) y [mediciones](docs/PRUEBAS.md).

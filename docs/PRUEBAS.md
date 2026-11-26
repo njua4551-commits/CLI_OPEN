@@ -120,3 +120,34 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 ## Estabilización · saturación del gateway (2026-11-25)
 
 - `python3 -I -B tests/fase6-concurrencia.py` pasó. Ráfaga de 12 clientes con límite 2: respuestas 200 válidas y rechazos 503 (`concurrency`), pico de upstream 2 y ninguna solicitud perdida. Ráfaga de 10 con endpoint de 1 s: 503 inmediato al exceso, pico 2 y recuperación a 200 tras liberar. 2 clientes streaming completaron `[DONE]`. Con timeout 1 s y endpoint de 2 s: 502 en ~1 s. Sin `BrokenPipe`.
+
+## 2026-11-26 · Línea base de lectura web sin red
+
+`.fase1/tools/bun-linux-x64-baseline/bun tests/lectura-web-lineabase.ts`. Bun 1.4.4, Linux x86_64. A y B comparten exactamente el conversor HTML y estimador originales comprobados por blob. Se midió ese componente común, sin inferencia ni recuperación de red. Cada fila mide 50 conversiones con comparación de salida determinista. El estimador usa caracteres y no representa tokens facturados.
+
+| Caso | Bytes HTML | Bytes Markdown A/B | Tokens estimados A/B | Tiempo total ms | CPU ms |
+|---|---:|---:|---:|---:|---:|
+| Artículo | 58 | 27 | 7 | 8.91 | 8.79 |
+| Menú repetido | 5864 | 3356 | 839 | 156.38 | 168.00 |
+| Documentación, enlace y tabla | 246 | 174 | 44 | 16.87 | 20.73 |
+| Código | 108 | 60 | 15 | 2.94 | 3.12 |
+| Duplicados | 3120 | 2798 | 700 | 40.18 | 38.44 |
+| Texto adversario y script | 101 | 59 | 15 | 3.51 | 3.86 |
+
+Pico de RSS del proceso completo: 65 180 KiB. Se verificaron texto técnico, versión, firmas, celdas y enlace de referencia según fixture. El Markdown nativo conserva repetición de menús y avisos. `bun test test/tool-webfetch.test.ts` en el paquete core: **91 PASS**, incluida redirección con listener local autorizado. Sin candidato C medido. PDF, Office, páginas dinámicas, exactitud de respuestas y reducción atribuible a un adaptador quedan pendientes.
+
+## 2026-11-26 · Revalidación de inferencia y aislamiento
+
+- **PASS** `tests/fase6-modelo-local.py` con los artefactos recuperados de `/tmp/opencode`, sin descargas. x86_64, 10 GiB de RAM disponible y 122 GiB libres en el filesystem del proyecto al inspeccionar. Binario llama.cpp b12753, commit `679d8677b`; SHA-256 observado `29ec117ef0611eee883160be37829b50220cbc4bdaf476b47e40a26c0b4c6295`. GGUF SHA-256 observado `6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83`. Son huellas de los archivos locales. El servidor cargó el GGUF y completó las solicitudes.
+- El fixture HTTP espera `/health`, comprueba chat no vacío y alias, una respuesta SSE con varios eventos y `[DONE]`, y el nombre de la función en una llamada forzada. Lee el SSE completo antes de comprobarlo. Intenta terminar gateway y llama.cpp en `finally`. No ejerce errores de inferencia, cancelación del cliente, latencia del primer evento, consumo CPU/RAM, limpieza de descendientes ni aislamiento Bubblewrap. No ejecuta la herramienta.
+- **PASS** `qualify-linux` y `tests/fase4-linux.py`: catálogo restringido, cancelación sintética, limpieza, red privada y ausencia de acceso a un listener confirmado del host. En el entorno exterior restringido los intentos iniciales dieron EPERM al crear sockets o NETLINK_ROUTE. Los reintentos autorizados mantuvieron `--unshare-net`.
+- **PASS** 11 unitarias Python, F5 review y workspace, F6 gateway, F6 concurrencia HTTP, F6 CLI gateway sintético, F7 memoria, F7 contexto Python y loopback, F7.1 línea base, y F7.2 fixture de compuerta. F7.2 como capacidad sigue **BLOCKED**. D07 remoto sigue **BLOCKED**. La regresión de contexto en Bubblewrap usó `HOME=/tmp` junto a los montajes de implementación.
+
+### Sesión física con herramienta nativa
+
+`python3 -I -B tests/fase6-agente-local.py` reutiliza el constructor Bubblewrap del supervisor, con mounts de solo lectura para binarios y GGUF, configuración explícita, workspace temporal y red privada compartida por OpenCode, gateway y llama.cpp. El fixture fija dos hilos CPU, 4096 de contexto, dos pasos de agente y hasta 96 tokens de salida por solicitud. No requiere un puente hacia el host.
+
+- **PASS** lectura real de `sample.txt`. El evento de herramienta registró el marcador del archivo temporal que no aparecía en el prompt.
+- **PASS** la llamada real para `forbidden.txt` fue rechazada por permisos y su contenido quedó fuera de los eventos.
+- **FAIL** respuesta final. La sesión llegó a otro turno de inferencia y terminó con `stop`, un token de salida y sin texto que contuviera el resultado. En otros intentos el modelo repitió `read` o generó `limit: 0`; OpenCode rechazó el límite inválido. La primera regla del fixture usó una ruta absoluta y se corrigió al confirmar que OpenCode compara la ruta relativa. El resultado final del fixture sigue siendo fallo. Queda pendiente aislar si la respuesta vacía depende del modelo, la plantilla de chat o el historial de herramientas.
+- **PASS** F1 loopback completo con HOME temporal: lectura inválida, rutas, límites, múltiples llamadas, cancelación, reintento, contexto y cero solicitudes al señuelo.
