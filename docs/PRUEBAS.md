@@ -113,6 +113,10 @@ Tras reiniciar la sesión, `OPENROUTER_API_KEY` estuvo disponible y `GET /api/v1
 - D07 remoto: bloqueado. Sin autorización explícita nueva ni credencial/entorno remoto; no se realizaron solicitudes externas.
 - Regresión: 11 unittest, `qualify-linux`, `fase5-review`, `fase5-workspace`, `fase6-gateway`, `fase6-concurrencia`, `fase7-memoria`, `fase7-contexto`, `fase7-lineabase`, `fase7-repomap` y `git diff --check` limpios.
 
+## Inferencia física local · 2026-11-26
+
+- `python3 -I -B tests/fase6-modelo-local.py` pasó en CPU con `llama.cpp` `b12753` y Llama 3.2 1B Instruct Q4_K_M (~771 MiB). Verificó respuesta de chat, streaming SSE con `[DONE]` y tool call real (`leer_archivo`) a través del gateway. Se usaron dos hilos CPU; no se usó GPU ni red durante la inferencia.
+
 ## Estabilización · saturación del gateway (2026-11-25)
 
 - `python3 -I -B tests/fase6-concurrencia.py` pasó. Ráfaga de 12 clientes con límite 2: respuestas 200 válidas y rechazos 503 (`concurrency`), pico de upstream 2 y ninguna solicitud perdida. Ráfaga de 10 con endpoint de 1 s: 503 inmediato al exceso, pico 2 y recuperación a 200 tras liberar. 2 clientes streaming completaron `[DONE]`. Con timeout 1 s y endpoint de 2 s: 502 en ~1 s. Sin `BrokenPipe`.

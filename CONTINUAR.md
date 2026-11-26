@@ -38,7 +38,7 @@ Para evitar dispersión de conocimiento y duplicación:
 4. **Matriz de Reutilización F7.1 (`docs/MATRIZ_F7.md`, `tests/fase7-lineabase.py`)**:
    - D24: Repo Map aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor OpenCode V2; sin indexador independiente.
    - F7.2 (`tests/fase7-repomap.py`): compuerta ejecutada. El SHA fijado solo trae `highlights.scm` (36), sin consultas de símbolos ni servicio LSP; no hay runtime Tree-sitter disponible. Implementación bloqueada sin violar D24.
-   - Pendiente real: modelo local físico (sin binarios, puertos ni artefactos), D07 remoto (requiere autorización explícita) y runtime de símbolos del motor para Repo Map.
+   - Inferencia física verificada: `tests/fase6-modelo-local.py` pasó con `llama.cpp` CPU + Llama 3.2 1B Q4_K_M (~771 MiB), cubriendo chat, streaming y tool call a través del gateway. D07 remoto y runtime de símbolos del motor para Repo Map siguen pendientes.
 
 ## Comprobación rápida para reanudar sesión
 

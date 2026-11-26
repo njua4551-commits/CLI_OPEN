@@ -44,7 +44,7 @@ Checkpoint de código y pruebas verificado: `242c3b11e54da84d2e1805a0180e137a69f
 6. Regresión automatizada completa (11 unittest, qualify-linux, review, workspace, gateway, concurrencia, memoria, contexto, lineabase, compuerta repomap).
 
 ### Pendientes de Validación Física Real (Requieren Entorno / Hardware / Autorización)
-1. Inferencia con modelo físico local: **bloqueado**. No hay `ollama`, `vllm`, `llama-server` ni `llama-cli` en PATH, los puertos 11434/8000 no responden y no existen artefactos `*.gguf`/`*.safetensors` locales (0 encontrados). Requiere instalar/proveer un modelo físico y autorización.
+1. Inferencia con modelo físico local: **verificada** en CPU. `llama.cpp` `b12753` + Llama 3.2 1B Instruct Q4_K_M (~771 MiB), aislados en `/tmp/opencode`; `tests/fase6-modelo-local.py` pasó chat, streaming SSE y tool call real a través del gateway. No usa GPU ni red durante la inferencia. El entorno temporal puede limpiar esos artefactos; repetir la descarga antes de reanudar.
 2. Presupuesto y autorización para integración remota externa (D07): **bloqueado**. Requiere autorización explícita nueva y credencial/entorno remoto; no se habilitó ninguna ruta remota.
 3. Adaptación Repo Map (F7.2): **bloqueado con evidencia ejecutada** (`tests/fase7-repomap.py`). Reutilizar Tree-sitter/LSP no es posible en este entorno y crear un indexador independiente viola D24; siguiente paso: incorporar el runtime/consultas de símbolos del motor o clasificar `AUSENTE` con aprobación.
 

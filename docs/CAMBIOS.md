@@ -1,5 +1,10 @@
 # Cambios
 
+## 2026-11-26 · Inferencia física local verificada
+
+- `tests/fase6-modelo-local.py`: prueba real CPU-only contra `llama.cpp` `b12753` y Llama 3.2 1B Instruct Q4_K_M (~771 MiB). Pasaron chat, streaming SSE y tool call a través del gateway; sin GPU ni red durante la inferencia.
+- `README.md`, `ESTADO.md` y `CONTINUAR.md`: documentan requisitos, descarga temporal y resultado. D07 remoto continúa bloqueado.
+
 ## 2026-11-25 · Estabilización · saturación determinista del gateway
 
 - `implementacion/gateway/__main__.py`: el semáforo se adquiere en `process_request` antes de crear el hilo; al superar `CLI_OPEN_GATEWAY_MAX_CONCURRENCY` se responde HTTP 503 JSON (`gateway concurrency limit reached`) y se cierra. Se consume la solicitud antes de cerrar para evitar `BrokenPipe`/RST en clientes con cuerpo. Sin cola ilimitada de hilos.

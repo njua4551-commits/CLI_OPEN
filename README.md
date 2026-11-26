@@ -32,4 +32,22 @@ Revisa la evidencia de la fase 0 antes de autorizar la fase 1. No habilites escr
 - ESTADO.md: continuidad del proyecto.
 - upstream/opencode/: clon que se obtiene en el paso 1.
 
+## Prueba opcional de modelo local físico
+
+La prueba real usa CPU, no requiere GPU. Comprueba al menos 8 GiB de RAM
+disponible y 2 GiB de espacio temporal. Descarga aproximadamente 800 MiB:
+
+```sh
+mkdir -p /tmp/opencode/llama /tmp/opencode/models
+curl -L --fail -o /tmp/opencode/llama/llama.tar.gz \
+  https://github.com/ggml-org/llama.cpp/releases/download/b12753/llama-b12753-bin-ubuntu-x64.tar.gz
+curl -L --fail -o /tmp/opencode/models/llama-3.2-1b-instruct-q4_k_m.gguf \
+  https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf
+tar -xzf /tmp/opencode/llama/llama.tar.gz -C /tmp/opencode/llama
+python3 -I -B tests/fase6-modelo-local.py
+```
+
+La prueba ejecuta `llama-server` con dos hilos de CPU y valida chat, streaming
+SSE y tool call mediante el gateway. No se instala ningún servicio global.
+
 **Límite del paquete:** no incluye los bytes del repositorio oficial porque la descarga no estuvo disponible al prepararlo. No se ha realizado build ni prueba del agente.
