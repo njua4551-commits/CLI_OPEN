@@ -37,5 +37,6 @@ Pospón nuevas funcionalidades, incluido Computer Use, hasta estabilizar lo fund
 ## Autonomía dentro de la fase aprobada
 
 - Crear, editar y organizar archivos del proyecto, ejecutar builds, pruebas y validaciones, instalar dependencias previamente autorizadas, corregir errores, repetir pruebas y hacer commits locales. Agrupar tareas relacionadas y resolver decisiones técnicas menores dentro de la arquitectura aprobada.
+- Push autorizado de forma permanente por el usuario («push siempre») al cierre de cada iteración: `git push origin fase-1:main` sin `--force`. No publicar etiquetas, releases ni paquetes sin autorización específica.
 - Solicitar autorización para permisos administrativos, cambios en el sistema operativo, acciones destructivas, publicación en GitHub, cambios en la arquitectura principal, servicios de pago o una nueva fase. Respetar los permisos efectivos del entorno.
 - Actualizar `ESTADO.md`, `CONTINUAR.md`, `docs/DECISIONES.md`, `docs/CAMBIOS.md` y `docs/PRUEBAS.md` tras cada hito. Reutilizar código y evidencia del mismo SHA y entorno, y consultar fragmentos pertinentes para evitar investigaciones y consumo de tokens innecesarios.
