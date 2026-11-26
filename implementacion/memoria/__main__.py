@@ -13,7 +13,12 @@ import math
 import os
 from pathlib import Path
 import re
+import runpy
+import selectors
+import shutil
+import subprocess
 import sys
+import time
 
 MAX_TEXT = 8_192
 MAX_TAGS = 16
@@ -199,11 +204,65 @@ def encode_context(result):
     return json.dumps(result, ensure_ascii=True, separators=(",", ":"))
 
 
+def project_paths(project, query, safe_reference):
+    """List paths with ripgrep, the backend also used by OpenCode glob."""
+    binary = shutil.which("rg")
+    if not binary:
+        raise Rejected("ripgrep is required for path discovery")
+    terms = set(re.findall(r"[^\W_]{2,}", query.casefold()))
+    if not terms:
+        return []
+    deadline = time.monotonic() + 5
+    ceiling = 1024 * 1024
+    data = bytearray()
+    with subprocess.Popen([
+        binary, "--no-config", "--no-require-git", "--files", "--null", "--sort", "path",
+        "-g", "!{node_modules,dist,build,target,vendor}/**",
+        "-g", "!**/{node_modules,dist,build,target,vendor}/**",
+    ], cwd=project, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as scan:
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(scan.stdout, selectors.EVENT_READ)
+                while len(data) <= ceiling:
+                    if time.monotonic() >= deadline:
+                        raise Rejected("path discovery timed out")
+                    if not selector.select(max(0, deadline - time.monotonic())):
+                        raise Rejected("path discovery timed out")
+                    chunk = os.read(scan.stdout.fileno(), 65536)
+                    if not chunk:
+                        break
+                    data.extend(chunk)
+            if len(data) > ceiling:
+                raise Rejected("path discovery exceeded 1 MiB; select a smaller project root")
+            if scan.wait(timeout=max(0, deadline - time.monotonic())) not in (0, 1):
+                raise Rejected("ripgrep path discovery failed")
+        except subprocess.TimeoutExpired as exc:
+            raise Rejected("path discovery timed out") from exc
+        finally:
+            if scan.poll() is None:
+                scan.kill()
+    ranked = []
+    for raw in data.split(b"\0"):
+        path = os.fsdecode(bytes(raw))
+        if not safe_reference(path):
+            continue
+        parts = set(re.findall(r"[^\W_]+", path.casefold()))
+        hits = len(terms & parts)
+        if hits:
+            ranked.append((-hits, path))
+    return [path for _, path in sorted(ranked)]
+
+
 def context(args):
     if not 128 <= args.max_bytes <= 16384 or len(args.query) > 2048:
         raise Rejected("invalid context budget or query")
     ranked, _ = rank(args)
     result = {"authority": "none", "source": "project-memory", "entries": []}
+    if args.with_paths:
+        adapter = runpy.run_path(str(Path(__file__).resolve().parents[1] / "supervisor" / "context.py"))
+        result["paths"] = project_paths(resolve_project(args.project), args.query, adapter["safe_reference"])
+        result["entries"] = [entry for _, _, entry in ranked]
+        return adapter["validate_envelope"](result, args.max_bytes)
     used = len(encode_context(result)) + 1  # The emitted newline is part of the budget.
     for _, _, entry in ranked:
         try:
@@ -267,6 +326,7 @@ def main():
     context_parser.add_argument("--project", required=True)
     context_parser.add_argument("--query", required=True)
     context_parser.add_argument("--max-bytes", type=int, default=4096)
+    context_parser.add_argument("--with-paths", action="store_true", help="Incluir rutas relevantes con ripgrep")
     context_parser.set_defaults(handler=context)
 
     invalidate_parser = commands.add_parser("invalidate")

@@ -132,3 +132,9 @@ El resultado de `tool.execute.after` de `webfetch` no incluye una consulta expl�
 Si el job Linux falla en el arranque de Bubblewrap con `Failed RTM_NEWADDR`, comprobar el valor de `kernel.apparmor_restrict_unprivileged_userns`, la versión de Bubblewrap y la carga del perfil oficial `bwrap-userns-restrict`. El workflow lo carga desde el paquete de Ubuntu cuando la restricción está activa. Los tests siguen ejecutándose como usuario normal. La nueva ejecución remota está pendiente de publicación autorizada.
 
 El run posterior a `810af0c` superó AppArmor y falló al iniciar Python. F4 ahora usa el constructor del supervisor para conservar los montajes de bibliotecas del host. Al publicar, verificar las rutas `sandbox runtime` del job Linux y el resultado de ambos jobs. [Run de referencia](https://github.com/njua4551-commits/CLI_OPEN/actions/runs/45864416809)
+
+## F7.2 · Descubrimiento parcial por rutas
+
+Ejecutar `python3 -I -B implementacion/memoria context --project RUTA --query "auth" --with-paths --max-bytes 4096` con ripgrep disponible. Pasar el sobre emitido a `inject-context`. Las rutas se reservan hasta la mitad del presupuesto disponible del sobre. Cambiar la consulta para ampliar o acotar candidatos. Usar `grep` de OpenCode para buscar coincidencias con ruta y línea, y `read` paginado para recuperar el fragmento necesario bajo sus permisos. El listado no concede permiso de lectura.
+
+La exploración enumera rutas bajo demanda y no mantiene un índice ni una segunda base. Respeta las exclusiones de ripgrep y rechaza salidas de descubrimiento superiores a 1 MiB o que no finalicen en 5 s. Los nombres sensibles comunes, rutas ocultas y caracteres fuera del formato permitido quedan excluidos. Las referencias de memoria conservan su invalidación por hash.

@@ -165,3 +165,7 @@
 ## Montajes de bibliotecas en el fixture F4
 
 - F4 reutiliza el constructor Bubblewrap del supervisor y registra las rutas de Python y su cargador. Elimina la suposición de que `/lib64` corresponde siempre a `/usr/lib`.
+
+## F7.2 · Pistas de ruta con presupuesto de contexto compartido
+
+- Añadido `memoria context --with-paths`. Reutiliza ripgrep para listar rutas, ordena coincidencias léxicas y preserva el sobre de memoria con autoridad nula. El supervisor vuelve a validar las rutas y el presupuesto antes de incorporarlas.
