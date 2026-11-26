@@ -1,0 +1,7 @@
+{
+  "name": "cli-open-lectura-web",
+  "private": true,
+  "exports": {
+    "./server": "./index.mjs"
+  }
+}

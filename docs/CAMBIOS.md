@@ -1,5 +1,9 @@
 # Cambios
 
+## 2026-11-26 · Filtro HTML opcional
+
+- Se añadió un plugin del hook nativo de OpenCode para comprimir repeticiones adyacentes en Markdown procedente de HTML. Se calificó con benchmark determinista y webfetch real sobre loopback simulado en Bubblewrap. D07 continúa aplazado.
+
 ## 2026-11-26 · Cancelación SSE y catálogo OpenCode Console
 
 - El gateway cierra el upstream SSE al detectar que el cliente se desconectó, incluso si el proveedor está inactivo. La regresión sintética verifica el cierre antes del timeout.

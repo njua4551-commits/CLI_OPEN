@@ -2,7 +2,7 @@
 
 **Directiva vigente:** estabilizar CLI_OPEN antes de continuar el roadmap (gateway, streaming, concurrencia, APIs, sandbox, edición real, CI, pruebas reproducibles); luego modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
 
-Referencia pública: `c777a16a49547ac040cf35d2cb6d40e109bced8f`.
+Referencia pública: `dfcdd822b358b96f19be2d64c0ad1b61d1404f6a`.
 
 Checkpoint técnico de la prueba HTTP física: `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
 
@@ -71,7 +71,7 @@ La lectura permitida y el rechazo de una lectura fuera de la regla pasaron con O
 
 ## Lectura web y documentos
 
-Auditoría nativa y línea base HTML aislada ejecutadas. Adaptador, recuperación externa y conversión adicional aplazados. Véanse [decisiones](docs/DECISIONES.md) y [mediciones](docs/PRUEBAS.md).
+Auditoría nativa y línea base HTML aislada ejecutadas. Filtro HTML opt-in implementado y calificado con fixtures. Recuperación externa y conversión adicional aplazadas. Véanse [decisiones](docs/DECISIONES.md) y [mediciones](docs/PRUEBAS.md).
 
 ## Comparación con API real
 

@@ -258,7 +258,7 @@ La Fase 7 actualiza y amplía el alcance de inteligencia, contexto, eficiencia, 
 - Requiere resolver: presupuesto remoto verificado, aprobación explícita de contenido y destino, protección de credenciales, control de proveedores sin fallback silencioso, y privacidad verificada.
 - No habilitar inferencia remota de producto hasta superar estos controles específicos.
 
-- Priorizar una validación comparativa con una API gratuita más capaz antes de lectura web, Repo Map y Computer Use. Calificar primero la ruta remota con un upstream simulado. Después de confirmar credencial, cuota, destino, privacidad, costo cero y aprobación del fixture, ejecutar lectura permitida, denegación, replay tras herramienta y SSE con cancelación. El perfil de prueba y sus topes están en [CONTINUAR.md](CONTINUAR.md).
+- Aplazar temporalmente la inferencia remota mientras se estabiliza el procesamiento local de resultados web. Mantener Repo Map y Computer Use fuera de esta iteración. Calificar primero la ruta remota con un upstream simulado. Después de confirmar credencial, cuota, destino, privacidad, costo cero y aprobación del fixture, ejecutar lectura permitida, denegación, replay tras herramienta y SSE con cancelación. El perfil de prueba y sus topes están en [CONTINUAR.md](CONTINUAR.md).
 
 ### Fase 8 — Empaquetado, distribución y soporte anunciado
 - Prioridad inicial: Linux x86_64 funcional en CachyOS, Arch Linux, Ubuntu, Debian y Fedora.

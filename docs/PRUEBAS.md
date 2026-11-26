@@ -174,3 +174,19 @@ Pico de RSS del proceso completo: 65 180 KiB. Se verificaron texto técnico, ver
 - **PASS · Cancelación sintética.** `tests/fase6-d07-cancel.py` cerró el upstream inactivo dentro del umbral de 1 s tras desconectar al cliente, con timeout de socket de 5 s. El gateway sondea el cierre en intervalos de 100 ms mientras el stream está activo y hace shutdown del socket upstream. El cierre del lado de escritura del cliente se interpreta como cancelación durante SSE. El sondeo empieza después de establecer la conexión loopback.
 - **PASS · Regresiones.** 11 unitarias Python, gateway sintético, concurrencia y SSE con `[DONE]`, supervisor `qualify-linux` y calificación F4 de red privada. La autenticación del canal remoto, reserva acumulada y límites verificables de entrada de D07 siguen pendientes.
 - **PASS · CLI aislada.** `tests/fase6-cli-gateway.ts` completó el ciclo de herramienta y respuesta final con un proveedor simulado bajo Bubblewrap. El costo positivo y el upstream detenido se rechazaron sin fallback. El proveedor señuelo recibió cero solicitudes.
+
+## 2026-11-26 · Compresión HTML sin inferencia
+
+HEAD inicial `dfcdd822b358b96f19be2d64c0ad1b61d1404f6a`, árbol limpio y sincronizado con `origin/main`. A y B comparten exactamente los blobs del conversor y estimador del tag `v2.3.2`. C añade la compresión tras el conversor. Se ejecutó `bun tests/lectura-web-lineabase.ts .fase1/opencode` con `baseline` y `filtered`, en procesos separados, 50 repeticiones por fixture. Estimación por longitud, sin tokens facturados.
+
+| Fixture | Tokens A/B → C | Ahorro | Pared ms A/B → C | CPU ms A/B → C |
+|---|---:|---:|---:|---:|
+| Navegación repetida | 839 → 42 | 95,0 % | 100,27 → 77,65 | 166,57 → 146,46 |
+| Párrafos idénticos | 700 → 21 | 97,0 % | 33,99 → 35,38 | 72,45 → 72,76 |
+| Navegación con secciones adicionales | 641 → 49 | 92,4 % | 87,30 → 69,12 | 118,85 → 106,92 |
+| Documentación extensa única | 2757 → 2757 | 0 % | 176,53 → 224,08 | 254,69 → 365,91 |
+
+Pico RSS del proceso completo A/B y C: 80032 → 82972 KiB. Son observaciones de una corrida y las diferencias de tiempos incluyen variación del runtime y de la conversión nativa. Otros siete fixtures conservan sus tokens y bytes de salida: artículo, documentación breve, código, tabla, advertencia, contenido adversario y HTML Unicode malformado. Se conservaron cercas con párrafos repetidos, enlaces, código, encabezados y advertencias únicas. El caso sobredimensionado se entregó intacto.
+
+**PASS** integración con OpenCode compilado del tag fijado en Bubblewrap con `--unshare-net`: se observó el resultado Markdown original y comprimido en el historial del proveedor simulado. Una instrucción adversaria permaneció como texto de herramienta y el modelo simulado pidió una URL denegada. El servidor recibió cero peticiones a esa URL. El fixture no demuestra comportamiento de un modelo real frente a instrucciones adversarias. Sin API o inferencia remota. D07 sigue **BLOCKED**.
+**PASS** 91 casos nativos de `webfetch`, 11 unitarias Python, memoria, contexto y `qualify-linux` con cancelación, catálogo restringido y rechazo de plugin no aprobado. El repositorio CLI_OPEN no trae un workflow raíz al que añadir el fixture. Los comandos quedan reproducibles con los artefactos F1 existentes.

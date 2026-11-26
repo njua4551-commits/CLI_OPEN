@@ -2,7 +2,7 @@
 
 ## Punto de reanudación
 
-**Referencia pública:** `c777a16a49547ac040cf35d2cb6d40e109bced8f`.
+**Referencia pública:** `dfcdd822b358b96f19be2d64c0ad1b61d1404f6a`.
 
 **Checkpoint técnico de la prueba HTTP física:** `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
 **Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Posponer funcionalidades nuevas, incluido Computer Use.
@@ -102,3 +102,11 @@ El diagnóstico `python3 -I -B tests/fase6-d07-cancel.py` reproduce una desconex
 Usar `opencode/deepseek-v4.1-flash-free` como candidato para una sesión oficial permitida cuando haya un canal calificado. El catálogo público confirmó herramientas y costo anunciado cero. La API oficial restringe los modelos chat gratuitos al uso dentro de OpenCode. El proveedor nativo está presente en el motor fijado, pero su acceso directo no atraviesa el gateway local. El gateway independiente tampoco está autorizado como cliente gratuito. Calificar únicamente una ruta oficialmente admitida que preserve autenticación, límites acumulados, destino fijo y Bubblewrap. Si no existe una ruta admitida, mantener A–D remotas bloqueadas.
 
 El diagnóstico de cancelación SSE ahora pasa dentro de 1 s con proveedor simulado. Se mantienen pendientes la autenticación del canal y la reserva verificable de presupuesto acumulado de D07.
+
+## Lectura web · Filtro HTML opcional
+
+Con el OpenCode V2 fijado, añadir el directorio absoluto `implementacion/lectura-web` a `plugins` en una configuración confiable. Ejemplo: `{"plugins":["/ruta/a/CLI_OPEN/implementacion/lectura-web"]}`. Retirar esa entrada restaura la salida original. Mantener deshabilitada la recuperación externa en los perfiles aislados hasta calificar la red. Para obtener el original, desactivar el plugin o solicitar a `webfetch` el formato `html`, sujeto a los límites y permisos nativos. Los encabezados y secciones únicas se conservan en la salida filtrada.
+
+Con artefactos F1 ya disponibles, ejecutar `bun tests/lectura-web-lineabase.ts .fase1/opencode baseline` y repetir con `filtered`. El fixture de integración recibe como único argumento la ruta al binario OpenCode y debe ejecutarse en Bubblewrap con `--unshare-net`, HOME temporal, y montajes de solo lectura del binario, tests y plugin. Usa servidores de loopback dentro del namespace privado.
+
+D07 permanece **BLOCKED** por autenticación y presupuesto acumulado sin calificar y por falta de una ruta gratuita autorizada. La cuota temporal informada por el usuario añade una razón para aplazar inferencia. La cancelación SSE ya corregida se conserva. Retomar D07 con un proveedor autorizado después de demostrar autenticación, reserva y aislamiento con un proveedor simulado.
