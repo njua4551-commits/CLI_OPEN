@@ -89,3 +89,16 @@ Configurar el proveedor nativo `@opencode/ai/providers/openai-compatible` con el
 Para esta prueba, proponer concurrencia 1, hasta 6 solicitudes de inferencia, 4096 tokens de entrada y 384 de salida por solicitud, plazo global 120 s y cero reintentos o fallback. Reservar cada solicitud y su presupuesto antes de enviar. Fallar si OpenCode intenta llamadas auxiliares fuera del presupuesto, si la cuota o precio no se confirma, o si el componente remoto no puede impedir rutas alternativas. Cancelar el upstream al cancelar el cliente. Verificar el costo y uso reportados o registrar que no se pudieron confirmar. El control de entrada requiere una cota verificable para el modelo o rechazo antes de enviar.
 
 A y B deben usar el fixture temporal y la misma política de lectura que la sesión física. C debe repetir el historial sintético con roles y el mismo identificador en `assistant.tool_calls` y `tool.tool_call_id`. Usar SSE en A y B para D y reservar la solicitud restante para cancelar un stream controlado. El error de transporte puede probarse con fixture local. Antes de usar la API, calificar con un upstream simulado un canal de destino fijo desde el espacio de red privado y comprobar cancelación, bloqueo de ruta directa, redirecciones y ausencia de credenciales dentro del sandbox.
+
+
+### Revalidación previa de D07
+
+La credencial OpenRouter no se observó en el entorno efectivo, en los metadatos activos o inactivos de OpenCode ni en los archivos de inicio inspeccionados. La cuota autenticada sigue pendiente. Usar el mecanismo seguro del entorno para hacerla disponible al proceso confiable, sin incluirla en el chat ni en archivos del proyecto. La consulta autenticada de cuota se limita a `GET /api/v1/key` con salida filtrada.
+
+El diagnóstico `python3 -I -B tests/fase6-d07-cancel.py` reproduce una desconexión del cliente con un SSE upstream inactivo. El socket upstream sobrevivió la ventana de cancelación de 1 s y cerró con el timeout configurado de 5 s. Antes de habilitar el perfil remoto, calificar cancelación independiente del progreso del stream, autenticación del canal y reserva de presupuesto acumulado del lado confiable. Los controles de loopback local no acreditan esos tres requisitos.
+
+## OpenCode Console gratuito · D07
+
+Usar `opencode/deepseek-v4.1-flash-free` como candidato para una sesión oficial permitida cuando haya un canal calificado. El catálogo público confirmó herramientas y costo anunciado cero. La API oficial restringe los modelos chat gratuitos al uso dentro de OpenCode. El proveedor nativo está presente en el motor fijado, pero su acceso directo no atraviesa el gateway local. El gateway independiente tampoco está autorizado como cliente gratuito. Calificar únicamente una ruta oficialmente admitida que preserve autenticación, límites acumulados, destino fijo y Bubblewrap. Si no existe una ruta admitida, mantener A–D remotas bloqueadas.
+
+El diagnóstico de cancelación SSE ahora pasa dentro de 1 s con proveedor simulado. Se mantienen pendientes la autenticación del canal y la reserva verificable de presupuesto acumulado de D07.

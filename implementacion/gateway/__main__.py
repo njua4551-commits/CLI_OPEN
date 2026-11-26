@@ -13,7 +13,9 @@ import threading
 import http.client
 import json
 import re
+import selectors
 import signal
+import socket
 import sys
 
 def _env_int(name, default, minimum=1, maximum=None):
@@ -216,7 +218,37 @@ def complete(port, model, request, stream=None):
     return content_type, data
 
 
-def complete_streaming(port, model, request, sink):
+@contextmanager
+def cancel_on_disconnect(downstream, upstream):
+    finished = threading.Event()
+    cancelled = threading.Event()
+
+    def watch(selector):
+        while not finished.wait(0.1):
+            try:
+                if not selector.select(0) or downstream.recv(1, socket.MSG_PEEK):
+                    continue
+            except OSError:
+                pass
+            cancelled.set()
+            try:
+                upstream.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            return
+
+    with selectors.DefaultSelector() as selector:
+        selector.register(downstream, selectors.EVENT_READ)
+        watcher = threading.Thread(target=watch, args=(selector,), daemon=True)
+        watcher.start()
+        try:
+            yield cancelled
+        finally:
+            finished.set()
+            watcher.join()
+
+
+def complete_streaming(port, model, request, sink, downstream):
     """Relay an upstream response to ``sink`` without buffering it whole.
 
     Validates every SSE event as it arrives and enforces the same size and
@@ -234,45 +266,53 @@ def complete_streaming(port, model, request, sink):
     if len(payload) > MAX_REQUEST:
         raise Rejected("encoded request too large")
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=TIMEOUT)
-    total = 0
-    buffer = b""
     try:
-        connection.request("POST", "/v1/chat/completions", payload, {"Content-Type": "application/json"})
-        with connection.getresponse() as response:
-            if response.status != 200:
-                raise Rejected("local endpoint rejected the request")
-            content_type = response.getheader("Content-Type", "application/json")
-            is_stream = content_type.split(";")[0].strip() == "text/event-stream"
-            while True:
-                chunk = response.read(4096)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > MAX_RESPONSE:
-                    raise Rejected("response too large")
-                if is_stream:
-                    buffer += chunk
-                    while b"\n" in buffer:
-                        line, buffer = buffer.split(b"\n", 1)
-                        line = line.rstrip(b"\r")
-                        if not line:
-                            continue
-                        if not line.startswith(b"data: "):
-                            continue
-                        raw = line[6:].strip()
-                        if raw == b"[DONE]":
-                            continue
-                        parsed = json.loads(raw)
-                        if not isinstance(parsed, dict) or not model_matches(parsed.get("model"), model):
-                            raise Rejected("invalid stream or unexpected model")
-                        check_usage(parsed.get("usage") or {})
-                sink(chunk)
-            if is_stream and buffer.strip():
-                raise Rejected("truncated stream")
-            if is_stream and total == 0:
-                raise Rejected("empty stream")
+        connection.connect()
+        with cancel_on_disconnect(downstream, connection.sock) as cancelled:
+            connection.request("POST", "/v1/chat/completions", payload, {"Content-Type": "application/json"})
+            with connection.getresponse() as response:
+                return relay_stream(response, model, sink, cancelled)
     finally:
         connection.close()
+
+
+def relay_stream(response, model, sink, cancelled):
+    total = 0
+    buffer = b""
+    if response.status != 200:
+        raise Rejected("local endpoint rejected the request")
+    content_type = response.getheader("Content-Type", "application/json")
+    is_stream = content_type.split(";")[0].strip() == "text/event-stream"
+    while True:
+        chunk = response.read(4096)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_RESPONSE:
+            raise Rejected("response too large")
+        if is_stream:
+            buffer += chunk
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                line = line.rstrip(b"\r")
+                if not line:
+                    continue
+                if not line.startswith(b"data: "):
+                    continue
+                raw = line[6:].strip()
+                if raw == b"[DONE]":
+                    continue
+                parsed = json.loads(raw)
+                if not isinstance(parsed, dict) or not model_matches(parsed.get("model"), model):
+                    raise Rejected("invalid stream or unexpected model")
+                check_usage(parsed.get("usage") or {})
+        sink(chunk)
+    if cancelled.is_set():
+        return content_type
+    if is_stream and buffer.strip():
+        raise Rejected("truncated stream")
+    if is_stream and total == 0:
+        raise Rejected("empty stream")
     return content_type
 
 
@@ -340,7 +380,7 @@ def serve(listen, port, model):
                         self.wfile.flush()
 
                     try:
-                        content_type = complete_streaming(port, model, request, sink)
+                        complete_streaming(port, model, request, sink, self.connection)
                     except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
                         print(f"rejected: {exc!r}", file=sys.stderr, flush=True)
                         try:

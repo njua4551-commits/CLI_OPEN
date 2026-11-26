@@ -1,5 +1,14 @@
 # Cambios
 
+## 2026-11-26 · Cancelación SSE y catálogo OpenCode Console
+
+- El gateway cierra el upstream SSE al detectar que el cliente se desconectó, incluso si el proveedor está inactivo. La regresión sintética verifica el cierre antes del timeout.
+- Se comprobó el catálogo oficial y se documentó la restricción de acceso gratuito. Sin inferencia remota.
+
+## 2026-11-26 · Calificación simulada de D07
+
+- Se verificó la disponibilidad local de OpenRouter por metadatos y se añadió un diagnóstico reproducible de cancelación durante SSE inactivo. Sin modificaciones al gateway ni a Bubblewrap.
+
 ## 2026-11-26 · Prevalidación comparativa con API
 
 - Se verificó el catálogo público, se documentó un perfil de prueba con Gemma y se registraron los bloqueos de credencial, consentimiento y transporte D07. Sin cambios de ejecución ni solicitudes de inferencia.

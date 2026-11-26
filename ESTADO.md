@@ -76,3 +76,10 @@ Auditoría nativa y línea base HTML aislada ejecutadas. Adaptador, recuperació
 ## Comparación con API real
 
 **BLOCKED.** El catálogo público mostró un endpoint gratuito de Gemma con herramientas. La cuenta y cuota de OpenRouter no pudieron verificarse. La integración OpenAI activa en OpenCode carece de evidencia de acceso autorizado a una API de costo cero para este fixture. D07 sigue pendiente de consentimiento específico y de una ruta supervisada calificada con presupuesto compartido. A–D remotas sin ejecutar. El diagnóstico comparativo con Llama 3.2 1B sigue **INCONCLUSIVE**. Véase [continuidad](CONTINUAR.md).
+
+
+**Revalidación D07:** destino, límites por solicitud y aislamiento local pasaron con proveedor simulado. **FAIL** cancelación durante SSE inactivo. **BLOCKED** autenticación del canal, presupuesto compartido, cuota OpenRouter y ejecución remota. Bubblewrap y el gateway local conservan su configuración.
+
+## OpenCode Console gratuito
+
+**PASS** consulta del catálogo oficial y regresión de cancelación con upstream SSE inactivo. **BLOCKED** sesión remota de CLI_OPEN: los modelos chat gratuitos de Console se restringen a OpenCode y el canal actual solo admite loopback. El acceso efectivo y la cuota de la sesión no se acreditaron. Véase [PRUEBAS.md](docs/PRUEBAS.md).
