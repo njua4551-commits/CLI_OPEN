@@ -26,6 +26,14 @@ Pospón nuevas funcionalidades, incluido Computer Use, hasta estabilizar lo fund
 - Multiagente: priorizar un solo agente. Utilizar múltiples agentes únicamente para investigaciones independientes que se beneficien del paralelismo; evitar que varios agentes modifiquen simultáneamente los mismos archivos.
 - Cierre de cada fase aprobada: actualizar ESTADO.md con SHA, fase, cambios, pruebas, evidencia, límites, pendientes y siguiente puerta; presentar diff y esperar aprobación. No escribir ESTADO.md durante la inspección inicial.
 
+## Mapa documental (no crear duplicados)
+
+- Estado y checkpoint: `ESTADO.md`. Reanudación: `CONTINUAR.md`. Plan/puertas: `PLAN_PARA_CODEX.md` (equivale a ROADMAP). Arquitectura/ADRs: `docs/DECISIONES.md` (equivale a ARCHITECTURE). Pruebas/evidencia: `docs/PRUEBAS.md` (equivale a AUDIT). Cambios: `docs/CAMBIOS.md`. Matriz F7: `docs/MATRIZ_F7.md`. Resumen técnico: `INFORME_TECNICO.md`.
+- No crear `PROJECT_STATE.md`, `ARCHITECTURE.md`, `ROADMAP.md` ni `AUDIT.md`: ya existen los equivalentes anteriores.
+- Último checkpoint verificado: `26aea30` (rama `fase-1`, sincronizada con `origin/main`).
+- Verificado: F0–F7, núcleo OpenCode V2, aislamiento bubblewrap, supervisor/broker/gateway, presupuestos, cancelación, gateway con streaming/concurrencia acotada/alias exactos, edición aislada en subdirectorios, memoria persistente, envoltura de contexto no confiable.
+- Pendiente de prueba real: inferencia con modelo local físico, autorización remota de presupuesto (D07), concurrencia bajo carga con clientes HTTP reales, adaptación F7.2 (Repo Map).
+
 ## Autonomía dentro de la fase aprobada
 
 - Crear, editar y organizar archivos del proyecto, ejecutar builds, pruebas y validaciones, instalar dependencias previamente autorizadas, corregir errores, repetir pruebas y hacer commits locales. Agrupar tareas relacionadas y resolver decisiones técnicas menores dentro de la arquitectura aprobada.

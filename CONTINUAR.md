@@ -2,53 +2,72 @@
 
 ## Punto de reanudación
 
-**Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
+**Checkpoint verificado:** `26aea308fcf6dae2e3deeb4f3b4d22170e394a14` (`26aea30`). Rama `fase-1` / `origin/main`.
+**Directiva vigente:** priorizar la estabilización de CLI_OPEN (auditoría de gateway, streaming, concurrencia, APIs, sandbox, edición real, CI y pruebas reproducibles) antes de continuar el roadmap; después, modelo local real e integración remota con presupuestos y autorización explícita. Posponer funcionalidades nuevas, incluido Computer Use.
 
-El proyecto cerró la **Fase 6 (P3)** para el perfil local sintético. La **Fase 7 está en curso** (módulo 1 de 5 cerrado). Las fases 1–5 se cerraron para los flujos acotados descritos en la evidencia. CachyOS Linux x86_64 es el entorno probado. Arch, Ubuntu, Debian, Fedora, WSL2, Windows y macOS requieren validación propia. Continuar la Fase 7 en el orden aprobado: contexto, enrutador, autocorrección y subagentes.
+## Mapa de Documentación y Equivalencias
+Para evitar dispersión de conocimiento y duplicación:
+- **Estado del proyecto:** `ESTADO.md` (Equivalente a `PROJECT_STATE.md`)
+- **Instrucciones para agentes:** `AGENTS.md`
+- **Plan estratégico y gobernanza:** `PLAN_PARA_CODEX.md` (Equivalente a `ROADMAP.md` + directrices)
+- **Decisiones arquitectónicas:** `docs/DECISIONES.md` (D01 a D24) (Equivalente a `ARCHITECTURE.md`)
+- **Registro de cambios y parches:** `docs/CAMBIOS.md`
+- **Matriz de pruebas y evidencia:** `docs/PRUEBAS.md` (Equivalente a `AUDIT.md`)
+- **Informe técnico detallado:** `INFORME_TECNICO.md`
 
-1. Leer `AGENTS.md`, `PLAN_PARA_CODEX.md`, `INFORME_TECNICO.md` y `ESTADO.md`. Consultar `docs/DECISIONES.md`, `docs/CAMBIOS.md` y `docs/PRUEBAS.md` para decisiones y pruebas ya verificadas.
-2. Comprobar `git status -sb` y `git log -1 --oneline`. El remoto del proyecto es [CLI_OPEN](https://github.com/njua4551-commits/CLI_OPEN). El checkout independiente de OpenCode, si está disponible, está en `upstream/upstream/opencode`.
-3. **Tareas cerradas de Fase 6:** la CLI fijada se conectó al gateway por el proveedor OpenAI-compatible (`tests/fase6-cli-gateway.ts`), rechazando costo positivo y endpoint caído sin proveedor alternativo.
-4. **Fase 7 en curso (Módulos 1 y 2 cerrados):** memoria persistente con invalidación en `implementacion/memoria/`. El sobre de contexto no confiable (`authority: none`) se integra mediante `implementacion/supervisor/context.py` (`inject-context`). `tests/fase7-contexto-loopback.ts` y el caso `context` de `tests/fase1-loopback.ts` demuestran que OpenCode recibe el contexto en loopback, se preservan las restricciones del supervisor, se bloquean intentos adversarios de crear archivos fuera del workspace (`unauthorized-write`) y el señuelo recibe cero solicitudes.
-5. **Roadmap consolidado incorporado:** Plan versión 3.0 estructurado en subfases F7.1 a F7.8, D07, F8 y F9. Principio obligatorio: "REUTILIZAR ANTES DE EXTENDER. EXTENDER ANTES DE REEMPLAZAR".
-6. **Siguiente paso:** F7.1 avanzado con `docs/MATRIZ_F7.md` y `tests/fase7-lineabase.py`. F7.2 queda condicionado a D24: adaptador sobre Tree-sitter/LSP/ripgrep del motor fijado, sin indexador independiente. Consultar la directiva vigente antes de continuar.
-7. **Aplazado por D07:** seguimiento de presupuesto remoto, aprobación por contenido y calificación de un modelo físico local. No habilitar inferencia remota de producto sin una autorización nueva. Mantener el perfil local sin salida externa. Actualizar los registros tras cada hito.
+## Resumen del Estado de la Base de Código
 
-## Base técnica y archivos
+1. **Gateway HTTP de Inferencia (`implementacion/gateway/__main__.py`)**:
+   - Alias de modelo estrictos (`model_matches`): Coincidencia exacta o pares explícitos `alias=canonical` en `CLI_OPEN_GATEWAY_MODEL_ALIASES`. Coincidencia parcial deshabilitada.
+   - Concurrencia acotada: `_BoundedThreadingHTTPServer` usa `CLI_OPEN_GATEWAY_MAX_CONCURRENCY` (1..64, default 4).
+   - SSE y Timeouts: Streaming passthrough sin amortiguador total, captura de desconexión mid-stream y emisión de evento de error SSE `{"error":"local gateway rejected the request"}`. Timeouts de socket mediante `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (default 30 s, máx 300 s).
+   - Campos OpenAI amplia compatibilidad (`reasoning_effort`, `response_format`, `parallel_tool_calls`, `seed`, `stop`, etc.).
 
-- Motor y CLI: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`. No editar el núcleo por rutina. La copia compilada y Bun 1.4.4 están en `.fase1/` en el entorno de pruebas. `upstream/` y `.fase1/` están excluidos de Git y pueden faltar en otro equipo. Consultar `ESTADO.md` y `docs/PRUEBAS.md` para reconstruir la base con la instalación, copia y build ya documentados.
-- Supervisor y sandbox: `implementacion/supervisor/__main__.py`. PLAN carece de ejecución y escritura. DIAG expone únicamente el broker de solo lectura en `implementacion/broker/__main__.py`.
-- Edición: `workspace.py`, `workspace_opencode.ts`, `workspace_worker.py` y `workspace_git.py` bajo `implementacion/supervisor/`. La herramienta nativa escribe en una copia. Una aprobación de revisión puede crear una rama Git separada. La rama activa, el índice y el árbol de trabajo quedan fuera de esa operación. Véase `docs/evidencias/FASE5.md`.
-- Gateway actual: `implementacion/gateway/__main__.py`. Acepta JSON por stdin, de una única solicitud a `127.0.0.1`. El fixture está en `tests/fase6-gateway.py` y la evidencia en `docs/evidencias/FASE6.md`.
-- Incidencia no bloqueante: `mcp list` puede estar vacío en frío. `--standalone run` sí descubre e invoca el broker en la sesión probada. Véase `docs/evidencias/FASE3.md`.
+2. **Edición Real y Sandbox (`implementacion/supervisor/workspace.py`)**:
+   - `snapshot` realiza traversal seguro de subdirectorios mediante `openat` con `O_RDONLY | O_DIRECTORY | O_NOFOLLOW` para cada componente intermedio, impidiendo redirecciones por enlaces simbólicos.
+   - `MAX_FILE` ampliado a 256 KiB.
+   - `CODE_EXTENSIONS` soporta extensiones de código real (`py`, `ts`, `tsx`, `js`, `json`, `md`, `go`, `rs`, `c`, `cpp`, `yaml`, `sql`, `html`, etc.).
+   - Validación estricta de rutas (sin `..`, absolutas ni componentes vacíos). Creación automática de subdirectorios padres en la copia.
+   - Artefactos configurables mediante `CLI_OPEN_ARTIFACTS`.
 
-## Validación focalizada
+3. **Memoria Persistente y Contexto (`implementacion/memoria/`, `implementacion/supervisor/context.py`)**:
+   - Almacén JSONL fuera del repo. Invalidación automática por SHA-256 de archivos referenciados.
+   - Inyección de contexto con sobre de autoridad nula (`[UNTRUSTED_PROJECT_MEMORY_CONTEXT authority=none]`).
 
-Usar solo las pruebas afectadas por el cambio. Ya pasaron 440 pruebas upstream, los ocho casos de CLI en loopback, la integración MCP, la calificación Bubblewrap, la edición nativa con publicación Git y el fixture HTTP del gateway. `docs/PRUEBAS.md` registra su alcance, entorno y límites.
+4. **Matriz de Reutilización F7.1 (`docs/MATRIZ_F7.md`, `tests/fase7-lineabase.py`)**:
+   - D24: Repo Map aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor OpenCode V2; sin indexador independiente.
+
+## Comprobación rápida para reanudar sesión
+
+Ejecutar la suite completa de pruebas desde la raíz del proyecto:
 
 ```sh
+# 1. Pruebas unitarias Python (11 pasadas)
 python3 -B -m unittest discover -s tests
+
+# 2. Calificación Linux / Sandbox
 python3 -I -B implementacion/supervisor qualify-linux
+
+# 3. Fixtures de Edición Aislada
 python3 -I -B tests/fase5-review.py
+python3 -I -B tests/fase5-workspace.py
+
+# 4. Fixture HTTP Gateway
 python3 -I -B tests/fase6-gateway.py
+
+# 5. Fixtures Memoria y Contexto
+python3 -I -B tests/fase7-memoria.py
+python3 -I -B tests/fase7-contexto.py
+
+# 6. Suite de Línea Base F7.1
+python3 -I -B tests/fase7-lineabase.py
+
+# 7. Verificación de formato e higiene Git
 git diff --check
 ```
 
-Los tres recorridos de aislamiento y transporte requieren un entorno que permita las funciones específicas de Bubblewrap o loopback. Ejecutar el fixture de gateway dentro de una red privada. Si el entorno bloquea sockets o namespaces, registrar el error y conservar PLAN/DIAG. La existencia de Bubblewrap en PATH no acredita aislamiento. No abrir red externa para resolver una prueba local.
+## Prompt para iniciar la siguiente sesión
 
-Para repetir únicamente el fixture HTTP en la topología Linux ya probada, ejecutar desde la raíz del proyecto:
-
-```sh
-bwrap --die-with-parent --unshare-user --unshare-pid --unshare-ipc \
-  --unshare-net --unshare-uts --disable-userns \
-  --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 \
-  --dev /dev --proc /proc --tmpfs /tmp \
-  --ro-bind "$PWD/implementacion" /implementacion --ro-bind "$PWD/tests" /tests \
-  --clearenv --setenv PATH /usr/bin:/bin /usr/bin/python3 -I -B /tests/fase6-gateway.py
+```text
+Lee AGENTS.md, ESTADO.md, CONTINUAR.md y docs/DECISIONES.md. Confirma git status en el commit 26aea30. Ejecuta la suite de regresión completa (unittest discover, qualify-linux, fase6-gateway, fase7-lineabase) y continúa con la verificación de estabilización o el siguiente paso autorizado según las reglas del proyecto.
 ```
-
-## Límites de continuidad
-
-No adjuntar secretos al código, logs, prompts ni Git. Las credenciales autorizadas se inyectan en el entorno de la sesión que las necesita. No usar sudo, publicar sin autorización ni cambiar de motor. Priorizar Linux x86_64 y mantener protocolos y componentes portables, con límites de archivos, red, procesos y permisos. Los documentos conservan decisiones y evidencia; las autorizaciones se comprueban en la sesión vigente.
-
-Para verificar el checkpoint de contexto y memoria: `python3 -I -B tests/fase7-contexto.py` y `.fase1/tools/bun-linux-x64-baseline/bun tests/fase7-contexto-loopback.ts .fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode`. Uso local: `python3 -I -B implementacion/memoria context --project . --query loopback --max-bytes 4096`. El sobre se inyecta como datos no confiables mediante `python3 -I -B implementacion/supervisor inject-context`.

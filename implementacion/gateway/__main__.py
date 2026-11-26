@@ -32,7 +32,11 @@ MAX_RESPONSE = _env_int("CLI_OPEN_GATEWAY_MAX_RESPONSE", 65_536, 1024, 1_048_576
 MAX_TOKENS = _env_int("CLI_OPEN_GATEWAY_MAX_TOKENS", 512, 1, 8192)
 MAX_MESSAGES = _env_int("CLI_OPEN_GATEWAY_MAX_MESSAGES", 24, 1, 256)
 MAX_TOOLS = _env_int("CLI_OPEN_GATEWAY_MAX_TOOLS", 64, 1, 512)
-TIMEOUT = _env_int("CLI_OPEN_GATEWAY_TIMEOUT", 30, 1, 300)
+TIMEOUT = _env_int(
+    "CLI_OPEN_GATEWAY_TIMEOUT_SECONDS",
+    _env_int("CLI_OPEN_GATEWAY_TIMEOUT", 30, 1, 300),
+    1, 300,
+)
 MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 REQUEST_FIELDS = {"model", "messages", "max_tokens", "max_completion_tokens", "tools", "stream", "stream_options",
                   "tool_choice", "temperature", "top_p", "frequency_penalty", "presence_penalty", "seed", "stop",

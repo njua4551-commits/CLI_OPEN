@@ -1,5 +1,11 @@
 # Cambios
 
+## 2026-11-25 · Consolidación documental para traspaso
+
+- `ESTADO.md` y `CONTINUAR.md` reescritos: checkpoint `26aea30`, mapa de equivalencias documentales, estado por fase y clasificación verificado/pendiente.
+- `AGENTS.md` añade el mapa documental, el checkpoint verificado y las áreas pendientes de prueba real.
+- Sin cambios de código ni de lógica; solo documentación.
+
 ## 2026-11-21 · Continuidad y base de la Fase 1
 
 - `ESTADO.md` registra el cierre de Fase 0, el SHA seleccionado y el procedimiento de reanudación.
