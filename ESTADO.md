@@ -20,12 +20,12 @@ Checkpoint de código y pruebas verificado: `0e4fa4ee216e153a3634e8e0ace594fe661
 
 ### 2. Fase 6 — Gateway Inferencia Local (Estabilizado & Verificado)
 - Gateway local (`implementacion/gateway/__main__.py`):
-  - Concurrencia acotada con `_BoundedThreadingHTTPServer` (`CLI_OPEN_GATEWAY_MAX_CONCURRENCY`).
+  - Concurrencia acotada con `_BoundedThreadingHTTPServer` (`CLI_OPEN_GATEWAY_MAX_CONCURRENCY`). Al saturarse, el exceso se rechaza de inmediato con HTTP 503 sin crear hilos en cola.
   - Coincidencia estricta de modelos: `model_matches` requiere ID exacto o par explícito autorizado (`alias=canonical`). Sin coincidencia por prefijo.
   - Streaming SSE (`complete_streaming`): passthrough con validación por línea, timeouts por socket/entorno (`CLI_OPEN_GATEWAY_TIMEOUT_SECONDS`), y retransmisión de eventos de error SSE con cierre de conexión.
   - Compatibilidad ampliada de API OpenAI (`frequency_penalty`, `presence_penalty`, `seed`, `stop`, `parallel_tool_calls`, `reasoning_effort`, `response_format`, etc.).
   - Fixture HTTP y CLI en loopback pasados (`tests/fase6-gateway.py`, `tests/fase6-cli-gateway.ts`).
-  - Carga real con `http.client`: 12 solicitudes y 8 en streaming concurrentes, límite 2 efectivo (pico medido 2), timeout de entorno aplicado a 1 s (`tests/fase6-concurrencia.py`). Timeout acepta `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (nombre documentado) y el alias legado `CLI_OPEN_GATEWAY_TIMEOUT`.
+  - Carga real con `http.client`: 12 clientes en ráfaga, 2 en streaming y 10 bajo saturación; límite 2 efectivo (pico medido 2), exceso rechazado con 503 y timeout de entorno aplicado a 1 s (`tests/fase6-concurrencia.py`). Timeout acepta `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (nombre documentado) y el alias legado `CLI_OPEN_GATEWAY_TIMEOUT`.
 
 ### 3. Fase 7 — Memoria Persistente y Contexto (En Curso / Módulos 1 y 2 Cerrados)
 - Memoria por proyecto (`implementacion/memoria/`): JSONL fuera del repo, invalidación automática por SHA-256 de archivos referenciados, ranking por presupuesto de tokens (`tests/fase7-memoria.py`).

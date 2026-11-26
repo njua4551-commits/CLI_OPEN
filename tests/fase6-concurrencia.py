@@ -135,18 +135,44 @@ def main():
 
         results = load(gateway, REQUEST, 12)
         assert len(results) == 12
-        assert all(status == 200 for status, _ in results)
-        assert all(json.loads(body)["choices"][0]["message"]["content"] == "ok" for _, body in results)
-        assert fixture.requests == 12, fixture.requests
+        assert set(status for status, _ in results) <= {200, 503}
+        successes = [body for status, body in results if status == 200]
+        assert len(successes) >= 2, len(successes)
+        assert all(json.loads(body)["choices"][0]["message"]["content"] == "ok" for body in successes)
+        assert all(b"concurrency" in body for status, body in results if status == 503)
+        assert fixture.requests == len(successes), (fixture.requests, len(successes))
         assert fixture.peak == 2, fixture.peak
 
         fixture.stream = True
+        fixture.peak = 0
         stream_request = {**REQUEST, "stream": True}
-        results = load(gateway, stream_request, 8)
+        results = load(gateway, stream_request, 2)
         assert all(status == 200 for status, _ in results)
         assert all(b"data: [DONE]" in body for _, body in results)
         assert fixture.peak <= 2, fixture.peak
         fixture.stream = False
+        child.terminate()
+        child.wait(timeout=5)
+
+        # Saturación: el exceso se rechaza con 503 sin encolar hilos.
+        fixture.peak = 0
+        fixture.requests = 0
+        fixture.delay = 1.0
+        child, gateway = start_gateway(upstream, 2, 10)
+        burst = load(gateway, REQUEST, 10)
+        statuses = [status for status, _ in burst]
+        assert statuses.count(200) >= 2, statuses
+        assert statuses.count(503) >= 1, statuses
+        assert set(statuses) == {200, 503}, statuses
+        for status, body in burst:
+            if status == 503:
+                assert b"concurrency" in body, body
+            else:
+                assert json.loads(body)["choices"][0]["message"]["content"] == "ok"
+        assert fixture.peak == 2, fixture.peak
+        assert fixture.requests == statuses.count(200), fixture.requests
+        fixture.delay = 0
+        assert post(gateway, REQUEST)[0] == 200
         child.terminate()
         child.wait(timeout=5)
 
@@ -160,7 +186,7 @@ def main():
         assert status == 502, status
         assert json.loads(body)["error"]
         assert 0.9 <= elapsed < 1.9, elapsed
-        print("PASS fase6 concurrencia: 12+8 clientes HTTP reales, limite 2 y timeout 1s")
+        print("PASS fase6 concurrencia: 12+2+10 clientes HTTP reales, limite 2, 503 y timeout 1s")
     finally:
         if child is not None:
             child.kill()

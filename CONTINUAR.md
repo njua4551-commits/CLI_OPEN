@@ -19,10 +19,10 @@ Para evitar dispersión de conocimiento y duplicación:
 
 1. **Gateway HTTP de Inferencia (`implementacion/gateway/__main__.py`)**:
    - Alias de modelo estrictos (`model_matches`): Coincidencia exacta o pares explícitos `alias=canonical` en `CLI_OPEN_GATEWAY_MODEL_ALIASES`. Coincidencia parcial deshabilitada.
-   - Concurrencia acotada: `_BoundedThreadingHTTPServer` usa `CLI_OPEN_GATEWAY_MAX_CONCURRENCY` (1..64, default 4).
+   - Concurrencia acotada: `_BoundedThreadingHTTPServer` usa `CLI_OPEN_GATEWAY_MAX_CONCURRENCY` (1..64, default 4). Al saturarse, responde 503 de inmediato en vez de encolar hilos.
    - SSE y Timeouts: Streaming passthrough sin amortiguador total, captura de desconexión mid-stream y emisión de evento de error SSE `{"error":"local gateway rejected the request"}`. Timeouts de socket mediante `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (default 30 s, máx 300 s).
    - Campos OpenAI amplia compatibilidad (`reasoning_effort`, `response_format`, `parallel_tool_calls`, `seed`, `stop`, etc.).
-   - Carga real (`tests/fase6-concurrencia.py`): 12 clientes y 8 en streaming con `http.client`, pico de concurrencia 2 con límite 2, timeout de 1 s respetado. `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` es el nombre efectivo; `CLI_OPEN_GATEWAY_TIMEOUT` sigue como alias.
+   - Carga real (`tests/fase6-concurrencia.py`): 12 clientes en ráfaga, 2 streaming y 10 bajo saturación; pico de concurrencia 2 con límite 2, exceso con 503 y timeout de 1 s respetado. `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` es el nombre efectivo; `CLI_OPEN_GATEWAY_TIMEOUT` sigue como alias.
 
 2. **Edición Real y Sandbox (`implementacion/supervisor/workspace.py`)**:
    - `snapshot` realiza traversal seguro de subdirectorios mediante `openat` con `O_RDONLY | O_DIRECTORY | O_NOFOLLOW` para cada componente intermedio, impidiendo redirecciones por enlaces simbólicos.

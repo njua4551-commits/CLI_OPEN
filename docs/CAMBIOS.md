@@ -1,5 +1,11 @@
 # Cambios
 
+## 2026-11-25 · Estabilización · saturación determinista del gateway
+
+- `implementacion/gateway/__main__.py`: el semáforo se adquiere en `process_request` antes de crear el hilo; al superar `CLI_OPEN_GATEWAY_MAX_CONCURRENCY` se responde HTTP 503 JSON (`gateway concurrency limit reached`) y se cierra. Se consume la solicitud antes de cerrar para evitar `BrokenPipe`/RST en clientes con cuerpo. Sin cola ilimitada de hilos.
+- `tests/fase6-concurrencia.py`: añade ráfaga de 10 clientes con límite 2 (éxitos 200 y rechazos 503), verifica pico 2, correspondencia solicitud/éxito y recuperación posterior; cubre también 2 streaming y timeout de 1 s.
+- Regresión: 11 unittest, `qualify-linux`, `fase5-review`, `fase5-workspace`, `fase6-gateway`, `fase6-concurrencia`, `fase7-memoria`, `fase7-contexto`, `fase7-lineabase`, `fase7-repomap` y `git diff --check`.
+
 ## 2026-11-25 · Validación de pendientes reales · gateway y F7.2
 
 - `implementacion/gateway/__main__.py`: `TIMEOUT` acepta `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (nombre documentado) y conserva `CLI_OPEN_GATEWAY_TIMEOUT` como alias; límites 1–300 s.

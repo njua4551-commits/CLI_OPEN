@@ -376,8 +376,53 @@ def serve(listen, port, model):
                 _env_int("CLI_OPEN_GATEWAY_MAX_CONCURRENCY", 4, 1, 64)
             )
 
+        def _overloaded(self, request):
+            body = b'{"error":"gateway concurrency limit reached"}'
+            try:
+                # Consumir la solicitud antes de cerrar evita RST hacia el cliente.
+                request.settimeout(0.25)
+                head = b""
+                while b"\r\n\r\n" not in head and len(head) < 8192:
+                    chunk = request.recv(4096)
+                    if not chunk:
+                        break
+                    head += chunk
+                headers, _, payload = head.partition(b"\r\n\r\n")
+                length = 0
+                for line in headers.split(b"\r\n")[1:]:
+                    if line.lower().startswith(b"content-length:"):
+                        length = int(line.split(b":", 1)[1].strip() or b"0")
+                while len(payload) < min(length, MAX_REQUEST):
+                    chunk = request.recv(4096)
+                    if not chunk:
+                        break
+                    payload += chunk
+                request.sendall(
+                    b"HTTP/1.1 503 Service Unavailable\r\n"
+                    b"Content-Type: application/json\r\n"
+                    b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                    b"Connection: close\r\n\r\n" + body
+                )
+            except (OSError, ValueError):
+                pass
+            finally:
+                try:
+                    request.close()
+                except OSError:
+                    pass
+
+        def process_request(self, request, client_address):
+            # Rechazo determinista antes de crear el hilo: sin cola ilimitada.
+            if not self._concurrency.acquire(blocking=False):
+                self._overloaded(request)
+                return
+            try:
+                super().process_request(request, client_address)
+            except Exception:
+                self._concurrency.release()
+                raise
+
         def process_request_thread(self, request, client_address):
-            self._concurrency.acquire()
             try:
                 super().process_request_thread(request, client_address)
             finally:
