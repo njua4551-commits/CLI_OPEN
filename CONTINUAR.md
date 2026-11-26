@@ -138,3 +138,9 @@ El run posterior a `810af0c` superó AppArmor y falló al iniciar Python. F4 aho
 Ejecutar `python3 -I -B implementacion/memoria context --project RUTA --query "auth" --with-paths --max-bytes 4096` con ripgrep disponible. Pasar el sobre emitido a `inject-context`. Las rutas se reservan hasta la mitad del presupuesto disponible del sobre. Cambiar la consulta para ampliar o acotar candidatos. Usar `grep` de OpenCode para buscar coincidencias con ruta y línea, y `read` paginado para recuperar el fragmento necesario bajo sus permisos. El listado no concede permiso de lectura.
 
 La exploración enumera rutas bajo demanda y no mantiene un índice ni una segunda base. Respeta las exclusiones de ripgrep y rechaza salidas de descubrimiento superiores a 1 MiB o que no finalicen en 5 s. Los nombres sensibles comunes, rutas ocultas y caracteres fuera del formato permitido quedan excluidos. Las referencias de memoria conservan su invalidación por hash.
+
+### Consultar rutas, líneas y páginas
+
+En una configuración confiable de OpenCode, incorporar sólo la entrada `agents.contexto-selectivo` de `implementacion/contexto/opencode.json`. Ejecutar `opencode --standalone run --agent contexto-selectivo` con el prompt generado por `inject-context`, usando un proveedor ya autorizado y el sandbox habitual. El preset conserva los permisos efectivos que ya existen. Configurar permisos de lectura explícitos en el entorno de ejecución cuando corresponda.
+
+El agente recibe una pauta de búsqueda progresiva con `glob`, `grep` literal y `read` paginado. El objetivo de 4096 bytes cubre conjuntamente memoria y resultados seleccionados, pero es una instrucción de selección. No es un límite duro de la sesión ni una cuota de inferencia. El presupuesto del sobre se sigue comprobando en el supervisor. Para revisar la cadena en una sesión simulada, usar `python3 -I -B tests/run-suite.py opencode`.

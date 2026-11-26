@@ -45,7 +45,7 @@ def preflight():
               (ROOT / "tests", "/tests"), (ROOT / "implementacion", "/implementacion")]
     python("tests/fase5-review.py")
     supervisor = runpy.run_path(str(ROOT / "implementacion/supervisor/__main__.py"))
-    for fixture in ("fase6-cli-gateway", "fase7-contexto-loopback", "lectura-web-loopback"):
+    for fixture in ("fase6-cli-gateway", "fase7-contexto-loopback", "fase7-contexto-selectivo", "lectura-web-loopback"):
         run(*supervisor["bubblewrap_command"](
             shutil.which("bwrap"), mounts, [
                 "/usr/bin/env", "HOME=/tmp", "/fixture/bun", f"/tests/{fixture}.ts", "/fixture/opencode",

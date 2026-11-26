@@ -169,3 +169,7 @@
 ## F7.2 · Pistas de ruta con presupuesto de contexto compartido
 
 - Añadido `memoria context --with-paths`. Reutiliza ripgrep para listar rutas, ordena coincidencias léxicas y preserva el sobre de memoria con autoridad nula. El supervisor vuelve a validar las rutas y el presupuesto antes de incorporarlas.
+
+## F7.2 · Recuperación nativa de páginas por coincidencia
+
+- Preset optativo de agente para priorizar `glob`, `grep` literal y `read` acotado. Se añadió al perfil OpenCode un fixture de varios archivos con ruta inexistente, coincidencias ambiguas y una instrucción adversaria sin autoridad.

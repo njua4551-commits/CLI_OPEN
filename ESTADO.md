@@ -103,3 +103,5 @@ La primera ejecución en `f74ab48` dio **PASS** en portable y **FAIL** en Linux 
 ## F7.2 · Repo Map parcial
 
 Implementado y probado el descubrimiento bajo demanda de rutas con ripgrep y un presupuesto común con memoria. Sigue **BLOCKED** la extracción de símbolos y relaciones estructurales con D24. Las rutas funcionan de forma independiente del lenguaje. No se acreditó extracción de símbolos para Python, JS, TS, Java ni C#. El flujo de ampliación usa grep y read nativos. D07 sigue bloqueado.
+
+F7.2 cuenta con el preset optativo `contexto-selectivo` y un fixture de integración que verifica ruta → coincidencia con línea → página → respuesta, bajo Bubblewrap. La selección estructural y el presupuesto global de inferencia siguen pendientes. D24 y D07 conservan sus puertas.
