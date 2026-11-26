@@ -336,3 +336,5 @@ En Windows, empieza por PowerShell o Windows Terminal. Si usas WSL2, trátalo co
 - Repositorio upstream de OpenCode indicado por el informe: https://github.com/anomalyco/opencode
 
 Estas referencias describen capacidades y documentación; no prueban que una integración concreta funcione en tu PC. La evidencia de cada fase debe venir de las pruebas ejecutadas en el entorno indicado.
+
+D07 mantiene el bloqueo de inferencia real. Usar el perfil loopback autenticado como base de pruebas de admisión y reserva conservadora. Para ChatGPT, reutilizar únicamente el OAuth nativo de OpenCode y calificar un transporte oficial antes de conectar una cuenta para CLI_OPEN.

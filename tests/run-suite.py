@@ -69,7 +69,7 @@ def main():
             raise SystemExit("BLOCKED: Bubblewrap is required")
         if profile == "linux":
             for fixture in ("fase4-linux", "fase5-workspace", "fase6-gateway",
-                            "fase6-concurrencia", "fase6-d07-cancel"):
+                            "fase6-concurrencia", "fase6-d07-cancel", "fase6-d07-budget"):
                 python(f"tests/{fixture}.py")
         else:
             preflight()

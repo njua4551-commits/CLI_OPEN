@@ -173,3 +173,7 @@
 ## F7.2 · Recuperación nativa de páginas por coincidencia
 
 - Preset optativo de agente para priorizar `glob`, `grep` literal y `read` acotado. Se añadió al perfil OpenCode un fixture de varios archivos con ruta inexistente, coincidencias ambiguas y una instrucción adversaria sin autoridad.
+
+## D07 · Admisión y reserva acumulada de pruebas locales
+
+- Perfil optativo autenticado para el listener de loopback. Añade reserva atómica de solicitudes, bytes de entrada y máximos de tokens de salida. Los perfiles de producto existentes conservan su interfaz.

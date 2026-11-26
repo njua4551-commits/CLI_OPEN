@@ -6,6 +6,7 @@ Two transports share one validator and one fixed destination:
 No redirects, retries, proxies or alternative providers are used.
 """
 import argparse
+import hmac
 import os
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -53,7 +54,9 @@ class Rejected(ValueError):
 
 def parse_request(data, clamp=False):
     request = json.loads(data)
-    if not isinstance(request, dict) or request.keys() - REQUEST_FIELDS:
+    if not isinstance(request, dict):
+        raise Rejected("request must be a JSON object")
+    if request.keys() - REQUEST_FIELDS:
         raise Rejected(f"unexpected request fields {sorted(request.keys() - REQUEST_FIELDS)}")
     messages = request.get("messages")
     limit = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
@@ -348,7 +351,35 @@ def read_body(handler):
     return data
 
 
-def serve(listen, port, model):
+class TaskBudget:
+    """Reserve local limits before dispatch. Failed or cancelled calls keep their reservation."""
+
+    def __init__(self, token, requests, input_bytes, output_tokens):
+        if (not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", token)
+                or not 1 <= requests <= 64 or not 1 <= input_bytes <= 16 * MAX_REQUEST
+                or not 1 <= output_tokens <= 64 * MAX_TOKENS):
+            raise Rejected("invalid task profile")
+        self.authorization = ("Bearer " + token).encode("ascii")
+        self.requests = requests
+        self.input_bytes = input_bytes
+        self.output_tokens = output_tokens
+        self.lock = threading.Lock()
+
+    def allows(self, headers):
+        return (len(headers) == 1
+                and hmac.compare_digest(headers[0].encode("latin-1"), self.authorization))
+
+    def reserve(self, size, tokens):
+        with self.lock:
+            if self.requests == 0 or size > self.input_bytes or tokens > self.output_tokens:
+                return False
+            self.requests -= 1
+            self.input_bytes -= size
+            self.output_tokens -= tokens
+            return True
+
+
+def serve(listen, port, model, task=None):
     if not MODEL_NAME.fullmatch(model):
         raise Rejected("invalid model")
 
@@ -365,9 +396,18 @@ def serve(listen, port, model):
 
         def do_POST(self):
             try:
+                if task is not None and not task.allows(self.headers.get_all("Authorization", [])):
+                    self.close_connection = True
+                    self.reply(401, b'{"error":"task authentication required"}')
+                    return
                 if self.path != "/v1/chat/completions":
                     raise Rejected("unexpected path")
-                request = parse_request(read_body(self), clamp=True)
+                raw = read_body(self)
+                request = parse_request(raw, clamp=task is None)
+                if task is not None and not task.reserve(len(raw), request["max_tokens"]):
+                    self.close_connection = True
+                    self.reply(429, b'{"error":"task budget exhausted"}')
+                    return
                 if request.get("stream") is True:
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
@@ -480,15 +520,22 @@ def main():
     parser.add_argument("--model", required=True, help="Identificador exacto del modelo")
     parser.add_argument("--listen", type=int, metavar="PUERTO",
                         help="Sirve un endpoint OpenAI-compatible local (0 elige puerto)")
+    parser.add_argument("--task-budget", type=int, nargs=3, metavar=("REQUESTS", "INPUT_BYTES", "OUTPUT_TOKENS"),
+                        help="Presupuesto acumulado para un listener autenticado (CLI_OPEN_GATEWAY_TASK_TOKEN)")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
         print("Gateway local sin calificar en este entorno.", file=sys.stderr)
         return 2
     try:
+        task = None
+        if args.task_budget is not None:
+            if args.listen is None:
+                raise Rejected("task profile requires an HTTP listener")
+            task = TaskBudget(os.environ.get("CLI_OPEN_GATEWAY_TASK_TOKEN", ""), *args.task_budget)
         if args.listen is not None:
             if not 0 <= args.listen <= 65535:
                 raise Rejected("invalid listen port")
-            serve(args.listen, args.port, args.model)
+            serve(args.listen, args.port, args.model, task)
             return 0
         with deadline():
             request = read_request(sys.stdin.buffer)

@@ -105,3 +105,7 @@ La primera ejecución en `f74ab48` dio **PASS** en portable y **FAIL** en Linux 
 Implementado y probado el descubrimiento bajo demanda de rutas con ripgrep y un presupuesto común con memoria. Sigue **BLOCKED** la extracción de símbolos y relaciones estructurales con D24. Las rutas funcionan de forma independiente del lenguaje. No se acreditó extracción de símbolos para Python, JS, TS, Java ni C#. El flujo de ampliación usa grep y read nativos. D07 sigue bloqueado.
 
 F7.2 cuenta con el preset optativo `contexto-selectivo` y un fixture de integración que verifica ruta → coincidencia con línea → página → respuesta, bajo Bubblewrap. La selección estructural y el presupuesto global de inferencia siguen pendientes. D24 y D07 conservan sus puertas.
+
+## D07 · ChatGPT y admisión local
+
+Autenticación OAuth nativa **DISPONIBLE** en el motor fijado. Acceso de cuenta, catálogo efectivo y pruebas remotas **BLOCKED** para CLI_OPEN. El perfil local de tarea pasa autenticación y reserva acumulada por listener contra un proveedor simulado. El canal supervisado hasta ChatGPT aún no está calificado.
