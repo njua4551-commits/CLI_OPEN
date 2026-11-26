@@ -83,3 +83,7 @@ Auditoría nativa y línea base HTML aislada ejecutadas. Filtro HTML opt-in impl
 ## OpenCode Console gratuito
 
 **PASS** consulta del catálogo oficial y regresión de cancelación con upstream SSE inactivo. **BLOCKED** sesión remota de CLI_OPEN: los modelos chat gratuitos de Console se restringen a OpenCode y el canal actual solo admite loopback. El acceso efectivo y la cuota de la sesión no se acreditaron. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+
+## Reproducibilidad y CI
+
+Runner por perfiles portable, Linux y OpenCode precompilado. GitHub Actions ejecuta portable y Linux en jobs separados. En el perfil OpenCode se verifican los hashes de los binarios calificados antes de ejecutarlos. La construcción desde cero y la integración de artefactos en CI siguen pendientes.

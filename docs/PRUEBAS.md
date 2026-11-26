@@ -190,3 +190,9 @@ Pico RSS del proceso completo A/B y C: 80032 → 82972 KiB. Son observaciones de
 
 **PASS** integración con OpenCode compilado del tag fijado en Bubblewrap con `--unshare-net`: se observó el resultado Markdown original y comprimido en el historial del proveedor simulado. Una instrucción adversaria permaneció como texto de herramienta y el modelo simulado pidió una URL denegada. El servidor recibió cero peticiones a esa URL. El fixture no demuestra comportamiento de un modelo real frente a instrucciones adversarias. Sin API o inferencia remota. D07 sigue **BLOCKED**.
 **PASS** 91 casos nativos de `webfetch`, 11 unitarias Python, memoria, contexto y `qualify-linux` con cancelación, catálogo restringido y rechazo de plugin no aprobado. El repositorio CLI_OPEN no trae un workflow raíz al que añadir el fixture. Los comandos quedan reproducibles con los artefactos F1 existentes.
+
+## Suites reproducibles y CI
+
+- **PASS local** perfiles portable y Linux en CachyOS x86_64. El portable ejecuta unitarias, memoria, contexto, línea base F7.1 y el hook HTML con Node. Linux añade edición de copia, namespaces, gateway, concurrencia, SSE y cancelación.
+- La CI de GitHub tiene jobs separados en Ubuntu 24.04, checkout fijado por SHA y permisos de lectura. No ejecuta modelos físicos, proveedores remotos ni el perfil con binario de OpenCode. La ejecución en el runner alojado requiere observar GitHub Actions después de publicar.
+- El preflight de OpenCode compara SHA-256 de Bun y CLI contra la pareja calificada, comprueba versiones con HOME desechable y ejecuta las pruebas de artefactos con Bubblewrap. Un paquete reconstruido con otro hash queda explícitamente bloqueado.

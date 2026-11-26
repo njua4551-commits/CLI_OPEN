@@ -1,5 +1,6 @@
 import io
 import json
+import os
 from pathlib import Path
 import platform
 import runpy
@@ -18,6 +19,20 @@ def request(operation="replace", name="fixture.txt", text="after\n"):
 
 @unittest.skipUnless(platform.system() == "Linux", "Linux workspace backend")
 class WorkspaceTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        artifacts = Path(temporary.name)
+        # The mocked launcher never executes these placeholders.
+        for relative in ("tools/bun-linux-x64-baseline/bun",
+                         "opencode/packages/cli/dist/cli-linux-x64/bin/opencode"):
+            binary = artifacts / relative
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            binary.touch()
+        environment = patch.dict(os.environ, {"CLI_OPEN_ARTIFACTS": str(artifacts)})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def test_schema_rejects_unauthorized_paths_and_operations(self):
         for edit in (request(name="../fixture.txt"), request(name="/fixture.txt"),
                      request(name=".hidden.txt"), request(operation="execute")):

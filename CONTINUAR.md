@@ -110,3 +110,11 @@ Con el OpenCode V2 fijado, añadir el directorio absoluto `implementacion/lectur
 Con artefactos F1 ya disponibles, ejecutar `bun tests/lectura-web-lineabase.ts .fase1/opencode baseline` y repetir con `filtered`. El fixture de integración recibe como único argumento la ruta al binario OpenCode y debe ejecutarse en Bubblewrap con `--unshare-net`, HOME temporal, y montajes de solo lectura del binario, tests y plugin. Usa servidores de loopback dentro del namespace privado.
 
 D07 permanece **BLOCKED** por autenticación y presupuesto acumulado sin calificar y por falta de una ruta gratuita autorizada. La cuota temporal informada por el usuario añade una razón para aplazar inferencia. La cancelación SSE ya corregida se conserva. Retomar D07 con un proveedor autorizado después de demostrar autenticación, reserva y aislamiento con un proveedor simulado.
+
+## Suites reproducibles
+
+- `python3 -I -B tests/run-suite.py portable` requiere Python 3.11+ y Node.js 18+. Ejecuta unitarias, memoria, contexto y el núcleo del filtro HTML sin artefactos ignorados.
+- `python3 -I -B tests/run-suite.py linux` requiere Linux x86_64, Bubblewrap sin privilegios y sockets de loopback. Ejecuta aislamiento, edición de copia, gateway, concurrencia y cancelación SSE.
+- `python3 -I -B tests/run-suite.py opencode` verifica versión y SHA-256 de los binarios de calificación en `.fase1`. Ejecuta edición revisada, calificación del supervisor e integración de gateway, contexto y webfetch bajo Bubblewrap. Los hashes corresponden a los binarios locales calificados. Si un build produce bytes distintos se requiere recalificarlo, aunque coincida la versión.
+- Para preparar el checkout previo al build, verificar el tag `v2.3.2` contra `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1` y exportar ese SHA con `git archive` a un directorio nuevo. Usar Bun 1.4.4 del [release oficial](https://github.com/oven-sh/bun/releases/tag/bun-v1.4.4). Los comandos observados de instalación congelada y build están en [PRUEBAS.md](docs/PRUEBAS.md). No se repitió la construcción completa en esta iteración. El perfil no descarga nada.
+- El benchmark HTML requiere el checkout preparado con dependencias. La prueba física requiere el GGUF y llama.cpp existentes. OpenRouter queda fuera de las suites deterministas.

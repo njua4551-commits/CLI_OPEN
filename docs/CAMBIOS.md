@@ -145,3 +145,7 @@
 - Gateway: `model_matches` corregido para aceptar solo identificadores exactos o alias explícitos (`alias=canonical`); eliminada la coincidencia por prefijo. Concurrencia acotada mediante `_BoundedThreadingHTTPServer` (`CLI_OPEN_GATEWAY_MAX_CONCURRENCY`).
 - Edición: `snapshot` valida cada componente intermedio de la ruta mediante `openat` con `O_NOFOLLOW`/`O_DIRECTORY`, impidiendo redirecciones por enlaces simbólicos en subdirectorios.
 - Regresión completa pasada y `git diff --check` limpio.
+
+## Suites deterministas y CI
+
+- Runner por perfiles, prueba del plugin HTML con Node sin artefactos de build y workflow de GitHub Actions limitado a permisos de lectura.
