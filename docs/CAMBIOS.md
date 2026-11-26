@@ -177,3 +177,7 @@
 ## D07 · Admisión y reserva acumulada de pruebas locales
 
 - Perfil optativo autenticado para el listener de loopback. Añade reserva atómica de solicitudes, bytes de entrada y máximos de tokens de salida. Los perfiles de producto existentes conservan su interfaz.
+
+## D07 · Plazo global y detección de SSE incompleto
+
+- El listener autenticado vence con código 124 y cierra sus conexiones. Detecta streams incompletos, conserva reservas al cancelar y deja sólo el tipo de error en logs del handler.

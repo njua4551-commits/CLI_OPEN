@@ -128,11 +128,11 @@ def read_request(source):
 
 
 @contextmanager
-def deadline():
+def deadline(seconds=TIMEOUT):
     def expired(*_):
         raise TimeoutError("gateway deadline elapsed")
     previous = signal.signal(signal.SIGALRM, expired)
-    signal.setitimer(signal.ITIMER_REAL, TIMEOUT)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
     try:
         yield
     finally:
@@ -251,7 +251,7 @@ def cancel_on_disconnect(downstream, upstream):
             watcher.join()
 
 
-def complete_streaming(port, model, request, sink, downstream):
+def complete_streaming(port, model, request, sink, downstream, *, require_done=False):
     """Relay an upstream response to ``sink`` without buffering it whole.
 
     Validates every SSE event as it arrives and enforces the same size and
@@ -274,18 +274,22 @@ def complete_streaming(port, model, request, sink, downstream):
         with cancel_on_disconnect(downstream, connection.sock) as cancelled:
             connection.request("POST", "/v1/chat/completions", payload, {"Content-Type": "application/json"})
             with connection.getresponse() as response:
-                return relay_stream(response, model, sink, cancelled)
+                return relay_stream(response, model, sink, cancelled, require_done=require_done)
     finally:
         connection.close()
 
 
-def relay_stream(response, model, sink, cancelled):
+def relay_stream(response, model, sink, cancelled, *, require_done=False):
     total = 0
     buffer = b""
+    seen_event = False
+    done = False
     if response.status != 200:
         raise Rejected("local endpoint rejected the request")
     content_type = response.getheader("Content-Type", "application/json")
     is_stream = content_type.split(";")[0].strip() == "text/event-stream"
+    if require_done and not is_stream:
+        raise Rejected("expected SSE response")
     while True:
         chunk = response.read(4096)
         if not chunk:
@@ -303,12 +307,18 @@ def relay_stream(response, model, sink, cancelled):
                 if not line.startswith(b"data: "):
                     continue
                 raw = line[6:].strip()
+                if require_done and done:
+                    raise Rejected("data after stream terminator")
                 if raw == b"[DONE]":
+                    if require_done and not seen_event:
+                        raise Rejected("stream ended without events")
+                    done = True
                     continue
                 parsed = json.loads(raw)
                 if not isinstance(parsed, dict) or not model_matches(parsed.get("model"), model):
                     raise Rejected("invalid stream or unexpected model")
                 check_usage(parsed.get("usage") or {})
+                seen_event = True
         sink(chunk)
     if cancelled.is_set():
         return content_type
@@ -316,6 +326,8 @@ def relay_stream(response, model, sink, cancelled):
         raise Rejected("truncated stream")
     if is_stream and total == 0:
         raise Rejected("empty stream")
+    if require_done and not done:
+        raise Rejected("missing stream terminator")
     return content_type
 
 
@@ -420,9 +432,10 @@ def serve(listen, port, model, task=None):
                         self.wfile.flush()
 
                     try:
-                        complete_streaming(port, model, request, sink, self.connection)
+                        complete_streaming(port, model, request, sink, self.connection,
+                                           require_done=task is not None)
                     except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
-                        print(f"rejected: {exc!r}", file=sys.stderr, flush=True)
+                        print(f"rejected: {type(exc).__name__}", file=sys.stderr, flush=True)
                         try:
                             self.wfile.write(b'data: {"error":"local gateway rejected the request"}\\n\\n')
                             self.wfile.flush()
@@ -439,7 +452,7 @@ def serve(listen, port, model, task=None):
                     self.end_headers()
                     self.wfile.write(body)
             except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
-                print(f"rejected: {exc!r}", file=sys.stderr, flush=True)
+                print(f"rejected: {type(exc).__name__}", file=sys.stderr, flush=True)
                 self.reply(502, b'{"error":"local gateway rejected the request"}')
             self.close_connection = True
 
@@ -508,10 +521,10 @@ def serve(listen, port, model, task=None):
             finally:
                 self._concurrency.release()
 
-    server = _BoundedThreadingHTTPServer(("127.0.0.1", listen), Handler)
-    server.daemon_threads = True
-    print(f"LISTEN {server.server_port}", flush=True)
-    server.serve_forever()
+    with _BoundedThreadingHTTPServer(("127.0.0.1", listen), Handler) as server:
+        server.daemon_threads = True
+        print(f"LISTEN {server.server_port}", flush=True)
+        server.serve_forever()
 
 
 def main():
@@ -522,12 +535,17 @@ def main():
                         help="Sirve un endpoint OpenAI-compatible local (0 elige puerto)")
     parser.add_argument("--task-budget", type=int, nargs=3, metavar=("REQUESTS", "INPUT_BYTES", "OUTPUT_TOKENS"),
                         help="Presupuesto acumulado para un listener autenticado (CLI_OPEN_GATEWAY_TASK_TOKEN)")
+    parser.add_argument("--task-seconds", type=int, metavar="SECONDS",
+                        help="Vida máxima del listener autenticado (1–300, predeterminado 120)")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
         print("Gateway local sin calificar en este entorno.", file=sys.stderr)
         return 2
     try:
         task = None
+        seconds = 120 if args.task_seconds is None else args.task_seconds
+        if args.task_seconds is not None and (args.task_budget is None or not 1 <= seconds <= 300):
+            raise Rejected("invalid task deadline")
         if args.task_budget is not None:
             if args.listen is None:
                 raise Rejected("task profile requires an HTTP listener")
@@ -535,7 +553,15 @@ def main():
         if args.listen is not None:
             if not 0 <= args.listen <= 65535:
                 raise Rejected("invalid listen port")
-            serve(args.listen, args.port, args.model, task)
+            if task is None:
+                serve(args.listen, args.port, args.model)
+            else:
+                try:
+                    with deadline(seconds):
+                        serve(args.listen, args.port, args.model, task)
+                except TimeoutError:
+                    print("Plazo global de la tarea agotado.", file=sys.stderr)
+                    return 124
             return 0
         with deadline():
             request = read_request(sys.stdin.buffer)

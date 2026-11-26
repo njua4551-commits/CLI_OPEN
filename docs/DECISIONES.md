@@ -68,3 +68,7 @@ La alternativa parcial reutiliza ripgrep como backend de descubrimiento, igual q
 ### D07 · OAuth nativo y reserva de tarea en loopback
 
 OAuth de ChatGPT es **EXISTENTE** en OpenCode v2.3.2. El gateway es **EXTENSIBLE** para admisión local. El perfil optativo requiere una credencial efímera separada, fija un presupuesto acumulado por listener y conserva la reserva ante fallos. El límite de entrada mide bytes y carece de equivalencia garantizada en tokens. Un listener no representa múltiples sesiones aisladas. La ruta oficial de ChatGPT, la reconciliación y el presupuesto temporal de tarea quedan **APLAZADOS** hasta poder calificarlos sin cambiar la frontera de aislamiento.
+
+### D07 · Vida de tarea y reconciliación conservadora
+
+El listener autenticado termina al agotar su plazo global. Cada instancia representa una única tarea. Se reserva después de autenticar y validar ruta y cuerpo, antes de despachar. Error previo a la reserva no consume cuota de tarea. Desde la reserva, el máximo permanece consumido con éxito, fallo, truncado, desconexión o cancelación. El proceso no reintenta. Una instancia nueva requiere un token nuevo y un presupuesto explícito. Evitar reiniciar automáticamente una tarea anterior. Reconciliación por uso real, durabilidad y autorización remota siguen pendientes. Los perfiles locales existentes conservan su contrato SSE.
