@@ -120,3 +120,9 @@ D07 permanece **BLOCKED** por autenticación y presupuesto acumulado sin calific
 - El benchmark HTML requiere el checkout preparado con dependencias. La prueba física requiere el GGUF y llama.cpp existentes. OpenRouter queda fuera de las suites deterministas.
 
 El comando `inject-context --max-context-bytes` acepta 128–16384 bytes para el JSON compacto de memoria, incluido su salto de línea. El supervisor conserva entradas en orden de relevancia, omite duplicados y se salta entradas que no caben. Las instrucciones fijas y la consulta quedan fuera de ese presupuesto. El procesamiento previo rechaza sobres de entrada por encima de 64 KiB.
+
+## Reanudar una tarea con OpenCode
+
+En el mismo workspace y con el estado de sesión conservado, reutilizar `opencode --standalone run --session ID "siguiente paso"`. El ID aparece en los eventos JSON del run anterior. La regresión verifica que un proceso nuevo recupera el resultado de una herramienta ya completada sin ejecutarla otra vez. Una herramienta interrumpida sigue necesitando verificar el estado antes de repetirla.
+
+El resultado de `tool.execute.after` de `webfetch` no incluye una consulta explícita de relevancia. F7.3 conserva el filtro por duplicados y aplaza la selección por secciones. El siguiente trabajo sobre contexto es probar una consulta explícita autorizada y una reserva compartida cuando haya dos fuentes integrables.

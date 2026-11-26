@@ -36,6 +36,12 @@ const upstream = Bun.serve({
       authorization: request.headers.get("authorization"),
     })
     const results = body.messages.filter((message: { role: string }) => message.role === "tool")
+    if (body.messages.some((message: { role: string; content: unknown }) =>
+      message.role === "user" && JSON.stringify(message.content).includes("Synthetic fixture: resume"))) {
+      assert.equal(results.length, 1, "the completed tool result should appear once")
+      assert(JSON.stringify(results[0]).includes("FIRST_ONLY"))
+      return stream({ content: "FIXTURE_RESUMED" }, "stop")
+    }
     if (!body.tools?.length && !results.length) return stream({ content: "Synthetic title" }, "stop")
     if (results.length) {
       const content = results.map((message: { content: string }) => message.content).join("\n")
@@ -68,10 +74,11 @@ while (!buffered.includes("\n")) {
 const gatewayPort = Number(buffered.split("\n")[0].replace("LISTEN ", ""))
 assert(Number.isInteger(gatewayPort) && gatewayPort > 0)
 
-async function run(label: string, timeout = 30000, allowKill = false) {
+async function run(label: string, timeout = 30000, allowKill = false, sessionID?: string) {
   requests = []
   const process = Bun.spawn([
     binary, "--standalone", "run", "--model", "fixture/synthetic", "--format", "json",
+    ...(sessionID ? ["--session", sessionID] : []),
     `Synthetic fixture: ${label}`,
   ], {
     cwd: workspace, stdout: "pipe", stderr: "pipe",
@@ -131,6 +138,17 @@ try {
   assert(requests.every(item => item.body.max_tokens <= 512))
   assert.equal(decoyRequests, 0)
   console.log("PASS CLI -> gateway -> loopback with tool result, no credentials, no decoy")
+
+  const events = success.stdout.split("\n").filter(line => line.startsWith("{")).map(line => JSON.parse(line))
+  const sessionID = events.find(event => event.type === "tool_use")?.sessionID
+  assert.equal(typeof sessionID, "string")
+  const resumed = await run("resume", 30000, false, sessionID)
+  assert.equal(resumed.exit, 0, resumed.stderr || resumed.stdout)
+  assert(resumed.stdout.includes("FIXTURE_RESUMED"), resumed.stdout)
+  assert(!resumed.stdout.includes('"type":"tool_use"'), resumed.stdout)
+  assert.equal(requests.length, 1)
+  assert.equal(decoyRequests, 0)
+  console.log("PASS native session resumes in a new CLI process without repeating the read")
 
   cost = 0.001
   const charged = await run("cost", 8000, true)

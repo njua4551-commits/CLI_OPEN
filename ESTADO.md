@@ -91,3 +91,5 @@ Runner por perfiles portable, Linux y OpenCode precompilado. GitHub Actions ejec
 ## Contexto selectivo y Repo Map
 
 El supervisor comprueba el presupuesto del sobre de memoria en la incorporación al prompt. Esto cubre memoria. El presupuesto compartido con código, web y salidas de herramientas sigue pendiente. Repo Map F7.2 permanece **BLOCKED**. El stash conserva un indexador separado con AST y expresiones regulares, incompatible con D24. No se aplicó al checkout.
+
+El perfil OpenCode pasó con los artefactos existentes. Se verificó reanudar una sesión en un proceso nuevo después de una lectura completada. F7.3 conserva el filtro opcional. La selección por secciones queda aplazada hasta disponer de una consulta explícita. D07 sigue bloqueado.

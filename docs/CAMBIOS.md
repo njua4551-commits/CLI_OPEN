@@ -153,3 +153,7 @@
 ## Presupuesto de memoria en el supervisor
 
 - El sobre de contexto se limita a 16 KiB por defecto y admite un presupuesto menor. La selección conserva el orden de recuperación y omite duplicados por identificador o texto.
+
+## Reanudación de sesión
+
+- El fixture de integración verifica que la CLI nativa reabre por ID una sesión persistida y aprovecha la lectura anterior sin ejecutarla de nuevo.
