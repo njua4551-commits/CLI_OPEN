@@ -157,3 +157,7 @@
 ## Reanudación de sesión
 
 - El fixture de integración verifica que la CLI nativa reabre por ID una sesión persistida y aprovecha la lectura anterior sin ejecutarla de nuevo.
+
+## Preparación de Bubblewrap en GitHub Actions
+
+- El job Linux carga el perfil oficial de AppArmor para Bubblewrap si la restricción de namespaces está activa. Ambos jobs fijan checkout v5.0.1, que usa Node.js 24.

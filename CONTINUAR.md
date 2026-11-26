@@ -126,3 +126,7 @@ El comando `inject-context --max-context-bytes` acepta 128–16384 bytes para el
 En el mismo workspace y con el estado de sesión conservado, reutilizar `opencode --standalone run --session ID "siguiente paso"`. El ID aparece en los eventos JSON del run anterior. La regresión verifica que un proceso nuevo recupera el resultado de una herramienta ya completada sin ejecutarla otra vez. Una herramienta interrumpida sigue necesitando verificar el estado antes de repetirla.
 
 El resultado de `tool.execute.after` de `webfetch` no incluye una consulta explícita de relevancia. F7.3 conserva el filtro por duplicados y aplaza la selección por secciones. El siguiente trabajo sobre contexto es probar una consulta explícita autorizada y una reserva compartida cuando haya dos fuentes integrables.
+
+## CI en Ubuntu 24.04
+
+Si el job Linux falla en el arranque de Bubblewrap con `Failed RTM_NEWADDR`, comprobar el valor de `kernel.apparmor_restrict_unprivileged_userns`, la versión de Bubblewrap y la carga del perfil oficial `bwrap-userns-restrict`. El workflow lo carga desde el paquete de Ubuntu cuando la restricción está activa. Los tests siguen ejecutándose como usuario normal. La nueva ejecución remota está pendiente de publicación autorizada.

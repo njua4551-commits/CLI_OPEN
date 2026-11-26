@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -23,8 +23,23 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap
+      - name: Prepare Bubblewrap on Ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap
+          restriction=$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)
+          echo "kernel.apparmor_restrict_unprivileged_userns=$restriction"
+          if [ "$restriction" = 1 ]; then
+            sudo apt-get install -y --no-install-recommends apparmor-profiles
+            sudo apparmor_parser -r /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
+          fi
+          uname -m
+          id -u
+          python3 --version
+          command -v bwrap
+          bwrap --version
+          df -h /tmp
       - run: python3 -I -B tests/run-suite.py linux
