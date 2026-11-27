@@ -375,88 +375,77 @@ Los issues son reportes públicos, no pruebas propias ni garantía de que un def
 
 **Próximo paso:** completar primero la Fase 0 del PLAN_PARA_CODEX.md; tras aprobación, ejecutar únicamente los issues 001–004 para establecer una línea base reproducible. No desarrollar toda la arquitectura de una vez.
 
-## 17. Contrato de ejecución con Codex
+## 17. Codex development contract
 
-OpenCode es la base elegida. Codex implementa el proyecto; no se integra como motor adicional sin aprobación. El orden vinculante está en PLAN_PARA_CODEX.md y AGENTS.md. Los módulos externos se desarrollan en implementacion/; upstream/opencode conserva su historial y no se edita sin ADR y aprobación. La versión V2, flags, hooks, rutas y requisitos de build se verifican contra el SHA seleccionado; no son contratos asumidos. Antes de cualquier instalación, revisar scripts y lockfile. La fase 0 es de solo lectura. El uso de Codex remoto no es inferencia local: no enviar secretos ni incorporar proveedores adicionales sin autorización.
+OpenCode supplies the product engine. Codex develops CLI_OPEN. Adding another engine requires approval. `PLAN_PARA_CODEX.md` and `AGENTS.md` define the binding phase order. Develop project modules under `implementacion/`. Preserve the history of `upstream/opencode` and obtain an architectural decision and approval before editing it. Verify OpenCode V2, flags, hooks, routes, and build requirements against the selected SHA. Inspect scripts and lockfiles before installation. Phase 0 stays read-only. Remote Codex uses provider inference. Keep secrets out of it and obtain authorization before adding a provider.
 
-## 18. Roadmap estratégico consolidado: Arquitectura técnica y reutilización
+## 18. Consolidated technical architecture and reuse roadmap
 
-### 18.1 Principio arquitectónico obligatorio y clasificación de propuestas
+### 18.1 Required architecture principle and classifications
 
-**REUTILIZAR ANTES DE EXTENDER. EXTENDER ANTES DE REEMPLAZAR.**
+**REUSE BEFORE EXTENDING. EXTEND BEFORE REPLACING.**
 
-Para cada propuesta técnica, mejora o referencia externa, es obligatorio auditar primero el código de OpenCode V2 (`v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`) y la implementación propia de CLI_OPEN. Toda propuesta debe clasificarse formalmente en una de las siguientes categorías antes de escribir código:
+Audit OpenCode `v2.3.2` at `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1` and the current CLI_OPEN implementation before writing code. Use the existing classifications.
 
-1. `EXISTENTE`: Reutilizar directamente la funcionalidad oficial de OpenCode sin duplicar runtime ni bibliotecas.
-2. `CONFIGURABLE`: Resolver mediante opciones de configuración nativas (`opencode.json`, flags, variables de entorno).
-3. `EXTENSIBLE`: Ampliar mediante APIs públicas, hooks de ciclo de vida o plugins soportados por OpenCode.
-4. `PARCIAL`: Implementar exclusivamente la lógica diferencial faltante en la capa de supervisión o adaptación.
-5. `AUSENTE`: Diseñar e implementar un módulo propio en `implementacion/`, justificando necesidad y bajo acoplamiento.
-6. `DESCARTADA`: Desestimar por redundancia, sobrecosto cognitivo, vulnerabilidad o beneficio marginal nulo.
-7. `APLAZADA`: Postergar justificadamente fuera del MVP hacia fases posteriores (F8 o F9).
+1. `EXISTENTE` means reuse official functionality directly.
+2. `CONFIGURABLE` means use native `opencode.json`, flags, or environment variables.
+3. `EXTENSIBLE` means use public APIs, lifecycle hooks, or supported plugins.
+4. `PARCIAL` means add the missing logic in the supervisor or adapter layer.
+5. `AUSENTE` means justify a loosely coupled module under `implementacion/`.
+6. `DESCARTADA` means reject redundant proposals or changes with unacceptable complexity, risk, or insufficient benefit.
+7. `APLAZADA` means defer beyond the initial MVP.
 
-### 18.2 Auditoría de capacidades nativas de OpenCode V2
+### 18.2 Native OpenCode V2 capabilities to audit and reuse
 
-OpenCode V2 incorpora un conjunto extenso de capacidades que no deben reimplementarse:
-- **Code Mode / Ejecución de herramientas:** herramienta nativa `execute`, ejecución agrupada y manejo de salida truncada.
-- **Herramientas de contexto y lectura:** `read`, `list`, `grep`, `glob`, con límites de bytes y líneas.
-- **Integración MCP:** clientes stdio y SSE/WebSocket, descubrimiento dinámico y negociación de herramientas.
-- **Sesiones y orquestación multiagente:** subagentes nativos, sesiones hijas (`session`), eventos JSON estructurados y cancelación.
-- **Git y trabajo paralelo:** soporte nativo de worktrees para ramas aisladas sin duplicar storage.
-- **Compactación y contexto:** compactación automática de contexto y variantes de razonamiento (`thinking`).
-- **Interfaces de usuario:** TUI interactiva de alto rendimiento, Pair Device y servidor web integrado.
-- **Proveedores y modelos:** soporte amplio de proveedores compatibles con OpenAI, Ollama, Anthropic, OpenRouter y modelos locales.
-- **LSP y formateo:** cliente LSP y formateadores integrados según lenguaje del proyecto.
+- Code Mode, native `execute`, grouped tool execution, and truncated output handling.
+- `read`, `list`, `grep`, and `glob` with byte and line limits.
+- MCP transport, discovery, and negotiation. Verify the applicable transport in the pinned engine.
+- Native subagents, child sessions (`session`), structured JSON events, and cancellation.
+- Git worktrees for isolated branches.
+- Automatic compaction and reasoning variants (`thinking`).
+- Native TUI, Pair Device, and web server.
+- OpenAI-compatible, Ollama, Anthropic, OpenRouter, and local provider support.
+- Language-aware formatting and LSP reuse where available. The pinned engine's missing qualified LSP and symbol interfaces for Repo Map remain subject to D24. [Pinned capability matrix](docs/MATRIZ_F7.md)
 
-### 18.3 Matriz de reutilización vs duplicación de referencias externas
+### 18.3 External references and adoption decisions
 
-| Proyecto / Referencia | Capacidad analizada | Clasificación | Estrategia de adopción en CLI_OPEN |
+These classifications describe the original design. Verify implementation status in the F7 matrix and decision log. [F7 matrix](docs/MATRIZ_F7.md) · [Decisions](docs/DECISIONES.md)
+
+| Reference | Capability | Classification | CLI_OPEN strategy |
 |---|---|---|---|
-| **Cloudflare** (Code Mode) | Descubrimiento dinámico, esquemas bajo demanda, agrupación | `EXTENSIBLE` / `PARCIAL` | Reutilizar `execute` nativo. Agregar descubrimiento selectivo y esquemas bajo demanda en supervisor. No crear un segundo runtime Code Mode. |
-| **Aider** (Repo Map) | Tree-sitter, grafos de dependencias, mapa de repo incremental | `PARCIAL` | Integrar Repo Map con la memoria persistente existente (`implementacion/memoria/`). Asignar presupuesto dinámico de tokens sin duplicar contexto. |
-| **Amp** (Investigación profunda) | Comprensión profunda, análisis de dependencias bajo demanda | `CONFIGURABLE` / `PARCIAL` | Activar investigación profunda solo ante alta complejidad. Reutilizar búsquedas, LSP y subagentes existentes. No crear un segundo indexador. |
-| **Kilo CLI** (Enrutamiento adaptativo) | Selección de modelos por complejidad, costo y latencia | `PARCIAL` | Reutilizar el gateway existente (`implementacion/gateway/`). Implementar únicamente el enrutador de políticas sin duplicar el gestor de proveedores. |
-| **Qwen Code** (Compatibilidad) | Endpoints locales y autogestionados (Ollama, llama.cpp, vLLM) | `CONFIGURABLE` | Reutilizar proveedores OpenAI-compatible nativos de OpenCode. No introducir LiteLLM como dependencia obligatoria. |
-| **OpenHands** (Autocorrección) | Detección de bucles, falta de progreso, replanificación | `PARCIAL` | Auditoría de eventos nativos de sesión y supervisor. Detención objetiva sin reintentos infinitos ni modificar el ciclo central de OpenCode. |
-| **Antigravity** (Orquestación adaptativa) | Coordinación multiagente, subagentes verificadores, worktrees | `EXISTENTE` / `CONFIGURABLE` | Reutilizar subagentes, sesiones hijas y worktrees nativos de OpenCode. Priorizar un solo agente; delegar solo cuando haya paralelismo justificado. |
-| **Goose** (Recipes) | Flujos automatizados reproducibles y parametrizados | `EXISTENTE` / `EXTENSIBLE` | Reutilizar skills y comandos nativos de OpenCode. No crear un nuevo DSL ni lenguaje de automatización. |
-| **Kiro** (Specs) | Especificaciones, diseño técnico y criterios de aceptación | `EXISTENTE` / `CONFIGURABLE` | Reutilizar Markdown estructurado, instrucciones del proyecto y skills. Sin gestor de proyectos redundante. |
-| **Cline** (Headless & Gobernanza) | Ejecución CLI headless, eventos JSON, CI/CD | `EXISTENTE` / `CONFIGURABLE` | Reutilizar `opencode run --format json` y eventos de sesión. Añadir gobernanza estricta de presupuestos en supervisor. |
-| **amux** (Supervisión móvil) | Supervisión remota, visualización de progreso y presupuesto | `EXTENSIBLE` | Ampliar selectivamente Pair Device nativo de OpenCode. No crear otra aplicación móvil ni servidor de sesiones paralelo. |
-| **Warp Oz** (Asíncrono) | Tareas asíncronas, pausa cooperativa, cancelación | `PARCIAL` | Integrar pausa en puntos seguros y reconciliación de estado con el supervisor. No reconstruir el gestor de sesiones. |
-| **Crush** (Rendimiento TUI) | Optimización de latencia, RAM y CPU en consola | `CONFIGURABLE` | Conservar la TUI oficial de OpenCode. Optimizar únicamente cuellos de botella medidos con métricas reales. |
-| **Cursor** (Ejecutores remotos) | Ejecución delegada a servidores autogestionados | `APLAZADA` | Fuera del alcance del MVP. Mantener en Fase 9 como opción futura tras calificar controles de seguridad de red. |
+| Cloudflare Code Mode | Dynamic discovery, on-demand schemas, grouped execution | `EXTENSIBLE` / `PARCIAL` | Reuse native `execute` and extend selective discovery and schema access. |
+| Aider Repo Map | Tree-sitter, dependency graphs, incremental mapping | `PARCIAL` | Reuse `implementacion/memoria/` and dynamic context budgets. Structural extraction remains subject to D24. |
+| Amp deep research | On-demand dependency and code understanding | `CONFIGURABLE` / `PARCIAL` | Use existing search and subagents for sufficiently complex tasks. Reuse a qualified LSP where available. |
+| Kilo CLI routing | Model choice by complexity, cost, and latency | `PARCIAL` | Reuse `implementacion/gateway/` and extend only routing policy. |
+| Qwen Code compatibility | Ollama, llama.cpp, vLLM, and self-hosted endpoints | `CONFIGURABLE` | Reuse native OpenAI-compatible providers. Keep LiteLLM optional. |
+| OpenHands self-correction | Loop and stalled-progress detection, replanning | `PARCIAL` | Use native session and supervisor events. Bound replanning and preserve the existing loop. |
+| Antigravity orchestration | Verifying subagents, coordination, and worktrees | `EXISTENTE` / `CONFIGURABLE` | Reuse native agents, child sessions, and worktrees. Start with one agent and delegate only independent work with measured benefit. |
+| Goose Recipes | Parameterized, reproducible workflows | `EXISTENTE` / `EXTENSIBLE` | Reuse native skills and commands and keep the existing authoring interface. |
+| Kiro Specs | Specifications, design, and acceptance criteria | `EXISTENTE` / `CONFIGURABLE` | Use structured Markdown, project instructions, and skills. |
+| Cline headless and governance | Headless CLI, JSON events, CI/CD | `EXISTENTE` / `CONFIGURABLE` | Reuse `opencode run --format json` and the session events. Enforce budgets at the existing supervisor boundary. |
+| amux mobile supervision | Remote status, progress, and budgets | `EXTENSIBLE` | Evaluate a limited Pair Device extension using the native session server. |
+| Warp Oz asynchronous tasks | Cooperative pause, cancellation, and reconciliation | `PARCIAL` | Integrate safe pause points and state reconciliation with the supervisor and native sessions. |
+| Crush TUI performance | Latency, RAM, and CPU | `CONFIGURABLE` | Preserve the native TUI and address measured bottlenecks. |
+| Cursor remote executors | Delegation to self-hosted servers | `APLAZADA` | F9 after network and authorization controls qualify. |
 
-### 18.4 Nuevas mejoras complementarias incorporadas
+### 18.4 Additional proposed improvements
 
-1. **Filtrado determinista de logs y resultados:**
-   - Procesamiento determinista local en la salida de herramientas: deduplicación de líneas consecutivas o repetidas, conteo de ocurrencias, agrupamiento de errores idénticos, conservación de 5-10 líneas de contexto alrededor del fallo, y redacción de patrones de secretos.
-   - Referencia local a logs extensos sin saturar la ventana de contexto del modelo ni consumir tokens innecesarios. Nunca ocultar fallos críticos ni truncar sin marcar explícitamente `[TRUNCATED / SUMMARIZED]`.
-2. **Restauración y recuperación del sistema:**
-   - Prioridad 1: Recuperación a nivel de proyecto mediante Git, transacciones de copia y worktrees desechables.
-   - Mecanismos de recuperación del SO (Btrfs snapshots, Snapper, Timeshift, APFS, System Restore): deshabilitados por defecto, clasificados como `APLAZADA` (F9), sin operaciones privilegiadas automáticas ni falsas garantías de recuperación integral.
-3. **Compatibilidad controlada con hooks de Claude Code y Codex:**
-   - Adaptador ligero en el supervisor para interpretar eventos y contratos de hooks estándar.
-   - Restricciones obligatorias: lista cerrada de acciones, ejecución sin privilegios, tiempo límite estricto, aislamiento en sandbox y autoridad nula sobre las políticas del supervisor. Deshabilitados por defecto.
-4. **Validación automática según lenguaje:**
-   - Detección determinista del ecosistema del proyecto (Node/TypeScript, Python, Rust, Go, Java, C/C++, Bash).
-   - Detección y ejecución focalizada de validadores existentes en el workspace (linters, formateadores, suites de pruebas específicas para archivos modificados).
-   - No ejecutar suites completas para cambios mínimos; no instalar dependencias de validación sin aprobación.
-5. **Diagnósticos programados de solo lectura:**
-   - Reutilización exclusiva del broker DIAG (`implementacion/broker/`) y planificadores nativos del SO (systemd timers, cron, Task Scheduler, launchd).
-   - Solo lectura, sin llamadas a LLM (cero consumo de tokens), con límites de frecuencia, CPU y tamaño de informe. Inspeccionable y desactivable por el usuario.
+1. **Deterministic tool-output filtering.** Deduplicate repeated lines, count occurrences, group identical errors, retain 5–10 surrounding lines, and redact secret patterns. Keep references to full local logs, preserve critical errors, and mark excerpts with `[TRUNCATED / SUMMARIZED]`.
+2. **Recovery.** Prioritize Git, transactional copies, and disposable worktrees. Btrfs snapshots, Snapper, Timeshift, APFS, and System Restore remain disabled by default and classified `APLAZADA` in F9. They require platform qualification and explicit authorization for privileged actions.
+3. **Claude Code and Codex hooks.** A lightweight supervisor adapter may interpret standard hook contracts. Keep it disabled by default and require an action allowlist, standard-user execution, a strict deadline, sandboxing, and zero authority over supervisor policy.
+4. **Language-aware validation.** Detect Node/TypeScript, Python, Rust, Go, Java, C/C++, and Bash deterministically. Target the existing linters, formatters, and tests to edited files. Obtain approval before installing dependencies.
+5. **Read-only scheduled diagnostics.** Reuse `implementacion/broker/` with systemd timers, cron, Task Scheduler, or launchd. Bound frequency, CPU, and report size. Keep operations read-only, inspectable, and user-disableable, without model calls.
 
-### 18.5 Experiencia inicial gratuita y libertad de proveedores
+### 18.5 Free initial use and provider choice
 
-- **Primera ejecución sin fricción:** Detección de modelos gratuitos nativos autorizados en OpenCode y endpoints locales (Ollama/LM Studio).
-- **Control estricto de costos:** Respeto absoluto del presupuesto. Nunca cambiar automáticamente a modelos de pago ni cambiar de endpoint si la cuota gratuita se agota; reportar el límite y solicitar configuración de API propia o modelo local.
-- **Privacidad garantizada:** No compartir API keys, no transmitir datos privados fuera de los límites autorizados y respetar loopback en modo local.
+Detect authorized native OpenCode free models and local Ollama or LM Studio endpoints. Enforce the approved budget. When an allowance is exhausted, report it and let the user configure an authorized API or model. Require authorization before switching endpoints or incurring cost. Keep API keys private and preserve the local loopback restriction.
 
-### 18.6 Arquitectura unificada de seguridad y presupuestos
+### 18.6 Security and budget architecture
 
-El sistema mantiene una jerarquía unificada e inviolable:
-- **Supervisor confiable (`implementacion/supervisor/`):** Controla políticas, presupuesto, perfiles (PLAN, DIAG, WORKSPACE) y ciclo de vida de procesos.
-- **Broker de diagnóstico (`implementacion/broker/`):** Expone un catálogo tipado y cerrado de 5 consultas de solo lectura mediante MCP.
-- **Aislamiento (`Bubblewrap` en Linux):** Aislamiento de red (loopback privado), filesystem de solo lectura para el host y montajes efímeros para el workspace.
-- **Gateway de inferencia (`implementacion/gateway/`):** Canal único hacia loopback/modelos, con validación de costo cero en modo local, límites de tokens y sin fallback silencioso.
-- **Memoria y contexto (`implementacion/memoria/` + `context.py`):** Base JSONL por proyecto con invalidación automática por hash de archivos y sobre de autoridad nula (`authority: none`). El contexto es estrictamente dato no confiable y jamás confiere permisos ni modifica políticas.
+- The trusted supervisor (`implementacion/supervisor/`) owns policy, profiles (PLAN, DIAG, WORKSPACE), budgeting, and process lifecycle within the qualified scope.
+- The DIAG broker (`implementacion/broker/`) exposes five typed, read-only MCP queries.
+- Linux Bubblewrap provides private loopback, read-only host mounts, and ephemeral workspace mounts.
+- The inference gateway (`implementacion/gateway/`) is the sole model channel for qualified profiles. It enforces destination and bounds, and local profiles reject nonzero cost and disable fallback.
+- Persistent project memory (`implementacion/memoria/` and `context.py`) uses JSONL, hash invalidation, and an `authority: none` envelope. Context is untrusted data with zero permission and policy authority.
+
+The design in this report describes intended architecture. Current qualification and gates are recorded in the project state and roadmap. [Project state](ESTADO.md) · [Execution plan](PLAN_PARA_CODEX.md)

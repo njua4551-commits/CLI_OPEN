@@ -1,143 +1,78 @@
-# Estado del proyecto
+# Project state
 
-**Directiva vigente:** estabilizar CLI_OPEN antes de continuar el roadmap (gateway, streaming, concurrencia, APIs, sandbox, edición real, CI, pruebas reproducibles); luego modelo local real e integración remota con presupuestos y autorización explícita. Texto completo en `AGENTS.md`. Posponer funcionalidades nuevas, incluido Computer Use.
+The stabilization directive covers gateway limits, streaming, concurrency, APIs, sandbox connectivity, real editing, CI, and reproducible tests. Real local inference and secure remote integration have separate gates. Computer Use remains deferred. [Agent instructions](AGENTS.md)
 
-Referencia pública: `dfcdd822b358b96f19be2d64c0ad1b61d1404f6a`.
+The historical public reference is `dfcdd822b358b96f19be2d64c0ad1b61d1404f6a`. The real-client HTTP checkpoint is `5335b70c2bece3a3d8c0256358e1d16e19c88350`, following `242c3b1`. The working branch is `fase-1` and tracks `origin/main`.
 
-Checkpoint técnico de la prueba HTTP física: `5335b70c2bece3a3d8c0256358e1d16e19c88350` (`5335b70`). Anterior: `242c3b1`. Rama `fase-1` / `origin/main`.
+## Documentation map
 
-## Equivalencia de Documentación Principal
-- **PROJECT_STATE.md** → `ESTADO.md` (Estado actual, SHAs, módulos cerrados y activos).
-- **ARCHITECTURE.md** → `INFORME_TECNICO.md` y `docs/DECISIONES.md` (Arquitectura, decisiones D01–D24, supervisión).
-- **ROADMAP.md** → `PLAN_PARA_CODEX.md` (Roadmap v3.0, fases F0–F9, matriz F7).
-- **AUDIT.md** → `docs/CAMBIOS.md`, `docs/PRUEBAS.md` e `INFORME_TECNICO.md` (Auditoría, parches, cobertura).
+- Architecture and decisions D01–D24. [Technical report](INFORME_TECNICO.md) · [Decisions](docs/DECISIONES.md)
+- Phase order, acceptance gates, and reuse. [Roadmap](PLAN_PARA_CODEX.md) · [F7 matrix](docs/MATRIZ_F7.md)
+- Audit, patches, and qualification. [Changes](docs/CAMBIOS.md) · [Test evidence](docs/PRUEBAS.md)
+- Reproduction and next steps. [Continuity](CONTINUAR.md)
 
-## Estado por Fases y Módulos
+## F0–F5 · Qualified on Linux x86_64
 
-### 1. Fases 0 a 5 (Cerradas)
-- Entorno de calificación: CachyOS Linux x86_64.
-- Base: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1` (núcleo intacto).
-- Supervisor P0 (`implementacion/supervisor/`): Perfil PLAN, Broker DIAG (`implementacion/broker/`), calificado con Bubblewrap Linux (`qualify-linux`).
-- Edición segura (`workspace.py`): Edición aislada en copia con validación `snapshot` de componentes de ruta usando `openat` (`O_NOFOLLOW` / `O_DIRECTORY`), soporte para subdirectorios y extensiones de código real (`MAX_FILE` 256 KiB), publicación Git transaccional.
+The qualification environment was CachyOS Linux x86_64. OpenCode `v2.3.2` at `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1` supplies the engine. PLAN, the DIAG MCP broker, and Bubblewrap are qualified. The workspace supervisor edits a disposable copy, traverses nested paths through `snapshot` and `openat` with `O_NOFOLLOW` and `O_DIRECTORY`, supports real code extensions with `MAX_FILE` at 256 KiB, and publishes approved changes to a separate Git ref transactionally.
 
-### 2. Fase 6 — Gateway Inferencia Local (Estabilizado & Verificado)
-- Gateway local (`implementacion/gateway/__main__.py`):
-  - Concurrencia acotada con `_BoundedThreadingHTTPServer` (`CLI_OPEN_GATEWAY_MAX_CONCURRENCY`). Al saturarse, el exceso se rechaza de inmediato con HTTP 503 sin crear hilos en cola.
-  - Coincidencia estricta de modelos: `model_matches` requiere ID exacto o par explícito autorizado (`alias=canonical`). Sin coincidencia por prefijo.
-  - Streaming SSE (`complete_streaming`): passthrough con validación por línea, timeouts por socket/entorno (`CLI_OPEN_GATEWAY_TIMEOUT_SECONDS`), y retransmisión de eventos de error SSE con cierre de conexión.
-  - Compatibilidad ampliada de API OpenAI (`frequency_penalty`, `presence_penalty`, `seed`, `stop`, `parallel_tool_calls`, `reasoning_effort`, `response_format`, etc.).
-  - Fixture HTTP y CLI en loopback pasados (`tests/fase6-gateway.py`, `tests/fase6-cli-gateway.ts`).
-  - Carga real con `http.client`: 12 clientes en ráfaga, 2 en streaming y 10 bajo saturación; límite 2 efectivo (pico medido 2), exceso rechazado con 503 y timeout de entorno aplicado a 1 s (`tests/fase6-concurrencia.py`). Timeout acepta `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` (nombre documentado) y el alias legado `CLI_OPEN_GATEWAY_TIMEOUT`.
+## F6 · Gateway and local inference
 
-### 3. Fase 7 — Memoria Persistente y Contexto (En Curso / Módulos 1 y 2 Cerrados)
-- Memoria por proyecto (`implementacion/memoria/`): JSONL fuera del repo, invalidación automática por SHA-256 de archivos referenciados, ranking por presupuesto de tokens (`tests/fase7-memoria.py`).
-- Contexto no confiable (`implementacion/supervisor/context.py`): Sobre `authority: none` inyectado determinísticamente. Demostrado sin elevación de privilegios en loopback CLI (`tests/fase7-contexto-loopback.ts`).
-- F7.1 Auditoría & Línea Base: Matriz de reutilización (`docs/MATRIZ_F7.md`) y suite determinista (`tests/fase7-lineabase.py`). D24: Repo Map aplazado hasta reutilizar Tree-sitter/LSP/ripgrep del motor OpenCode; sin indexador Python independiente.
-- F7.2 Compuerta de reutilización: `tests/fase7-repomap.py` verifica en el SHA fijado 36 gramáticas limitadas a `highlights.scm`, ausencia de consultas de símbolos, ausencia de servicio LSP y disponibilidad de ripgrep. Sin runtime Tree-sitter (CLI ni binding Python) ni gramáticas `.wasm`, el Repo Map permanece bloqueado; no se creó `implementacion/repomap/`.
+The OpenAI-compatible gateway has bounded concurrency via `CLI_OPEN_GATEWAY_MAX_CONCURRENCY`. At saturation it returns HTTP 503 without queueing a worker. `model_matches` accepts exact IDs and explicit `alias=canonical` pairs. `complete_streaming` forwards SSE incrementally, validates lines, and forwards errors before closing. The socket timeout uses `CLI_OPEN_GATEWAY_TIMEOUT_SECONDS` with `CLI_OPEN_GATEWAY_TIMEOUT` as a legacy alias. Supported request fields include `frequency_penalty`, `presence_penalty`, `seed`, `stop`, `parallel_tool_calls`, `reasoning_effort`, and `response_format`.
 
-## Clasificación de Funcionalidades (Verificadas vs Pendientes)
+Both the HTTP and CLI fixtures passed. The real-client load in `tests/fase6-concurrencia.py` reached a peak of two concurrent streams at a configured limit of two. It rejected excess clients with 503 and observed the configured one-second timeout.
 
-### Verificadas en Entorno Real/Sintético (Pasan Tests Reproducibles)
-1. Supervisor de permisos, broker DIAG MCP y calificador Bubblewrap Linux.
-2. Edición aislada de archivos reales con prevención de path traversal en subdirectorios anidados.
-3. Gateway OpenAI-compatible con concurrencia acotada, streaming SSE, coincidencia estricta de alias y límites configurables.
-4. Memoria persistente JSONL con invalidación por hash e inyección de contexto con autoridad nula.
-5. Concurrencia del gateway con clientes HTTP reales (12 + 8 hilos), límite efectivo y timeout configurable.
-6. Regresión automatizada completa (11 unittest, qualify-linux, review, workspace, gateway, concurrencia, memoria, contexto, lineabase, compuerta repomap).
+The physical CPU fixture passed chat, SSE, and tool calls through the gateway using llama.cpp `b12753` and Llama 3.2 1B Instruct Q4_K_M (~771 MiB), with artifacts isolated in `/tmp/opencode`. Check for existing temporary artifacts before considering another download. In the full OpenCode session, the permitted read succeeded and the out-of-scope read was denied. The final response was empty, so full-session qualification remains open. [Test evidence](docs/PRUEBAS.md)
 
-### Pendientes de Validación Física Real (Requieren Entorno / Hardware / Autorización)
-1. Inferencia con modelo físico local: **verificada** en CPU. `llama.cpp` `b12753` + Llama 3.2 1B Instruct Q4_K_M (~771 MiB), aislados en `/tmp/opencode`; `tests/fase6-modelo-local.py` pasó chat, streaming SSE y tool call real a través del gateway. Usa loopback y CPU. Verificar primero si los artefactos temporales aún existen antes de considerar otra descarga.
-2. Presupuesto y autorización para integración remota externa (D07): **bloqueado**. Requiere autorización explícita nueva y credencial/entorno remoto; no se habilitó ninguna ruta remota.
-3. Adaptación Repo Map (F7.2): **bloqueado con evidencia ejecutada** (`tests/fase7-repomap.py`). Reutilizar Tree-sitter/LSP no es posible en este entorno y crear un indexador independiente viola D24; siguiente paso: incorporar el runtime/consultas de símbolos del motor o clasificar `AUSENTE` con aprobación.
+## F7 · Persistent memory and selective context
 
-## Reanudar el trabajo
-1. Leer `AGENTS.md`, `CONTINUAR.md`, `ESTADO.md` y `docs/DECISIONES.md`.
-2. Verificar `git status` y contrastar HEAD con la referencia pública.
-3. Ejecutar las pruebas de regresión:
-   ```sh
-   python3 -B -m unittest discover -s tests
-   python3 -I -B implementacion/supervisor qualify-linux
-   python3 -I -B tests/fase6-gateway.py
-   python3 -I -B tests/fase6-concurrencia.py
-   python3 -I -B tests/fase7-lineabase.py
-   python3 -I -B tests/fase7-repomap.py
-   git diff --check
-   ```
-4. Consultar `CONTINUAR.md` para las siguientes acciones autorizadas de la directiva de estabilización.
+Project memory uses JSONL outside the repository and invalidates referenced files by SHA-256. Token-aware ranking is covered by `tests/fase7-memoria.py`. The supervisor includes memory in an `authority: none` envelope and verifies its byte limit. The loopback fixture observed no privilege increase. The shared budget across memory, code, web, and tool output remains open.
 
-## Sesión física local con OpenCode
+F7.1 records reuse classifications and a deterministic baseline. The pinned engine has 36 `highlights.scm` grammars and ripgrep. The environment lacked symbol queries, an LSP service, a usable Tree-sitter runtime, and `.wasm` grammars. D24 keeps structural Repo Map blocked. The preserved stash contains an independent AST and regex indexer and was left unapplied. The shipped F7.2 increment discovers paths on demand with ripgrep. The optional `contexto-selectivo` preset qualifies path discovery, matches with line numbers, paginated reading, and a final answer under Bubblewrap. Structural symbol extraction for Python, JS, TS, Java, and C# remains unqualified. [F7 matrix](docs/MATRIZ_F7.md)
 
-La lectura permitida y el rechazo de una lectura fuera de la regla pasaron con OpenCode, gateway y llama.cpp en el mismo loopback privado de Bubblewrap. La respuesta final quedó vacía tras ejecutar la herramienta. La sesión completa sigue abierta. La evidencia y la cobertura están en [PRUEBAS.md](docs/PRUEBAS.md).
+The native web audit and isolated HTML baseline are complete. The opt-in HTML filter passed deterministic fixtures. External retrieval, additional format conversion, and relevance-based section selection remain deferred. The latter requires an explicit relevance query. [Decisions](docs/DECISIONES.md) · [Measurements](docs/PRUEBAS.md)
 
-## Lectura web y documentos
+## Reproducibility and CI
 
-Auditoría nativa y línea base HTML aislada ejecutadas. Filtro HTML opt-in implementado y calificado con fixtures. Recuperación externa y conversión adicional aplazadas. Véanse [decisiones](docs/DECISIONES.md) y [mediciones](docs/PRUEBAS.md).
+GitHub Actions has separate Portable and Linux jobs. The OpenCode profile verifies binary versions and SHA-256 before running. CI qualification of a clean engine build and its artifacts remains open.
 
-## Comparación con API real
+Historically, `f74ab48` passed Portable and failed Linux during Bubblewrap loopback setup. The workflow correction loads Ubuntu's packaged AppArmor profile. `810af0c` passed loopback setup and failed Python startup in the separated ELF library layout. The F4 mount change prepared the next remote qualification. [CI evidence](docs/PRUEBAS.md)
 
-**BLOCKED.** El catálogo público mostró un endpoint gratuito de Gemma con herramientas. La cuenta y cuota de OpenRouter no pudieron verificarse. La integración OpenAI activa en OpenCode carece de evidencia de acceso autorizado a una API de costo cero para este fixture. D07 sigue pendiente de consentimiento específico y de una ruta supervisada calificada con presupuesto compartido. A–D remotas sin ejecutar. El diagnóstico comparativo con Llama 3.2 1B sigue **INCONCLUSIVE**. Véase [continuidad](CONTINUAR.md).
+## D07 · Local admission and remote inference
 
+**BLOCKED** for real remote inference. The public catalog showed a free Gemma endpoint with tools, but authenticated OpenRouter quota and account access were unverified. Native OpenCode OAuth exists. The effective ChatGPT model catalog and a zero-cost supervised API route for the fixture remain unverified. Free OpenCode Console chat is restricted to its native client. Remote scenarios A–D were not run. The Llama 3.2 1B comparison remains **INCONCLUSIVE**. [Remote fixture plan](CONTINUAR.md)
 
-**Revalidación D07:** destino, límites por solicitud y aislamiento local pasaron con proveedor simulado. **FAIL** cancelación durante SSE inactivo. **BLOCKED** autenticación del canal, presupuesto compartido, cuota OpenRouter y ejecución remota. Bubblewrap y el gateway local conservan su configuración.
+Early testing passed destination, per-request limits, and local isolation, with **FAIL** for cancellation during stalled SSE. The corrected cancellation regression passed with a synthetic upstream. The authenticated private listener qualifies per-task reservations, cancellation, strict SSE termination, and expiration. Its SQLite ledger preserves reservations and the original deadline on restart, rejects corrupted state, and records reported usage separately.
 
-## OpenCode Console gratuito
+The opt-in Responses listener uses the existing authenticated ledger against a synthetic upstream under Bubblewrap. Chat Completions remains available in its own profile. The engine's direct native ChatGPT transport has no qualified official interface through the supervised gateway. D07 remains blocked pending that transport and explicit content and destination authorization.
 
-**PASS** consulta del catálogo oficial y regresión de cancelación con upstream SSE inactivo. **BLOCKED** sesión remota de CLI_OPEN: los modelos chat gratuitos de Console se restringen a OpenCode y el canal actual solo admite loopback. El acceso efectivo y la cuota de la sesión no se acreditaron. Véase [PRUEBAS.md](docs/PRUEBAS.md).
+## D07.2 · Partial recovery under Bubblewrap
 
-## Reproducibilidad y CI
-
-Runner por perfiles portable, Linux y OpenCode precompilado. GitHub Actions ejecuta portable y Linux en jobs separados. En el perfil OpenCode se verifican los hashes de los binarios calificados antes de ejecutarlos. La construcción desde cero y la integración de artefactos en CI siguen pendientes.
-
-## Contexto selectivo y Repo Map
-
-El supervisor comprueba el presupuesto del sobre de memoria en la incorporación al prompt. Esto cubre memoria. El presupuesto compartido con código, web y salidas de herramientas sigue pendiente. Repo Map F7.2 permanece **BLOCKED**. El stash conserva un indexador separado con AST y expresiones regulares, incompatible con D24. No se aplicó al checkout.
-
-El perfil OpenCode pasó con los artefactos existentes. Se verificó reanudar una sesión en un proceso nuevo después de una lectura completada. F7.3 conserva el filtro opcional. La selección por secciones queda aplazada hasta disponer de una consulta explícita. D07 sigue bloqueado.
-
-## Diagnóstico de GitHub Actions
-
-La primera ejecución en `f74ab48` dio **PASS** en portable y **FAIL** en Linux al configurar el loopback de Bubblewrap. El ajuste local prepara el perfil de AppArmor empaquetado por Ubuntu y conserva las pruebas estrictas. CI remota de la corrección **PENDIENTE DE VALIDACIÓN**.
-
-`810af0c` llegó a ejecutar Bubblewrap en CI y superó el bloqueo del loopback. El error siguiente de arranque ELF se reprodujo con un layout de bibliotecas separado. El ajuste de F4 está preparado para recalificación remota.
-
-## F7.2 · Repo Map parcial
-
-Implementado y probado el descubrimiento bajo demanda de rutas con ripgrep y un presupuesto común con memoria. Sigue **BLOCKED** la extracción de símbolos y relaciones estructurales con D24. Las rutas funcionan de forma independiente del lenguaje. No se acreditó extracción de símbolos para Python, JS, TS, Java ni C#. El flujo de ampliación usa grep y read nativos. D07 sigue bloqueado.
-
-F7.2 cuenta con el preset optativo `contexto-selectivo` y un fixture de integración que verifica ruta → coincidencia con línea → página → respuesta, bajo Bubblewrap. La selección estructural y el presupuesto global de inferencia siguen pendientes. D24 y D07 conservan sus puertas.
-
-## D07 · ChatGPT y admisión local
-
-Autenticación OAuth nativa **DISPONIBLE** en el motor fijado. Acceso de cuenta, catálogo efectivo y pruebas remotas **BLOCKED** para CLI_OPEN. El perfil local de tarea pasa autenticación y reserva acumulada por listener contra un proveedor simulado. El canal supervisado hasta ChatGPT aún no está calificado.
-
-El perfil autenticado tiene plazo de proceso, retención de reservas ante fallos y terminación SSE estricta. Se calificó cancelación del cliente y expiración con upstream simulado. OAuth real, contabilización de tokens del proveedor y recuperación de una reserva tras reinicio siguen pendientes.
-
-El perfil loopback D07 puede usar una base SQLite privada por tarea. Se calificó reinicio, rechazo de estado corrupto, plazo persistido y uso reportado separado del presupuesto. Sigue **BLOCKED** la inferencia real de ChatGPT con supervisión.
-
-## D07 · Responses local
-
-Canal optativo autenticado con registro existente, validado con proveedor Responses simulado bajo Bubblewrap. Conserva Chat Completions como perfil independiente. Sigue **BLOCKED** el canal remoto autorizado de ChatGPT. La recuperación de una herramienta activa queda pendiente.
-
-## D07.2 · Recuperación parcial bajo Bubblewrap
-
-Base confirmada en `origin/main`: `a3fbcf4`. La cobertura de reanudación incluye una herramienta activa con efecto observable y resultado aún sin registrar, además de la lectura completada. También cubre un SSE completo sin métricas y el rechazo de un modelo distinto al autorizado. Quedan por calificar los puntos de interrupción previos a ejecutar el efecto y la recuperación para otras herramientas con efectos secundarios y cambios externos.
-
-**BLOCKED** para ChatGPT real. La documentación pública confirma el acceso directo mediante el inicio de sesión nativo de OpenCode, pero no se identificó una interfaz oficialmente admitida para reutilizar esa sesión desde el gateway supervisado. No hubo autenticación ni inferencia real.
+At public checkpoint `a3fbcf4`, the local fixture recovered a completed read and a shell operation interrupted after an observable effect but before its recorded result. It also tested complete SSE without usage and rejection of an unapproved model. Later D07.3 evidence extends that scope.
 
 ## D07.3 · Local recovery qualification
 
-The starting point was `aca792ea24d7b4d1a28e110252465a1c8e3fb95b`, also confirmed on GitHub before editing. The local Responses fixture distinguishes incomplete tool input, an interrupted shell effect, a denied edit, a conflict, and a completed result. See [test evidence](docs/PRUEBAS.md) for observed results, scope, and pending cases. Remote D07 remains blocked, and D24 still defers structural extraction.
-
-## English engineering migration
-
-The quickstart, bootstrap prompt, agent policy, selective context preset, memory envelope guidance, and implementation diagnostics use English. Existing contracts and multilingual fixture data are preserved. The remaining Spanish architecture, roadmap, and continuity prose still needs translation. Historical evidence and quoted material retain their original language. See the benchmark in [test evidence](docs/PRUEBAS.md#english-engineering-text-benchmark).
-
-## D07.3 · MCP recovery continuation
-
-The local OpenCode profile qualified the native stdio MCP fixture before its effect, after its effect but before its reply, and after a recorded completion. Portable and Linux also passed. See [test evidence](docs/PRUEBAS.md#d073--native-mcp-interruption-under-bubblewrap). The authorization dispatch boundary, active read/search interruption, final edit-write race, full supervisor restart, and a distinct equivalent call remain unqualified.
-
-The local OpenCode profile also passed a distinct, explicitly requested equivalent MCP call after completion. Native permission allowed the new call and the fixture observed a second effect. The fully received arguments before authorization, active read/search interruption, edit-write race, full supervisor restart, and new equivalent calls after uncertain outcomes remain pending.
+The initial qualification started at `aca792ea24d7b4d1a28e110252465a1c8e3fb95b`, confirmed on GitHub at the time. It distinguished incomplete input, interrupted shell effects, denied edits, stale and ambiguous replacements, and completed results. The native stdio MCP fixture covered interruption before an effect, interruption after an effect but before reply, and recorded completion. The follow-up at `054456c00f8c0fa542853cb870d706806604917c` qualified a distinct equivalent call after a completed result. [Earlier MCP evidence](docs/PRUEBAS.md#d073--native-mcp-interruption-under-bubblewrap)
 
 ## D07.3 · Authorization and publication checkpoint
 
 Work started at `054456c00f8c0fa542853cb870d706806604917c` on `fase-1`. The local OpenCode profile passed the pending native MCP permission boundary and equivalent new calls after an uncertain result. The workspace tests passed the concurrent revision check before reviewed Git publication. Active native read/search interruption, the final native edit-write interval, and the full supervisor restart remain open. D07 real remote inference and the F8 entry gate remain blocked. [Test evidence](docs/PRUEBAS.md#d073--permission-dispatch-and-equivalent-calls-after-an-uncertain-effect)
+
+## English engineering migration
+
+The quickstart, bootstrap guidance, agent policy, selective context preset, memory envelope guidance, implementation diagnostics, roadmap, continuity documents, and architectural decisions use English. Spanish input and fixture data are preserved. The earlier runtime benchmark measured 466 estimated tokens before the change and 426 afterward. The current documentation edits do not change those inputs. The technical report's current reuse section and the D07.3 evidence matrix also use English. Earlier report sections and historical change and test entries still contain Spanish. [Benchmark](docs/PRUEBAS.md#english-engineering-text-benchmark)
+
+## Resume work
+
+Read `AGENTS.md`, `CONTINUAR.md`, `ESTADO.md`, and `docs/DECISIONES.md`. Verify Git status and compare HEAD to the public reference, then run the regression commands applicable to the change.
+
+```sh
+python3 -B -m unittest discover -s tests
+python3 -I -B implementacion/supervisor qualify-linux
+python3 -I -B tests/fase6-gateway.py
+python3 -I -B tests/fase6-concurrencia.py
+python3 -I -B tests/fase7-lineabase.py
+python3 -I -B tests/fase7-repomap.py
+git diff --check
+```
+
+The phase gate and authorized next steps are in the continuity guide. [CONTINUAR.md](CONTINUAR.md)

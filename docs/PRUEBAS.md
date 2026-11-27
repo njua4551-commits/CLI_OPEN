@@ -276,23 +276,23 @@ La compuerta F7.2 se ejecutó y reprodujo el bloqueo estructural. Faltan consult
 
 - **PASS local** Portable (13 pruebas unitarias), Linux y OpenCode. `git diff --check` pasó. GitHub Actions ejecuta Portable y Linux. El perfil OpenCode se verificó localmente con sus artefactos fijados.
 
-## D07.3 · Matriz de interrupciones local
+## D07.3 · Local interruption matrix
 
-Motor OpenCode v2.3.2, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`. Proveedor Responses simulado. Los procesos de CLI se abren de nuevo con la misma base nativa y la política explícita de cada ejecución. El historial de OpenCode y las reservas SQLite del gateway representan estados distintos.
+OpenCode v2.3.2 at `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1` uses a synthetic Responses provider. Fresh CLI processes reopen the same native session database with the explicit policy for each run. OpenCode history and the gateway's SQLite reservations track different state.
 
-| Punto | Herramienta y efecto | Estado y permisos al reanudar | Resultado observado y riesgo residual |
+| Point | Tool and effect | State and permission at recovery | Observed result and remaining scope |
 |---|---|---|---|
-| A · Entrada de herramienta iniciada | `shell`, argumentos aún en streaming | `streaming` → `error/aborted`, `executed=false`. La sesión reabre sin `shell` en el catálogo | El archivo de efecto sigue ausente. Queda pendiente interrumpir después de completar los argumentos pero antes de autorizar |
-| B · Ejecución activa | `shell`, archivo de efecto y proceso aún activo | El proceso de OpenCode termina por SIGKILL. La llamada queda interrumpida | Se observa el PID antes del corte y su desaparición después. Un efecto parcial de una operación arbitraria exige comprobar el estado externo |
-| C · Efecto aplicado, resultado pendiente | `shell`, una línea agregada | La reanudación devuelve al proveedor la interrupción, primero con `shell` denegado y luego con `shell` permitido | Una línea exacta tras ambas reanudaciones. Las carreras durante edición y los efectos MCP pendientes requieren fixture propio |
-| D · Resultado almacenado | `read` y `edit` | Resultado recuperado con el mismo ID y permiso vigente. La edición denegada también se conserva tras pasar a permitida | Una solicitud de modelo al reanudar, cero eventos de ejecución nuevos. Una revisión externa se preserva aunque vuelva a contener el texto que la edición buscaría |
-| E · Operación de lectura o búsqueda interrumpida | `read`, `glob`, `grep` | `read` aprobado y denegado cubiertos por Responses. F7.2 cubre rutas, coincidencias y paginación | El valor del archivo denegado queda fuera de las solicitudes y salidas del fixture. Falta interrumpir una búsqueda o lectura ya despachada |
+| A · Tool input started | `shell` arguments still streaming | `streaming` → `error/aborted`, `executed=false`; the reopened catalog omits `shell` | The effect file remains absent. The later native permission fixture covers complete arguments for MCP. |
+| B · Active execution | `shell` with an effect file and a live process | OpenCode exits by SIGKILL and the call is interrupted | The PID was visible before the interruption and disappeared afterward. Arbitrary partial effects still require inspection. |
+| C · Effect applied, result pending | `shell` appends a line | Recovery returns the interrupted result first with `shell` denied, then with it allowed | The file contains one line after both resumptions. The later MCP fixture covers stdio dispatch and effects separately. |
+| D · Stored result | `read` and `edit` | Same call ID and persisted result; an edit denial persists when the new policy allows editing | One model request on resumption and no new tool execution event. External contents survive, even when they again contain the search string. |
+| E · Active read or search | `read`, `glob`, `grep` | Completed allowed and denied reads pass in Responses. F7.2 covers path discovery, search, and pagination | The denied marker never reaches the model or fixture output. Interruption after native dispatch remains pending. |
 
-La edición comprueba denegación de la ruta, coincidencia ambigua, texto de origen obsoleto y modificación completa conservando CRLF. El caso de revisión externa reproduce una edición obsoleta con una modificación previa. Queda por calificar una escritura externa entre la lectura interna y el commit, así como la recuperación tras detener un MCP activo o reiniciar el supervisor completo. Una nueva llamada propuesta por el modelo con argumentos iguales es una operación nueva y sujeta a política. El fixture prueba ausencia de reejecución del registro anterior. La deduplicación de nuevas llamadas semánticamente equivalentes sigue sin acreditarse.
+The edit tests cover path denial, ambiguous matches, stale source text, and successful CRLF preservation. The external revision in the earlier fixture predates the next operation. The exact native validation-to-write interval remains open. A distinct call ID with equivalent arguments represents a new operation subject to current policy. The historical fixture established that resumption does not replay the old recorded call.
 
-Portable pasó con 13 pruebas unitarias y fixtures de memoria, contexto y lectura web. Linux pasó con Bubblewrap, recuperación de reservas SQLite, rechazo de corrupción, plazo, cancelación SSE, concurrencia con clientes HTTP reales y retención de reservas. El uso reportado por el proveedor simulado se almacena aparte y el fixture no establece consumo facturado.
+At this checkpoint, Portable passed 13 unit tests plus memory, context, and web fixtures. Linux passed Bubblewrap, SQLite restart and corruption rejection, deadline, SSE cancellation, HTTP client concurrency, and reservation retention. Provider-reported usage is recorded separately and establishes no billed usage.
 
-El perfil OpenCode pasó con la matriz ampliada, incluidos el aborto anterior al despacho, la desaparición del proceso de shell y dos cancelaciones registradas en SQLite. Los fixtures de contexto volvieron a pasar con memoria no confiable y selección nativa por ruta, coincidencia y página. En el fixture F7.2, las salidas de herramientas bajaron de 13 205 a 723 bytes. La medición corresponde a este caso sintético.
+The historical OpenCode run passed the expanded matrix, including abort before dispatch, shell-process cleanup, and two SQLite cancellation records. The context fixtures passed untrusted memory and native path, match, and page selection. F7.2 tool output was 13,205 bytes in the baseline and 723 bytes in the selected synthetic run.
 
 ## English engineering text benchmark
 
@@ -337,3 +337,9 @@ PASS in the local OpenCode profile under Bubblewrap. Reopening the completed MCP
 **PARTIAL** for native `edit`. The pinned engine computes source matches and a preview before requesting permission. Uniqueness and no-op checks run after that request, and the native write follows. The Git publication barrier gives evidence at the supervisor boundary. The native interval after final edit validation and before file write remains untested.
 
 **PENDING** for interruption during active native `read`, paginated `read`, `glob`, and `grep`. Existing F7.2 tests qualify completed search and pagination. **PENDING** for a complete supervisor restart. OpenCode session recovery and SQLite gateway ledger restart are independently exercised. The current supervisor exposes one-shot commands and has no product task start/resume command that owns both processes and their persistent state.
+
+### Verification of the authorization checkpoint
+
+Portable passed 14 unit tests plus memory, context, and HTML compression. Linux passed Bubblewrap, safe workspace operations, gateway concurrency, SSE cancellation, and SQLite reservations, restart, deadline, and corruption checks. OpenCode passed the pinned artifact checks, native edit and supervisor fixtures, Responses recovery, MCP, F7.2 selective context, and loopback webfetch. The standalone Repo Map gate reproduced the D24 blocker. Local regression evidence applies to OpenCode v2.3.2 and Bun 1.4.4. Remote CI was not rechecked for the local commits.
+
+The host has an x86_64 Intel Core i5-7300HQ, four logical CPUs, and 16,245,544 KiB of reported RAM. The HTTP regression observed the configured two-request limit. The shell recovery fixture observed cleanup of the recorded child PID. These are regression observations. F8.0 workload measurements, process-tree RSS, CPU time, and sequential/parallel comparisons remain pending under the roadmap entry gate.

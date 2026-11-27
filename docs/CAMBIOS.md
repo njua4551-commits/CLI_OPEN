@@ -212,3 +212,8 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 - Drove the native OpenCode session permission API under Bubblewrap and verified interruption while an MCP call with complete arguments awaited permission. Qualified a fresh one-time grant and a subsequent rejection.
 - Extended the MCP recovery fixture to issue distinct equivalent calls after an uncertain effect. Checked the dispatch count under deny and under explicit allow.
 - Exercised the supervisor's final source verification before reviewed Git publication and verified that rejection preserves external bytes, permissions, and the active index.
+
+## English engineering documentation
+
+- Standardized the phase plan, continuity guide, project state, architectural decisions, technical report reuse section, and D07.3 matrix in English. Preserved the original bootstrap prompt, interface names, fixture inputs, and checkpoint evidence.
+- Reran `python3 -I -B tests/english-context-benchmark.py`. The runtime sample still measures 466 estimated tokens before the earlier migration and 426 afterward. This documentation change contributes zero measured runtime token savings.
