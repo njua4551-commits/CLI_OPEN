@@ -226,3 +226,7 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 ## D07.4 · Native ChatGPT authentication diagnostics
 
 - Added a clean-profile, tool-denied fixture for native provider, model, and integration discovery. It starts and cancels the official OAuth attempt under Bubblewrap before browser authorization.
+
+## D07.5 · Version-bound review
+
+- Bind approvals and final Git publication checks to the source file version and bytes. Reject restored bytes after an intervening change, mode-only changes, and same-content inode replacement.

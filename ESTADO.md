@@ -84,3 +84,7 @@ Starting SHA `d3ec56fbb08742b259a846ddb1b5d97187d03771` on `fase-1`, verified as
 ## D07.4 · Native ChatGPT diagnostic
 
 The pinned acquisition path passed preparation and cancellation before browser authorization. Account consent, available subscription models, and native inference remain unverified. The supervised gateway has synthetic Responses evidence only. Real D07 remains blocked pending a supported provider and tool isolation boundary with trusted egress and durable task budgeting. [Diagnostic evidence](docs/PRUEBAS.md#d074--native-chatgpt-pre-browser-diagnostics)
+
+## D07.5 · Version-bound supervised editing
+
+Starting SHA `0cd96c733a4f503a5e3c4cce772a402672cf237b`, confirmed on public `main`. The supervisor now checks source identity and metadata in addition to bytes during approval and final publication. The public review report keeps its existing fields and earlier approvals require a fresh review. The native editor still lacks a supported post-approval, pre-write validation hook. Its known overwrite and the production lifecycle with a separately protected budget remain open. F8 stays gated. [Evidence](docs/PRUEBAS.md#d075--version-bound-workspace-approval)

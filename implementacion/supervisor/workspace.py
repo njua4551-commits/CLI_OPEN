@@ -100,7 +100,8 @@ def verify_sources(root, changes):
         for change in changes:
             current = snapshot(directory, change["path"])
             digest = hashlib.sha256(current[1].encode("utf-8")).hexdigest() if current else None
-            if digest != change["before_sha256"]:
+            version = current[0] if current else None
+            if digest != change["before_sha256"] or version != change["before_version"]:
                 raise SourceChanged("source changed before publication")
     finally:
         os.close(directory)
@@ -170,6 +171,7 @@ def review(root, edits, bubblewrap_command):
                     "operation": "replace" if originals[name] else "create",
                     "before_sha256": hashlib.sha256(originals[name][1].encode("utf-8")).hexdigest()
                     if originals[name] else None,
+                    "before_version": originals[name][0] if originals[name] else None,
                     "diff": review_diff(name, originals[name], (copy / name).read_bytes().decode("utf-8")),
                 }
                 for name in originals

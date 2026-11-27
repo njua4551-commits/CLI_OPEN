@@ -86,21 +86,39 @@ class WorkspaceTest(unittest.TestCase):
             changes = [{
                 "path": "fixture.txt", "operation": "replace",
                 "before_sha256": hashlib.sha256(b"before\n").hexdigest(),
+                "before_version": WORKSPACE["signature"](target.stat()),
             }]
             approval = WORKSPACE_GIT["approval"](source, base, changes, edits)
 
             def change_before_final_verification(root, approved_changes):
-                target.write_text("external revision\n")
                 target.chmod(0o640)
                 WORKSPACE["verify_sources"](root, approved_changes)
 
             with self.assertRaisesRegex(WORKSPACE["SourceChanged"], "before publication"):
                 WORKSPACE_GIT["publish"](source, base, edits, changes, approval, change_before_final_verification)
-            self.assertEqual(target.read_bytes(), b"external revision\n")
+            self.assertEqual(target.read_bytes(), b"before\n")
             self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o640)
             self.assertEqual(git(source, "diff", "--cached", "--name-only"), b"")
             self.assertEqual(git(source, "for-each-ref", "refs/heads/cli-open/"), b"")
             self.assertEqual(WORKSPACE_GIT["base_commit"](source), base)
+
+    def test_final_verification_rejects_equal_bytes_on_replaced_inode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            target = source / "fixture.txt"
+            target.write_bytes(b"before\r\n")
+            changes = [{
+                "path": target.name,
+                "before_sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+                "before_version": WORKSPACE["signature"](target.stat()),
+            }]
+            WORKSPACE["verify_sources"](source, changes)
+            replacement = source / "replacement.txt"
+            replacement.write_bytes(target.read_bytes())
+            replacement.replace(target)
+            with self.assertRaisesRegex(WORKSPACE["SourceChanged"], "before publication"):
+                WORKSPACE["verify_sources"](source, changes)
+            self.assertEqual(target.read_bytes(), b"before\r\n")
 
     def test_link_and_validation_failure_leave_original_intact(self):
         with tempfile.TemporaryDirectory() as directory:

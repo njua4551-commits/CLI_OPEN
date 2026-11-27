@@ -53,6 +53,12 @@ def main():
         assert git(source, "for-each-ref", "refs/heads/cli-open/") == ""
         assert (source / "notes.txt").read_text() == "concurrent\n"
         (source / "notes.txt").write_text("before\n")
+        assert run(source, edits, approval).returncode == 1
+        refreshed = run(source, edits)
+        assert refreshed.returncode == 0, refreshed.stderr
+        refreshed_approval = json.loads(refreshed.stdout)["approval"]
+        assert refreshed_approval != approval
+        approval = refreshed_approval
         applied = run(source, edits, approval)
         assert applied.returncode == 0, applied.stderr
         published = json.loads(applied.stdout)

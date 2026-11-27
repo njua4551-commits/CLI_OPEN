@@ -142,3 +142,7 @@ Run `python3 -I -B tests/fase6-d07-restart.py` on qualified Linux with the pinne
 ## D07.4 · Resume the native ChatGPT diagnostic
 
 The OpenCode profile tests the native pre-browser step with a clean temporary profile and all tool permissions denied. Account verification requires the user's participation in OpenCode's official browser flow. Keep the native diagnostic separate from supervised CLI_OPEN and obtain explicit authorization before real synthetic inference. Keep OAuth credentials outside the CLI_OPEN gateway and tool environment. [Diagnostic evidence](docs/PRUEBAS.md#d074--native-chatgpt-pre-browser-diagnostics)
+
+## D07.5 · Version-bound review
+
+Generate a fresh review before applying a change if the source bytes, identity, or metadata changed. Old approval tokens predate the version binding and must be regenerated. The review path keeps native editing in a disposable workspace and publishes a separate Git ref. The next gate is a supported correction and regression for the native `edit` preview-to-write interval. [Evidence](docs/PRUEBAS.md#d075--version-bound-workspace-approval)

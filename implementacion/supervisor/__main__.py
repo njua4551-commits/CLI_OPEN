@@ -124,7 +124,11 @@ def main(argv=None):
             if git_workspace["base_commit"](source) != base:
                 raise workspace["SourceChanged"]("Git base changed")
             digest = git_workspace["approval"](source, base, changes, edits)
-            report = {"mode": "review-only", "base": base, "approval": digest, "changes": changes}
+            report = {
+                "mode": "review-only", "base": base, "approval": digest,
+                "changes": [{key: value for key, value in change.items() if key != "before_version"}
+                            for change in changes],
+            }
             if options.command == "apply-workspace":
                 if not base or options.approve != digest:
                     raise workspace["SourceChanged"]("missing Git base or approval mismatch")

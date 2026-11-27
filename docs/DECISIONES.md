@@ -110,3 +110,7 @@ Native subscription sign-in is **EXISTENTE**. The pinned local APIs expose the n
 ### F8.3 · Adaptive Tool Selection & Lazy Activation
 
 Reuse native catalog and invocation, Code Mode schema lookup, agent filters, skill dispatch, permissions, MCP connection lifecycle, and context compaction. Treat model visibility, schema inclusion, and process startup as independently measurable. F8.0 establishes repeatable cost and outcome metrics. F8.1 supplies bounded admission and lifecycle ownership for optional activation. Parallel activation or worker expansion waits for F8.2. Manual activation and trusted policy remain authoritative. A standalone tool chooser or sidecar model is outside the proposed implementation. [Roadmap](../PLAN_PARA_CODEX.md#f83--adaptive-tool-selection--lazy-activation-proposed)
+
+### D07.5 · Bind reviewed edits to source version
+
+An approval binds the source file signature as well as the existing content hash. The signature includes device, inode, file mode, size, mtime, and ctime. Final verification reuses the same bounded, no-follow snapshot. The version stays internal to preserve the public review fields. Existing approval tokens require a fresh review. Source verification precedes the Git ref transaction, which publishes to a separate review ref. Arbitrary filesystem writers do not participate in that transaction, so this is optimistic verification with no live-worktree mutation. Direct native edits on concurrently mutable source remain outside the qualified flow.
