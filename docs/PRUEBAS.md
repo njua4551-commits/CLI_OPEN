@@ -323,3 +323,17 @@ The fixture accepts an aborted tool or a native MCP connection-closed failure be
 ### New equivalent MCP call after resumption
 
 PASS in the local OpenCode profile under Bubblewrap. Reopening the completed MCP session first preserved the existing result with one invocation and one effect. A subsequent explicit request returned a new call ID with the same tool and arguments. With current permission allowing the tool, OpenCode recorded a distinct completion, and the synthetic server recorded exactly two invocations and two effects in total. This demonstrates the difference between replaying history and authorizing a new call. The same test does not establish behavior for a newly proposed call after an uncertain result.
+
+### D07.3 · Permission dispatch and equivalent calls after an uncertain effect
+
+**PASS**, OpenCode v2.3.2 under the existing Bubblewrap Responses profile. The native session permission endpoint exposed the MCP invocation's ID and complete, nonempty arguments while the call was running. The synthetic server had both releases enabled throughout. No invocation reached it while authorization was pending. Session interruption persisted an error, invalidated the old permission request, and left no effect. A fresh call in the same session needed a new decision and executed after a one-time grant. The next identical request needed another decision and its rejection left the total at one dispatch and one effect.
+
+**PASS**, same fixture. Recovery after an observed but unacknowledged MCP effect retained the original call ID and error. The model then requested the same arguments with a distinct ID while the tool was denied. OpenCode recorded an error without dispatching it. A third ID under explicit allow completed and produced one additional effect. The prior records remained session evidence.
+
+### D07.3 · Concurrent edit before reviewed Git publication
+
+**PASS**, `python3 -I -B tests/test_workspace.py`. The test changed a synthetic source at the existing final verification callback, after Git prepared the candidate commit. The production verifier rejected the publication. The external contents and mode survived, HEAD and the live index were unchanged, and no review ref was created.
+
+**PARTIAL** for native `edit`. The pinned engine computes source matches and a preview before requesting permission. Uniqueness and no-op checks run after that request, and the native write follows. The Git publication barrier gives evidence at the supervisor boundary. The native interval after final edit validation and before file write remains untested.
+
+**PENDING** for interruption during active native `read`, paginated `read`, `glob`, and `grep`. Existing F7.2 tests qualify completed search and pagination. **PENDING** for a complete supervisor restart. OpenCode session recovery and SQLite gateway ledger restart are independently exercised. The current supervisor exposes one-shot commands and has no product task start/resume command that owns both processes and their persistent state.

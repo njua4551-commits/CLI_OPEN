@@ -90,3 +90,9 @@ Native OAuth exists in the pinned engine. OpenCode documents account connection 
 ### D07.3 · Synthetic MCP
 
 Native MCP discovery, dispatch, and permission checks are existing capabilities. The fixture uses OpenCode's local stdio transport and two temporary-file barriers around a single append. It exercises the existing Responses and Bubblewrap profile. An interrupted or closed MCP transport cannot identify whether the server committed an effect. Preserve the native error and inspect the target state before authorizing a new mutating call.
+
+### D07.3 · Permission barrier and publication boundary
+
+The native session permission API is **EXISTENTE**. The Responses fixture reuses its pending request list, session interrupt, and one-time or reject reply. The synthetic MCP service records dispatch independently of the OpenCode session. Only a new call ID can represent the explicit equivalent follow-up. Native policy still applies to it.
+
+The supervisor's copy and separate Git review ref are **EXISTENTE**. The publication fixture reuses the final source verification callback. The exact native edit validation-to-write interval and a supervised restart spanning both the runtime and its inference budget still require qualification.

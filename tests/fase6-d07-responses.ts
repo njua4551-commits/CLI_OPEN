@@ -27,7 +27,11 @@ let editProbe: { call: string; expected: RegExp } | undefined
 let holdToolInput = false
 let recoveringToolInput = false
 const mcpTool = "probe_append"
-let mcpProbe: { id: string; directory: string; resumed: boolean; complete: boolean; freshID?: string } | undefined
+const mcpArguments = { label: "synthetic" }
+let mcpProbe: {
+  id: string; directory: string; resumed: boolean; complete: boolean
+  fresh?: { id: string; allowed: boolean; reject?: boolean }
+} | undefined
 
 function events(chunks: object[]) {
   return chunks.map(chunk => "data: " + JSON.stringify(chunk) + "\n\n").join("")
@@ -92,20 +96,23 @@ const upstream = Bun.serve({
     } else if (recoveringToolInput) {
       assert(!body.tools?.some((tool: { name: string }) => tool.name === "shell"))
     } else if (mcpProbe) {
-      const { id: previousID, freshID, complete, resumed } = mcpProbe
+      const { id: previousID, fresh, complete, resumed } = mcpProbe
       const result = results.find((item: { call_id: string }) => item.call_id === previousID)
       const offered = body.tools?.some((tool: { name: string }) => tool.name === mcpTool)
       if (result)
         assert.match(JSON.stringify(result), complete
           ? /Synthetic append completed/ : /interrupted|aborted|Connection closed/i)
-      if (result && resumed && !complete) assert(!offered, "The denied MCP tool was advertised")
-      const freshResult = freshID && results.find((item: { call_id: string }) => item.call_id === freshID)
+      if (result && resumed && !fresh && !complete)
+        assert(!offered, "The denied MCP tool was advertised")
+      const freshResult = fresh && results.find((item: { call_id: string }) => item.call_id === fresh.id)
       if (freshResult) {
-        assert.match(JSON.stringify(freshResult), /Synthetic append completed/)
-      } else if (offered && ((!result && !resumed) || (result && freshID))) {
-        const callID = freshID ?? previousID
+        assert.match(JSON.stringify(freshResult), fresh.allowed && !fresh.reject
+          ? /Synthetic append completed/ : /permission|denied|reject|not found|not available/i)
+      } else if ((!result && !resumed && offered) || (result && fresh)) {
+        if (fresh) assert.equal(Boolean(offered), fresh.allowed)
+        const callID = fresh?.id ?? previousID
         return toolCalls(id, [{ type: "function_call", id: "fc_" + callID,
-          call_id: callID, name: mcpTool, arguments: "{}" }])
+          call_id: callID, name: mcpTool, arguments: JSON.stringify(mcpArguments) }])
       } else if (!result && resumed && body.tools?.some((tool: { name: string }) => tool.name === "read")) {
         assert.fail("MCP recovery request omitted the persisted tool result")
       }
@@ -154,7 +161,7 @@ const upstream = Bun.serve({
 
 const child = Bun.spawn(["/usr/bin/python3", "-I", "-B", resolve(import.meta.dir, "../implementacion/gateway"),
   "--port", String(upstream.port), "--model", model, "--listen", "0", "--responses", "--task-budget",
-  "48", "480000", "24576", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
+  "64", "640000", "32768", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
   env: { PATH: "/usr/bin:/bin", CLI_OPEN_GATEWAY_TASK_TOKEN: token }, stdout: "pipe", stderr: "inherit",
 })
 try {
@@ -188,17 +195,14 @@ try {
         settings: { store: false } } },
     } },
   }
-  function spawnSession(prompt: string, session?: string, action?: "shell" | "edit" | typeof mcpTool) {
-    return Bun.spawn([cli, "--standalone", "run", "--model", "fixture/fixture", "--format", "json",
-      ...(session ? ["--session", session] : []),
-      prompt],
-    { cwd: work, stdout: "pipe", stderr: "pipe", env: {
+  function sessionEnv(action?: "shell" | "edit" | typeof mcpTool, effect: "allow" | "ask" = "allow") {
+    return {
     PATH: "/usr/bin:/bin", HOME: root, XDG_DATA_HOME: join(root, "data"), XDG_CONFIG_HOME: join(root, "config"),
     XDG_STATE_HOME: join(root, "state"), XDG_CACHE_HOME: join(root, "cache"),
     OPENCODE_DB: sessionDatabase,
     OPENCODE_CONFIG_CONTENT: JSON.stringify({ ...config,
       permissions: action ? [
-        ...config.permissions, { action, resource: action === "edit" ? "edit.txt" : "*", effect: "allow" },
+        ...config.permissions, { action, resource: action === "edit" ? "edit.txt" : "*", effect },
       ] : config.permissions,
       ...(mcpProbe ? { mcp: { servers: { probe: { type: "local",
         command: ["/usr/bin/python3", "-I", "-B", join(import.meta.dir, "fase6-d07-mcp-server.py"), mcpProbe.directory],
@@ -206,7 +210,12 @@ try {
       } } } } : {}),
     }), OPENCODE_DISABLE_MODELS_FETCH: "true",
     OPENCODE_CONFIG_PROJECT_DISABLE: "true", OPENCODE_DISABLE_FILEWATCHER: "true",
-    } })
+    }
+  }
+  function spawnSession(prompt: string, session?: string, action?: "shell" | "edit" | typeof mcpTool) {
+    return Bun.spawn([cli, "--standalone", "run", "--model", "fixture/fixture", "--format", "json",
+      ...(session ? ["--session", session] : []), prompt],
+    { cwd: work, stdout: "pipe", stderr: "pipe", env: sessionEnv(action) })
   }
   async function finish(run: ReturnType<typeof spawnSession>) {
     const timer = setTimeout(() => run.kill("SIGKILL"), 30_000)
@@ -407,14 +416,106 @@ try {
     if (phase === "before") await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
     else assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
     if (!complete) assert.match(persistedTool("error", id)?.error ?? "", /^(aborted|tool\.execution)$/)
-    if (complete) {
-      const freshID = "call_mcp_equivalent"
-      mcpProbe.freshID = freshID
+    if (phase === "uncertain") {
+      const deniedID = "call_mcp_equivalent_denied"
+      mcpProbe.fresh = { id: deniedID, allowed: false }
+      const denied = await finish(spawnSession("Request another synthetic append under the current policy.", sessionID))
+      assert.equal(persistedTool("error", deniedID)?.session_id, sessionID, denied)
+      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+      assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
+    }
+    if (complete || phase === "uncertain") {
+      await writeFile(join(directory, "allow-reply"), "")
+      const freshID = id + "_equivalent"
+      mcpProbe.fresh = { id: freshID, allowed: true }
       const followUp = await finish(spawnSession("Explicitly request a new synthetic append.", sessionID, mcpTool))
       assert(followUp.includes('"type":"tool_use"'))
       assert.equal(persistedTool("completed", freshID)?.session_id, sessionID)
       assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\ncall\n")
       assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\neffect\n")
+    }
+  }
+  {
+    const directory = join(root, "mcp-permission")
+    const id = "call_mcp_pending_permission"
+    await mkdir(directory)
+    await writeFile(join(directory, "allow-effect"), "")
+    await writeFile(join(directory, "allow-reply"), "")
+    mcpProbe = { directory, id, complete: false, resumed: false }
+    const password = randomUUID()
+    const server = Bun.spawn([cli, "serve", "--hostname", "127.0.0.1", "--port", "0"], {
+      cwd: work, stdout: "pipe", stderr: "inherit", env: { ...sessionEnv(mcpTool, "ask"), OPENCODE_PASSWORD: password },
+    })
+    let serverURL = ""
+    const startupDeadline = setTimeout(() => server.kill("SIGKILL"), 10_000)
+    try {
+      for await (const line of server.stdout.pipeThrough(new TextDecoderStream())) {
+        serverURL = line.match(/server listening on (http:\/\/127\.0\.0\.1:\d+)/)?.[1] ?? ""
+        if (serverURL) break
+      }
+      clearTimeout(startupDeadline)
+      assert(serverURL, "Native OpenCode listener did not start")
+      async function native(path: string, body?: object, status = 200) {
+        const result = await fetch(serverURL + "/api/session" + path, {
+          headers: { Authorization: "Basic " + btoa("opencode:" + password), "content-type": "application/json" },
+          ...(body && { method: "POST", body: JSON.stringify(body) }),
+          signal: AbortSignal.timeout(5_000),
+        })
+        const content = await result.text()
+        assert.equal(result.status, status, content)
+        if (!content) return undefined
+        const decoded = JSON.parse(content)
+        return decoded.data ?? decoded
+      }
+      const sessionPath = "/" + (await native("", {
+        title: "Synthetic authorization fixture", model: { providerID: model, id: model },
+      })).id
+      async function permissionFor(callID: string) {
+        for (let attempt = 0; attempt < 150; attempt++) {
+          const pending = await native(sessionPath + "/permission")
+          const permission = pending.find((entry: { source?: { id: string } }) => entry.source?.id === callID)
+          if (permission) {
+            assert.equal(permission.action, mcpTool)
+            assert.deepEqual(permission.metadata.input, mcpArguments)
+            assert.equal(persistedTool("running", callID)?.session_id, sessionPath.slice(1))
+            return sessionPath + "/permission/" + permission.id + "/reply"
+          }
+          await Bun.sleep(50)
+        }
+        assert.fail("No permission request for " + callID)
+      }
+      async function waitForTool(status: string, callID: string) {
+        for (let attempt = 0; attempt < 150; attempt++) {
+          if (persistedTool(status, callID)?.session_id === sessionPath.slice(1)) return
+          await Bun.sleep(50)
+        }
+        assert.fail("No " + status + " record for " + callID)
+      }
+      await native(sessionPath + "/prompt", { text: "Request a synthetic append." })
+      const stale = await permissionFor(id)
+      await assert.rejects(access(join(directory, "calls")), { code: "ENOENT" })
+      assert.equal((await native(sessionPath + "/interrupt", {})).interrupted, true)
+      await waitForTool("error", id)
+      await native(stale, { decision: "once" }, 404)
+      await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
+      mcpProbe.resumed = true
+      for (const [suffix, decision] of [["once", "once"], ["reject", "reject"]] as const) {
+        const freshID = id + "_" + suffix
+        mcpProbe.fresh = { id: freshID, allowed: true, reject: decision === "reject" }
+        await native(sessionPath + "/prompt", { text: "Request a new synthetic append." })
+        const reply = await permissionFor(freshID)
+        if (decision === "once") await assert.rejects(access(join(directory, "calls")), { code: "ENOENT" })
+        else assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+        await native(reply, { decision }, 204)
+        await waitForTool(decision === "once" ? "completed" : "error", freshID)
+      }
+      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+      assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
+      console.log("PASS native permission boundary: complete arguments, interrupt, one-time grant and rejection")
+    } finally {
+      clearTimeout(startupDeadline)
+      server.kill("SIGKILL")
+      await server.exited
     }
   }
   mcpProbe = undefined

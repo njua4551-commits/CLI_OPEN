@@ -137,3 +137,7 @@ The quickstart, bootstrap prompt, agent policy, selective context preset, memory
 The local OpenCode profile qualified the native stdio MCP fixture before its effect, after its effect but before its reply, and after a recorded completion. Portable and Linux also passed. See [test evidence](docs/PRUEBAS.md#d073--native-mcp-interruption-under-bubblewrap). The authorization dispatch boundary, active read/search interruption, final edit-write race, full supervisor restart, and a distinct equivalent call remain unqualified.
 
 The local OpenCode profile also passed a distinct, explicitly requested equivalent MCP call after completion. Native permission allowed the new call and the fixture observed a second effect. The fully received arguments before authorization, active read/search interruption, edit-write race, full supervisor restart, and new equivalent calls after uncertain outcomes remain pending.
+
+## D07.3 · Authorization and publication checkpoint
+
+Work started at `054456c00f8c0fa542853cb870d706806604917c` on `fase-1`. The local OpenCode profile passed the pending native MCP permission boundary and equivalent new calls after an uncertain result. The workspace tests passed the concurrent revision check before reviewed Git publication. Active native read/search interruption, the final native edit-write interval, and the full supervisor restart remain open. D07 real remote inference and the F8 entry gate remain blocked. [Test evidence](docs/PRUEBAS.md#d073--permission-dispatch-and-equivalent-calls-after-an-uncertain-effect)

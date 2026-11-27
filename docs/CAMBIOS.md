@@ -206,3 +206,9 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 - Extend the native Responses fixture with a synthetic MCP server that pauses before an effect and before its response.
 
 - Qualify a fresh MCP call with equivalent arguments after a completed result. Keep that case separate from replaying the stored result.
+
+## D07.3 · Native authorization and reviewed publication
+
+- Drove the native OpenCode session permission API under Bubblewrap and verified interruption while an MCP call with complete arguments awaited permission. Qualified a fresh one-time grant and a subsequent rejection.
+- Extended the MCP recovery fixture to issue distinct equivalent calls after an uncertain effect. Checked the dispatch count under deny and under explicit allow.
+- Exercised the supervisor's final source verification before reviewed Git publication and verified that rejection preserves external bytes, permissions, and the active index.

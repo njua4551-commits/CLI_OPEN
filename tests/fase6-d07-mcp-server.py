@@ -35,10 +35,11 @@ for line in sys.stdin:
                   "serverInfo": {"name": "recovery-fixture", "version": "1"}}
     elif method == "tools/list":
         result = {"tools": [{"name": "append", "description": "Append a fixed line to a synthetic file.",
-                             "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}}]}
+                             "inputSchema": {"type": "object", "properties": {"label": {"type": "string"}},
+                                             "required": ["label"], "additionalProperties": False}}]}
     elif method == "tools/call":
         assert request["params"]["name"] == "append"
-        assert not request["params"].get("arguments")
+        assert request["params"]["arguments"] == {"label": "synthetic"}
         with (root / "calls").open("a") as calls:
             calls.write("call\n")
         wait_for_release("allow-effect")
