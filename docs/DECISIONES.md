@@ -118,3 +118,7 @@ An approval binds the source file signature as well as the existing content hash
 ### D07.5 · Disposable edit handoff
 
 Keep the native editor in the existing private copy and scope its edit permission to the requested files. Reuse the bounded, no-follow snapshot on staged results after the worker exits. Construct a diff only when these bytes match the proposal that Git publication will use. Final source verification and separate-ref publication remain in the trusted supervisor. Native in-place edits outside CLI_OPEN are outside this containment.
+
+### D07.5 · Native browser handoff
+
+Reuse the native integration API to prepare and observe the official OAuth attempt. Pass the authorization destination directly to the selected Brave executable with its usual profile. Keep OpenCode state in a temporary profile with all tool permissions denied. Verification uses only integration and model metadata. Account recognition does not qualify real inference or the supervised transport.

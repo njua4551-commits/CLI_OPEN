@@ -92,3 +92,7 @@ Starting SHA `0cd96c733a4f503a5e3c4cce772a402672cf237b`, confirmed on public `ma
 ### Disposable edit containment
 
 Starting SHA `a851751e02a7880d0995548b87d0c65a2b2d5107`. The supervised editor operates on a disposable copy with permission only for proposed paths. The host rejects linked or changed output before issuing a review, and preserves version-bound approval and a separate publication ref. Direct native editing still has the stale-preview race. Production restart with separate trusted state and native in-flight I/O cancellation remain open. [Test evidence](docs/PRUEBAS.md#d075--disposable-edit-containment)
+
+### Native ChatGPT account recognition
+
+The user completed native consent in the installed Brave browser. The pinned OpenCode integration reported a connection and exposed 18 OpenAI model IDs in the temporary profile. Native inference was not requested. Supervised D07 remains blocked on the trusted transport. [Test evidence](docs/PRUEBAS.md#d075--brave-account-diagnostic)

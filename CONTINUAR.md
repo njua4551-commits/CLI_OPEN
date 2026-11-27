@@ -171,3 +171,20 @@ Complete consent personally. If the clean terminal cannot open a browser, use th
 ### Disposable edit containment
 
 Use `review-workspace` and `apply-workspace` for supervised changes. The native editor receives a private copy and permissions limited to the proposal paths. The host checks exact staged bytes before it issues an approval. Production restart with a separate trusted ledger and native in-flight I/O remain the F8 entry dependencies.
+
+### Brave handoff from Fish
+
+The opt-in native diagnostic opens the authorization page in the installed Brave browser using its usual profile and keeps OpenCode in a fresh private profile. Run it from the project root. Fish can execute the binary directly without Bash functions or any change to shell configuration.
+
+```fish
+set -l browser (command -s brave)
+if test -z "$browser"
+    set browser (command -s brave-browser)
+end
+if test -n "$browser"
+    .fase1/tools/bun-linux-x64-baseline/bun tests/fase6-d07-chatgpt-auth.ts \
+        "$PWD/.fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode" "$browser"
+end
+```
+
+Personally complete the authorization in Brave. The diagnostic checks the native integration and model registry and prints only a completion flag and model IDs. The temporary OpenCode profile is removed when the process exits. The automated OpenCode suite omits the browser argument and stops before consent. Remote D07 remains blocked independently.

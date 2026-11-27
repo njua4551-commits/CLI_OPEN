@@ -4,6 +4,8 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
+const brave = process.argv[3]
+assert(!brave || (process.argv.length === 4 && brave.startsWith("/")))
 const home = await mkdtemp(join(tmpdir(), "cli-open-auth-"))
 const password = randomUUID()
 const server = Bun.spawn([process.argv[2], "serve", "--hostname", "127.0.0.1", "--port", "0"], {
@@ -64,12 +66,36 @@ try {
   const attemptPath = connection + "/" + encodeURIComponent(attempt.attemptID)
   try {
     assert.equal((await api(attemptPath)).status, "pending")
+    if (brave) {
+      // Keep the authorization URL out of the terminal and reuse Brave's default profile.
+      const browser = Bun.spawn([brave, url.href], { stdin: "ignore", stdout: "ignore", stderr: "ignore" })
+      browser.unref()
+      console.log("Brave handoff requested. Complete authorization in the browser.")
+      const deadline = Date.now() + 180_000
+      while (Date.now() < deadline) {
+        const state = (await api(attemptPath)).status
+        if (state === "complete") {
+          const connected = await api("integration/openai")
+          assert(connected.connections.length > 0, "OpenCode reports no connected account")
+          const available = (await api("model"))
+            .filter((entry: { providerID: string }) => entry.providerID === "openai")
+            .map((entry: { id: string }) => entry.id)
+          console.log(JSON.stringify({ authenticated: true, openaiModels: available }))
+          break
+        }
+        assert(state === "pending", "OAuth did not complete")
+        await Bun.sleep(1000)
+      }
+      assert.equal((await api(attemptPath)).status, "complete", "Browser consent timed out")
+    }
   } finally {
     await api(attemptPath, "DELETE", undefined, 204)
   }
-  await api(attemptPath, "GET", undefined, 404)
-  assert.equal((await api("integration/openai")).connections.length, 0)
-  console.log("PASS native ChatGPT method and local OAuth preparation/cancellation before browser handoff")
+  if (!brave) {
+    await api(attemptPath, "GET", undefined, 404)
+    assert.equal((await api("integration/openai")).connections.length, 0)
+    console.log("PASS native ChatGPT method and local OAuth preparation/cancellation before browser handoff")
+  }
 } finally {
   clearTimeout(startup)
   server.kill("SIGKILL")
