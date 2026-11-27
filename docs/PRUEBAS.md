@@ -319,3 +319,7 @@ The Responses fixture starts `tests/fase6-d07-mcp-server.py` through OpenCode's 
 | With a persisted result | The stored completion returned to the provider on resume with the tool still permitted. Invocation and effect counts remained one. |
 
 The fixture accepts an aborted tool or a native MCP connection-closed failure because transport teardown can race session settlement. Neither error determines whether the external effect committed. Temporary state is the evidence for this fixture. No live MCP service or remote inference was used. Recent changes passed the local Portable, Linux, and OpenCode profiles. The OpenCode profile runs locally with pinned artifacts. GitHub Actions currently runs Portable and Linux only.
+
+### New equivalent MCP call after resumption
+
+PASS in the local OpenCode profile under Bubblewrap. Reopening the completed MCP session first preserved the existing result with one invocation and one effect. A subsequent explicit request returned a new call ID with the same tool and arguments. With current permission allowing the tool, OpenCode recorded a distinct completion, and the synthetic server recorded exactly two invocations and two effects in total. This demonstrates the difference between replaying history and authorizing a new call. The same test does not establish behavior for a newly proposed call after an uncertain result.

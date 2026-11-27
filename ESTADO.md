@@ -135,3 +135,5 @@ The quickstart, bootstrap prompt, agent policy, selective context preset, memory
 ## D07.3 · MCP recovery continuation
 
 The local OpenCode profile qualified the native stdio MCP fixture before its effect, after its effect but before its reply, and after a recorded completion. Portable and Linux also passed. See [test evidence](docs/PRUEBAS.md#d073--native-mcp-interruption-under-bubblewrap). The authorization dispatch boundary, active read/search interruption, final edit-write race, full supervisor restart, and a distinct equivalent call remain unqualified.
+
+The local OpenCode profile also passed a distinct, explicitly requested equivalent MCP call after completion. Native permission allowed the new call and the fixture observed a second effect. The fully received arguments before authorization, active read/search interruption, edit-write race, full supervisor restart, and new equivalent calls after uncertain outcomes remain pending.

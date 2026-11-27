@@ -204,3 +204,5 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 - Move bootstrap instructions, the quickstart, selected documentation, project diagnostics, and selective context guidance to English while keeping existing identifiers and multilingual input.
 - Add a reproducible context size benchmark against `b96229d7d3a3b00a2fe5a147444f2a73c48cfa1b`.
 - Extend the native Responses fixture with a synthetic MCP server that pauses before an effect and before its response.
+
+- Qualify a fresh MCP call with equivalent arguments after a completed result. Keep that case separate from replaying the stored result.

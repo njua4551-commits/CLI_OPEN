@@ -27,7 +27,7 @@ let editProbe: { call: string; expected: RegExp } | undefined
 let holdToolInput = false
 let recoveringToolInput = false
 const mcpTool = "probe_append"
-let mcpProbe: { id: string; directory: string; resumed: boolean; complete: boolean } | undefined
+let mcpProbe: { id: string; directory: string; resumed: boolean; complete: boolean; freshID?: string } | undefined
 
 function events(chunks: object[]) {
   return chunks.map(chunk => "data: " + JSON.stringify(chunk) + "\n\n").join("")
@@ -92,16 +92,21 @@ const upstream = Bun.serve({
     } else if (recoveringToolInput) {
       assert(!body.tools?.some((tool: { name: string }) => tool.name === "shell"))
     } else if (mcpProbe) {
-      const result = results.find((item: { call_id: string }) => item.call_id === mcpProbe!.id)
+      const { id: previousID, freshID, complete, resumed } = mcpProbe
+      const result = results.find((item: { call_id: string }) => item.call_id === previousID)
       const offered = body.tools?.some((tool: { name: string }) => tool.name === mcpTool)
-      if (result) {
-        assert.match(JSON.stringify(result), mcpProbe.complete
+      if (result)
+        assert.match(JSON.stringify(result), complete
           ? /Synthetic append completed/ : /interrupted|aborted|Connection closed/i)
-        if (mcpProbe.resumed && !mcpProbe.complete) assert(!offered, "The denied MCP tool was advertised")
-      } else if (offered && !mcpProbe.resumed) {
-        return toolCalls(id, [{ type: "function_call", id: "fc_" + mcpProbe.id,
-          call_id: mcpProbe.id, name: mcpTool, arguments: "{}" }])
-      } else if (mcpProbe.resumed && body.tools?.some((tool: { name: string }) => tool.name === "read")) {
+      if (result && resumed && !complete) assert(!offered, "The denied MCP tool was advertised")
+      const freshResult = freshID && results.find((item: { call_id: string }) => item.call_id === freshID)
+      if (freshResult) {
+        assert.match(JSON.stringify(freshResult), /Synthetic append completed/)
+      } else if (offered && ((!result && !resumed) || (result && freshID))) {
+        const callID = freshID ?? previousID
+        return toolCalls(id, [{ type: "function_call", id: "fc_" + callID,
+          call_id: callID, name: mcpTool, arguments: "{}" }])
+      } else if (!result && resumed && body.tools?.some((tool: { name: string }) => tool.name === "read")) {
         assert.fail("MCP recovery request omitted the persisted tool result")
       }
     } else if (editProbe && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "edit"))) {
@@ -402,6 +407,15 @@ try {
     if (phase === "before") await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
     else assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
     if (!complete) assert.match(persistedTool("error", id)?.error ?? "", /^(aborted|tool\.execution)$/)
+    if (complete) {
+      const freshID = "call_mcp_equivalent"
+      mcpProbe.freshID = freshID
+      const followUp = await finish(spawnSession("Explicitly request a new synthetic append.", sessionID, mcpTool))
+      assert(followUp.includes('"type":"tool_use"'))
+      assert.equal(persistedTool("completed", freshID)?.session_id, sessionID)
+      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\ncall\n")
+      assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\neffect\n")
+    }
   }
   mcpProbe = undefined
   assert.match(await (await post({ ...payload, instructions: "no usage" })).text(), /response.completed/)
