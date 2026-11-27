@@ -410,3 +410,5 @@ The libc interception trials for native `read` and paginated `read` did not reac
 The opt-in diagnostic requires a private user-owned parent outside the repository and creates a unique child for OpenCode's native XDG state. An isolated negative test substituted an executable that exits unsuccessfully for Brave and verified removal of the new profile. Fish syntax for both consent and the native model listing passed. Actual profile retention still requires fresh user consent. No new login or inference was performed in preparing this path.
 
 GitHub Actions reported success for the starting published SHA `791c2b3e3caa16dfab4cf2a34be8962e61c664e0`. [CI run](https://github.com/njua4551-commits/CLI_OPEN/actions/runs/46041750540)
+
+The first OpenCode suite rerun exposed a transient SQLite reader collision with the gateway cancellation commit. The test reader now sets a one-second busy timeout on its read-only connection. The cancellation counts and terminal-status assertions are unchanged.

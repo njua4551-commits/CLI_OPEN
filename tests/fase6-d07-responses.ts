@@ -613,6 +613,8 @@ try {
 
     const db = new Database(ledger, { readonly: true })
     try {
+      // The cancellation writer may still be committing its terminal record.
+      db.exec("PRAGMA busy_timeout = 1000")
       const count = db.query<{ count: number }, [string]>("SELECT count(*) AS count FROM operation WHERE status=?")
       for (let attempt = 0; attempt < 40 && count.get("cancelled")?.count !== 2; attempt++) await Bun.sleep(50)
       assert.equal(count.get("cancelled")?.count, 2)
