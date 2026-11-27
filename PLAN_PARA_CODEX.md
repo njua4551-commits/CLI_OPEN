@@ -260,10 +260,38 @@ La Fase 7 actualiza y amplía el alcance de inteligencia, contexto, eficiencia, 
 
 - Aplazar temporalmente la inferencia remota mientras se estabiliza el procesamiento local de resultados web. Mantener Repo Map y Computer Use fuera de esta iteración. Calificar primero la ruta remota con un upstream simulado. Después de confirmar credencial, cuota, destino, privacidad, costo cero y aprobación del fixture, ejecutar lectura permitida, denegación, replay tras herramienta y SSE con cancelación. El perfil de prueba y sus topes están en [CONTINUAR.md](CONTINUAR.md).
 
-### Fase 8 — Empaquetado, distribución y soporte anunciado
-- Prioridad inicial: Linux x86_64 funcional en CachyOS, Arch Linux, Ubuntu, Debian y Fedora.
-- Entornos posteriores: Windows nativo, macOS y WSL2 con calificación de backends dedicados.
-- Instaladores reproducibles, contenedores de prueba y validación sin dependencias ocultas.
+### F8 — Agent Intelligence & Resource Efficiency (Proposed)
+
+**Entry gate.** Finish the critical D07.3 recovery qualifications before starting F8. Keep D07.3 scope and priority, D24's structural extraction gate, and D07's remote inference gate. This section authorizes planning only.
+
+**Reference.** jcode master at `d31f9cd9c36ba73ea3b3de66649648c2963a1542`. The README describes swarm messaging and file-change notifications. The harness documents explicit todo prerequisites and distinguishes worker telemetry from inferred activity. Its memory benchmark provides a workload design reference. These are upstream descriptions and artifacts. CLI_OPEN has not run jcode or reproduced its measurements. [Repository](https://github.com/1jehuang/jcode) · [Pinned README](https://github.com/1jehuang/jcode/blob/d31f9cd9c36ba73ea3b3de66649648c2963a1542/README.md) · [Harness documentation](https://github.com/1jehuang/jcode/blob/d31f9cd9c36ba73ea3b3de66649648c2963a1542/docs/HARNESS.md) · [Memory benchmark](https://github.com/1jehuang/jcode/blob/d31f9cd9c36ba73ea3b3de66649648c2963a1542/scripts/bench_headless_memory.py)
+
+**License review.** The pinned jcode and OpenCode roots both carry MIT licenses. Both require preservation of the copyright and permission notice in copies or substantial portions. Treat the source as a design reference. Any later proposal to copy a specific file must first verify its provenance, file-level and dependency licenses, attribution, and suitability for the pinned OpenCode interfaces. No jcode code or dependency is proposed for import here. [jcode license](https://github.com/1jehuang/jcode/blob/d31f9cd9c36ba73ea3b3de66649648c2963a1542/LICENSE) · [OpenCode license](https://github.com/anomalyco/opencode/blob/c0ad18b402eb2827fc1ee71c171b1177b3fc02d1/LICENSE)
+
+Engine evidence below refers to OpenCode v2.3.2 at `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`, under `packages/core/src/` unless stated otherwise. The classifications are planning decisions based on source inspection. `EXISTING` means reuse directly, `IMPROVE` means extend a known boundary, `ADD` means a missing project deliverable, `DEFER` means a later gate, and `REJECT` rules out a proposed approach.
+
+| Area | Classification | Evidence and qualification target |
+|---|---|---|
+| Global CPU, RAM, processes, and tool resources | IMPROVE | CLI_OPEN's supervisor constructs Bubblewrap namespaces, the broker exposes bounded read-only CPU, memory, and process diagnostics, and the gateway limits request admission and lifetime. These are separate limits and observations. Measure the whole task process tree and qualify aggregate CPU, RAM, process count, tool subprocess lifetime, and cleanup under constrained load before proposing enforcement. |
+| Adaptive parallelism and agent coordination | IMPROVE | OpenCode has native `tool/plugin/subagent.ts`, `session/subagent-job.ts`, and `session/subagent-depth.ts`. Gateway request concurrency alone cannot represent runnable agents or tool processes. Evaluate admission against native jobs and verified resource headroom. Test backpressure, cancellation, and single-worker fallback. |
+| Task dependencies | DEFER | OpenCode has `tool/plugin/todo.ts`, `job.ts`, and `automation.ts`. Their presence does not establish durable prerequisite scheduling. Audit native sequencing and terminal states first. If a gap remains, qualify dependency cycles, failure and cancellation propagation, and restart behavior before proposing an extension. |
+| Efficient subagent communication | IMPROVE | Reuse native completion data and parent reporting in `session/subagent-completion.ts` and `session/execution/subagent-report.ts`. Measure smaller result summaries with provenance and bounded size. Preserve permissions, project scope, and enough detail to recover work. |
+| Selective memory and context F7.2 | IMPROVE | CLI_OPEN already retrieves memory and paths in `implementacion/memoria/` and validates the untrusted envelope in `implementacion/supervisor/context.py`. The opt-in preset uses native glob, grep, and paginated read. Benchmark fewer repeated reads and better evidence selection. Keep D24 and the envelope's zero authority. |
+| Conflicts between agents | IMPROVE | Reuse OpenCode `worktree.ts` and CLI_OPEN's review and source-change checks in `implementacion/supervisor/workspace*.py`. Test concurrent modifications and stale reads across isolated worktrees. Report overlap for review and require an explicit resolution before publication. |
+| Cache and token observation | EXISTING | OpenCode has `repository-cache.ts`, `shared-cache.ts`, and provider-reported cache token fields in `session/usage.ts` and `session/stats.ts`. Reuse available counters in the benchmark. Distinguish local cache behavior, provider cache usage, estimates, and actual billing. Record unsupported fields as unavailable. |
+| Session hibernation and lifecycle | DEFER | OpenCode has suspended execution recovery in `session/execution/restart.ts` and background jobs in `session/background.ts`. Audit practical idle reclamation separately from resume. Qualify process cleanup, budget continuity, and current permission checks before considering hibernation for quiescent sessions. |
+| Comparative benchmarks | ADD | CLI_OPEN has recovery, selective-context, and local token estimate fixtures. Add a repeatable comparison of unmodified OpenCode 2.3.2, current CLI_OPEN, and each candidate after the entry gate. Follow the protocol below. |
+| Parallel runtime, scheduler, cache, message bus, or session store | REJECT | Extend verified OpenCode boundaries only when existing interfaces leave a measurable gap. Keep OS isolation, session authority, and remote approval in their existing components. |
+
+**Benchmark protocol.** Pin binary, host and OS, workspace snapshot, model profile or synthetic upstream, fixtures, and starting cache state. Run repeated cold and warm trials at one worker and fixed concurrent workloads. Measure process-tree peak RAM, CPU time, process count, time to first output and completion, successful task rate, recovery and cancellation outcomes, conflict outcomes, and input/output and cache tokens when reported. Report exact bytes and token estimates separately. Report sandbox overhead and resource-control differences when the upstream configuration cannot match CLI_OPEN. Record raw results, failures, run counts, and median and tail latencies. Use local synthetic fixtures first. Set acceptance thresholds from the measured baseline, retain safety regressions, and require independent approval before any remote inference.
+
+### Packaging, distribution, and announced support (previous F8 workstream)
+
+The historical F8 designation in D22 referred to packaging. Keep this workstream and its support scope under this heading. The new F8 proposal does not change the existing packaging commitments.
+
+- Initial target: functional Linux x86_64 on CachyOS, Arch Linux, Ubuntu, Debian, and Fedora.
+- Later targets: native Windows, macOS, and WSL2 with dedicated backend qualification.
+- Reproducible installers, test containers, and validation without hidden dependencies.
 
 ### Fase 9 — Funcionalidades futuras opcionales (Fuera de MVP)
 - Ejecutores remotos autogestionados (estilo Cursor / Warp Oz).
