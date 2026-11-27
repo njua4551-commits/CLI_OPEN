@@ -133,4 +133,8 @@ The Responses fixture kills OpenCode after a file effect and before the tool res
 
 The Responses fixture now holds a native MCP permission request with complete arguments before dispatch, then tests interruption, a one-time grant, and rejection. An uncertain prior effect is kept distinct from a new equivalent call, which is governed by the current native policy. The workspace test changes a source before final Git publication verification and checks that the external contents and mode survive.
 
-Next, qualify active interruption within native read, paginated read, glob, and grep. The native edit validation-to-write interval and a supervisor restart that restores both session and budget still need coverage. The F8 entry gate depends on critical D07.3 qualification. Real remote D07 remains blocked. [Test evidence](docs/PRUEBAS.md#d073--permission-dispatch-and-equivalent-calls-after-an-uncertain-effect)
+Continue with interruption during native filesystem and ripgrep work. The D07.4 probe targets the later result persistence boundary. The native edit validation-to-write interval and a supervisor restart that restores both session and budget still need coverage. The F8 entry gate depends on critical D07.3 qualification. Real remote D07 remains blocked. [Test evidence](docs/PRUEBAS.md#d073--permission-dispatch-and-equivalent-calls-after-an-uncertain-effect)
+
+## D07.4 · Reproduce launcher recovery
+
+Run `python3 -I -B tests/fase6-d07-restart.py` on qualified Linux with the pinned artifacts. The OpenCode suite also runs this fixture. It crashes the synthetic launcher before an active MCP reply and while a separate gateway reservation is open. The second namespace reopens the session and ledger. Continue with the exact native edit write boundary and production task-state ownership qualification before F8. [Lifecycle evidence](docs/PRUEBAS.md#d074--launcher-restart-with-native-session-and-task-budget)

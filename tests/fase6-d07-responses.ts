@@ -1,11 +1,13 @@
 import assert from "node:assert/strict"
 import { randomUUID } from "node:crypto"
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { access, chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { Database } from "bun:sqlite"
+import { events, response, toolCalls } from "./responses-fixture"
 
 const cli = resolve(process.argv[2])
+const readResults = process.argv[3] === "--read-results"
 const root = await mkdtemp(join(tmpdir(), "responses-"))
 const work = join(root, "work")
 const token = randomUUID()
@@ -23,38 +25,21 @@ let interruptedResult = false
 const effect = join(work, "effect.txt")
 const shellPID = join(work, "shell.pid")
 const editPath = join(work, "edit.txt")
-let editProbe: { call: string; expected: RegExp } | undefined
+let editProbe: { call: string; expected: RegExp; observed?: boolean } | undefined
 let holdToolInput = false
 let recoveringToolInput = false
+let readProbe: {
+  id: string; tool: "read" | "glob" | "grep"; input: object; expected: string
+  phase: "hold" | "recover" | "retry"
+} | undefined
+const resultBarrier = join(root, "result-barrier")
+const resultPlugin = join(root, "result-barrier-plugin")
 const mcpTool = "probe_append"
 const mcpArguments = { label: "synthetic" }
 let mcpProbe: {
   id: string; directory: string; resumed: boolean; complete: boolean
   fresh?: { id: string; allowed: boolean; reject?: boolean }
 } | undefined
-
-function events(chunks: object[]) {
-  return chunks.map(chunk => "data: " + JSON.stringify(chunk) + "\n\n").join("")
-}
-
-function response(id: string, output: object[], chunks: object[], reportUsage = true) {
-  const header = { id, model, output: [] }
-  return new Response(events([
-    { type: "response.created", response: header },
-    ...chunks,
-    { type: "response.completed", response: { ...header, status: "completed", output,
-      ...(reportUsage ? { usage: { input_tokens: 13, output_tokens: 7, total_tokens: 20 } } : {}) } },
-  ]), { headers: { "content-type": "text/event-stream" } })
-}
-
-function toolCalls(id: string, items: { id: string; arguments: string }[]) {
-  return response(id, items, items.flatMap((item, output_index) => [
-    { type: "response.output_item.added", output_index, item: { ...item, arguments: "" } },
-    { type: "response.function_call_arguments.delta", item_id: item.id, output_index, delta: item.arguments },
-    { type: "response.function_call_arguments.done", item_id: item.id, output_index, arguments: item.arguments },
-    { type: "response.output_item.done", output_index, item },
-  ]))
-}
 
 const upstream = Bun.serve({
   hostname: "127.0.0.1", port: 0,
@@ -95,6 +80,40 @@ const upstream = Bun.serve({
       }), { headers: { "content-type": "text/event-stream" } })
     } else if (recoveringToolInput) {
       assert(!body.tools?.some((tool: { name: string }) => tool.name === "shell"))
+    } else if (readProbe && body.tools?.length) {
+      const { id: original, phase, tool, input, expected } = readProbe
+      assert(!JSON.stringify(body).includes(forbidden))
+      const previous = results.find((item: { call_id: string }) => item.call_id === original)
+      if (phase !== "hold") assert.match(JSON.stringify(previous), /interrupted|aborted/i)
+      const callID = phase === "retry" ? original + "_retry" : phase === "recover" ? original + "_denied" : original
+      const retried = results.find((item: { call_id: string }) => item.call_id === callID)
+      const offered = body.tools.some((item: { name: string }) => item.name === tool)
+      if (phase !== "recover") assert(offered)
+      if (!retried) {
+        return toolCalls(model, id, [{ type: "function_call", id: "fc_" + callID,
+          call_id: callID, name: tool, arguments: JSON.stringify(input) }])
+      }
+      if (phase === "retry") {
+        assert(JSON.stringify(retried).includes(expected))
+        if (original.endsWith("_page")) assert(!JSON.stringify(retried).includes("first line"))
+      }
+      if (phase === "recover") {
+        assert.match(JSON.stringify(retried), /permission|denied|reject|not found|not available/i)
+        assert(!JSON.stringify(previous).includes(expected))
+      }
+    } else if (editProbe && (
+      results.some((item: { call_id: string }) => item.call_id === "call_" + editProbe?.call) ||
+      (!results.length && JSON.stringify(body.input).includes("Request the synthetic edit.") &&
+        body.tools?.some((tool: { name: string }) => tool.name === "edit"))
+    )) {
+      const callID = "call_" + editProbe.call
+      if (!results.length) {
+        return toolCalls(model, id, [{ type: "function_call", id: "fc_" + editProbe.call, call_id: callID, name: "edit",
+          arguments: JSON.stringify({ path: "edit.txt", oldString: "original", newString: "replacement" }) }])
+      }
+      const result = results.find((item: { call_id: string }) => item.call_id === callID)
+      assert.match(JSON.stringify(result), editProbe.expected)
+      editProbe.observed = true
     } else if (mcpProbe) {
       const { id: previousID, fresh, complete, resumed } = mcpProbe
       const result = results.find((item: { call_id: string }) => item.call_id === previousID)
@@ -111,24 +130,16 @@ const upstream = Bun.serve({
       } else if ((!result && !resumed && offered) || (result && fresh)) {
         if (fresh) assert.equal(Boolean(offered), fresh.allowed)
         const callID = fresh?.id ?? previousID
-        return toolCalls(id, [{ type: "function_call", id: "fc_" + callID,
+        return toolCalls(model, id, [{ type: "function_call", id: "fc_" + callID,
           call_id: callID, name: mcpTool, arguments: JSON.stringify(mcpArguments) }])
       } else if (!result && resumed && body.tools?.some((tool: { name: string }) => tool.name === "read")) {
         assert.fail("MCP recovery request omitted the persisted tool result")
       }
-    } else if (editProbe && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "edit"))) {
-      const callID = "call_" + editProbe.call
-      if (!results.length) {
-        return toolCalls(id, [{ type: "function_call", id: "fc_" + editProbe.call, call_id: callID, name: "edit",
-          arguments: JSON.stringify({ path: "edit.txt", oldString: "original", newString: "replacement" }) }])
-      }
-      const result = results.find((item: { call_id: string }) => item.call_id === callID)
-      assert.match(JSON.stringify(result), editProbe.expected)
     } else if (interruption && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "shell"))) {
       if (!results.length) {
         const item = { type: "function_call", id: "fc_effect", call_id: "call_effect", name: "shell",
           arguments: JSON.stringify({ command: 'printf "%s\\n" "$$" > shell.pid; printf "%s\\n" "$OPENCODE_SESSION_ID" >> effect.txt; exec sleep 15' }) }
-        return toolCalls(id, [item])
+        return toolCalls(model, id, [item])
       }
       const result = results.find((item: { call_id: string }) => item.call_id === "call_effect")
       assert.match(JSON.stringify(result), /interrupted|aborted/i)
@@ -146,12 +157,15 @@ const upstream = Bun.serve({
         type: "function_call", id: "fc_" + path, call_id: "call_" + path, name: "read",
         arguments: JSON.stringify({ path: path + ".txt", offset: 1, limit: 1 }),
       }))
-      return toolCalls(id, items)
+      return toolCalls(model, id, items)
     }
-    const text = results.length ? (interruption ? "Effect uncertain. Review before repeating." : secret) : "Fixture title"
+    const text = results.length
+      ? readProbe?.phase === "recover" ? "Read-only operation interrupted. Retry requires current permission."
+        : interruption ? "Effect uncertain. Review before repeating." : secret
+      : "Fixture title"
     const item = { type: "message", id: "msg_" + requests, role: "assistant",
       content: [{ type: "output_text", text, annotations: [] }] }
-    return response(id, [item], [
+    return response(model, id, [item], [
       { type: "response.output_item.added", output_index: 0, item: { ...item, content: [] } },
       { type: "response.output_text.delta", output_index: 0, content_index: 0, item_id: item.id, delta: text },
       { type: "response.output_item.done", output_index: 0, item },
@@ -159,18 +173,31 @@ const upstream = Bun.serve({
   },
 })
 
-const child = Bun.spawn(["/usr/bin/python3", "-I", "-B", resolve(import.meta.dir, "../implementacion/gateway"),
-  "--port", String(upstream.port), "--model", model, "--listen", "0", "--responses", "--task-budget",
-  "64", "640000", "32768", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
-  env: { PATH: "/usr/bin:/bin", CLI_OPEN_GATEWAY_TASK_TOKEN: token }, stdout: "pipe", stderr: "inherit",
-})
-try {
+function launchGateway(task: string, state: string, budget: [number, number, number]) {
+  return Bun.spawn(["/usr/bin/python3", "-I", "-B", resolve(import.meta.dir, "../implementacion/gateway"),
+    "--port", String(upstream.port), "--model", model, "--listen", "0", "--responses", "--task-budget",
+    ...budget.map(String), "--task-state", state, "--task-id", task, "--create-task"], {
+    env: { PATH: "/usr/bin:/bin", CLI_OPEN_GATEWAY_TASK_TOKEN: token }, stdout: "pipe", stderr: "inherit",
+  })
+}
+
+async function listenerURL(child: ReturnType<typeof launchGateway>) {
   const reader = child.stdout.getReader()
-  const { value } = await reader.read()
-  const line = new TextDecoder().decode(value)
-  assert.match(line, /^LISTEN \d+\n/)
-  const port = Number(line.trim().split(" ")[1])
-  const baseURL = `http://127.0.0.1:${port}/v1`
+  try {
+    const { value } = await reader.read()
+    const line = new TextDecoder().decode(value)
+    assert.match(line, /^LISTEN \d+\n$/)
+    return `http://127.0.0.1:${Number(line.trim().split(" ")[1])}/v1`
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+const child = readResults
+  ? launchGateway("responses_read_fixture", ledger, [32, 320000, 16384])
+  : launchGateway("responses_fixture", ledger, [64, 640000, 32768])
+try {
+  const baseURL = await listenerURL(child)
   const payload = { model, stream: true, input: [{ type: "message", role: "user", content: "fixture" }] }
   function post(body: object, authorization = token, path = "/responses", signal?: AbortSignal) {
     return fetch(baseURL + path, { method: "POST", headers: {
@@ -201,9 +228,13 @@ try {
     XDG_STATE_HOME: join(root, "state"), XDG_CACHE_HOME: join(root, "cache"),
     OPENCODE_DB: sessionDatabase,
     OPENCODE_CONFIG_CONTENT: JSON.stringify({ ...config,
-      permissions: action ? [
-        ...config.permissions, { action, resource: action === "edit" ? "edit.txt" : "*", effect },
-      ] : config.permissions,
+      permissions: [
+        ...config.permissions.filter(rule => rule.action !== readProbe?.tool),
+        ...(action ? [{ action, resource: action === "edit" ? "edit.txt" : "*", effect }] : []),
+        ...(readProbe ? [{ action: readProbe.tool, resource: "*", effect: readProbe.phase === "recover" ? "deny" : "allow" },
+          { action: "read", resource: "denied.txt", effect: "deny" }] : []),
+      ],
+      ...(readProbe?.phase === "hold" ? { plugins: [resultPlugin] } : {}),
       ...(mcpProbe ? { mcp: { servers: { probe: { type: "local",
         command: ["/usr/bin/python3", "-I", "-B", join(import.meta.dir, "fase6-d07-mcp-server.py"), mcpProbe.directory],
         protocol: "legacy", codemode: false,
@@ -244,16 +275,6 @@ try {
       clearTimeout(timer)
     }
   }
-  const first = await runSession()
-  const session = first.find(event => event.type === "tool_use")?.sessionID
-  assert.equal(typeof session, "string")
-  const beforeResume = requests
-  const resumed = await runSession(session)
-  assert(!resumed.some(event => event.type === "tool_use"))
-  assert.equal(requests, beforeResume + 1)
-  holdToolInput = true
-  const beforeDispatch = spawnSession("Prepare a shell call.", undefined, "shell")
-  const beforeOutput = Promise.all([new Response(beforeDispatch.stdout).text(), new Response(beforeDispatch.stderr).text()])
   const persistedTool = (status: string, callID = "call_before") => {
     const db = new Database(sessionDatabase, { readonly: true })
     try {
@@ -268,289 +289,398 @@ try {
       db.close()
     }
   }
-  let pendingSession: string | undefined
-  try {
-    for (let attempt = 0; attempt < 200 && !pendingSession && beforeDispatch.exitCode === null; attempt++) {
-      pendingSession = persistedTool("streaming")?.session_id
-      if (!pendingSession) await Bun.sleep(50)
-    }
-    if (!pendingSession) {
-      const db = new Database(sessionDatabase, { readonly: true })
-      try {
-        assert.fail(JSON.stringify(db.query(
-          `SELECT json_extract(part.value, '$.id') AS id, json_extract(part.value, '$.state.status') AS status
-           FROM session_message, json_each(data, '$.content') AS part
-           WHERE json_extract(part.value, '$.type')='tool' ORDER BY session_message.time_created DESC LIMIT 6`,
-        ).all()))
-      } finally {
-        db.close()
-      }
-    }
-    await assert.rejects(access(effect), { code: "ENOENT" })
-  } finally {
-    beforeDispatch.kill("SIGKILL")
-    await beforeDispatch.exited
-    await beforeOutput
-    holdToolInput = false
-  }
-  recoveringToolInput = true
-  const beforeRecovery = await finish(spawnSession("Report the incomplete call.", pendingSession))
-  recoveringToolInput = false
-  assert(!beforeRecovery.includes('"type":"tool_use"'))
-  assert.deepEqual(persistedTool("error"), { session_id: pendingSession, executed: 0, error: "aborted" })
-  await assert.rejects(access(effect), { code: "ENOENT" })
-  interruption = true
-  const active = spawnSession("Run the synthetic effect once.", undefined, "shell")
-  const observed = Promise.all([new Response(active.stdout).text(), new Response(active.stderr).text()])
-  let interruptedSession = ""
-  let processPath = ""
-  try {
-    for (let attempt = 0; attempt < 200 && !interruptedSession && active.exitCode === null; attempt++) {
-      interruptedSession = (await readFile(effect, "utf8").catch(error => {
-        if (error.code !== "ENOENT") throw error
-        return ""
-      })).trim()
-      if (!interruptedSession) await Bun.sleep(50)
-    }
-    const pid = (await readFile(shellPID, "utf8")).trim()
-    assert.match(pid, /^[1-9]\d*$/)
-    processPath = "/proc/" + pid
-    await access(processPath)
-  } finally {
-    active.kill("SIGKILL")
-    await active.exited
-  }
-  const diagnostics = (await observed).join("\n")
-  assert.match(interruptedSession, /^ses_/, diagnostics)
-  const processExists = () => access(processPath).then(() => true, error => {
-    if (error.code === "ENOENT") return false
-    throw error
-  })
-  for (let attempt = 0; attempt < 40 && await processExists(); attempt++) await Bun.sleep(50)
-  assert.equal(await processExists(), false, "Shell process survived OpenCode termination")
-  const recovery = spawnSession("Report the interrupted operation without repeating it.", interruptedSession)
-  const recoveryTimer = setTimeout(() => recovery.kill("SIGKILL"), 30_000)
-  try {
-    const [code, output, errors] = await Promise.all([
-      recovery.exited, new Response(recovery.stdout).text(), new Response(recovery.stderr).text(),
-    ])
-    assert.equal(code, 0, errors || output)
-    assert(interruptedResult, output + errors)
-    assert.match(output, /Effect uncertain/)
-    assert(!output.includes('"type":"tool_use"'))
-    assert.equal(await readFile(effect, "utf8"), interruptedSession + "\n")
-  } finally {
-    clearTimeout(recoveryTimer)
-  }
-  interruptedResult = false
-  const beforeShellResume = requests
-  const allowedRecovery = await finish(spawnSession("Report the prior operation.", interruptedSession, "shell"))
-  assert(interruptedResult, allowedRecovery)
-  assert(!allowedRecovery.includes('"type":"tool_use"'))
-  assert.equal(requests, beforeShellResume + 1)
-  assert.equal(await readFile(effect, "utf8"), interruptedSession + "\n")
-  interruption = false
-  for (const probe of [
-    { call: "edit_denied", content: "original\n", expected: /permission|denied|reject/i },
-    { call: "edit_conflict", content: "original original\n", expected: /expected exactly one/i, allow: true },
-    { call: "edit_stale", content: "external revision\n", expected: /could not find oldString/i, allow: true },
-    { call: "edit_completed", content: "original\r\nkeep\r\n", expected: /Edited .*1 replacement/i, allow: true,
-      changed: "replacement\r\nkeep\r\n" },
-  ]) {
-    editProbe = probe
-    await writeFile(editPath, probe.content)
-    const output = await finish(spawnSession("Request the synthetic edit.", undefined, probe.allow ? "edit" : undefined))
-    assert.equal(await readFile(editPath, "utf8"), probe.changed ?? probe.content)
-    if (probe.changed || probe.call === "edit_denied") {
-      const edit = output.split("\n").filter(line => line.startsWith("{")).map(line => JSON.parse(line))
-        .find(event => typeof event.sessionID === "string")
-      assert.equal(typeof edit?.sessionID, "string", output)
-      await writeFile(editPath, "original\r\nexternal revision\r\n")
-      const before = requests
-      const resumed = await finish(spawnSession("Report the prior edit result.", edit.sessionID, "edit"))
-      assert(!resumed.includes('"type":"tool_use"'))
-      assert.equal(requests, before + 1)
-      assert.equal(await readFile(editPath, "utf8"), "original\r\nexternal revision\r\n")
-    }
-  }
-  editProbe = undefined
-  for (const phase of ["before", "uncertain", "complete"]) {
-    const directory = join(root, "mcp-" + phase)
-    const id = "call_mcp_" + phase
-    const complete = phase === "complete"
-    await mkdir(directory)
-    mcpProbe = { directory, id, complete, resumed: false }
-    if (phase !== "before") await writeFile(join(directory, "allow-effect"), "")
-    if (complete) await writeFile(join(directory, "allow-reply"), "")
-    const run = spawnSession("Run the synthetic MCP tool.", undefined, mcpTool)
-    let sessionID: string | undefined
-    if (complete) {
-      const output = await finish(run)
-      assert(output.includes('"type":"tool_use"'), output)
-      sessionID = persistedTool("completed", id)?.session_id
-    } else {
-      const output = Promise.all([new Response(run.stdout).text(), new Response(run.stderr).text()])
-      const marker = join(directory, phase === "before" ? "calls" : "effects")
-      try {
-        for (let attempt = 0; attempt < 200 && run.exitCode === null; attempt++) {
-          const reached = await Bun.file(marker).exists()
-          sessionID = persistedTool("running", id)?.session_id
-          if (reached && sessionID) break
-          await Bun.sleep(50)
-        }
-        assert(await Bun.file(marker).exists(), "MCP server did not reach the expected barrier")
-        assert.equal(persistedTool("running", id)?.session_id, sessionID, "MCP call did not remain active")
-      } finally {
-        run.kill("SIGKILL")
-        await run.exited
-        await output
-      }
-    }
-    assert.match(sessionID ?? "", /^ses_/)
-    mcpProbe.resumed = true
-    const before = requests
-    const output = await finish(spawnSession("Report the prior MCP result.", sessionID, complete ? mcpTool : undefined))
-    assert(!output.includes('"type":"tool_use"'))
-    assert.equal(requests, before + 1)
-    assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
-    if (phase === "before") await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
-    else assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
-    if (!complete) assert.match(persistedTool("error", id)?.error ?? "", /^(aborted|tool\.execution)$/)
-    if (phase === "uncertain") {
-      const deniedID = "call_mcp_equivalent_denied"
-      mcpProbe.fresh = { id: deniedID, allowed: false }
-      const denied = await finish(spawnSession("Request another synthetic append under the current policy.", sessionID))
-      assert.equal(persistedTool("error", deniedID)?.session_id, sessionID, denied)
-      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
-      assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
-    }
-    if (complete || phase === "uncertain") {
-      await writeFile(join(directory, "allow-reply"), "")
-      const freshID = id + "_equivalent"
-      mcpProbe.fresh = { id: freshID, allowed: true }
-      const followUp = await finish(spawnSession("Explicitly request a new synthetic append.", sessionID, mcpTool))
-      assert(followUp.includes('"type":"tool_use"'))
-      assert.equal(persistedTool("completed", freshID)?.session_id, sessionID)
-      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\ncall\n")
-      assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\neffect\n")
-    }
-  }
-  {
-    const directory = join(root, "mcp-permission")
-    const id = "call_mcp_pending_permission"
-    await mkdir(directory)
-    await writeFile(join(directory, "allow-effect"), "")
-    await writeFile(join(directory, "allow-reply"), "")
-    mcpProbe = { directory, id, complete: false, resumed: false }
-    const password = randomUUID()
-    const server = Bun.spawn([cli, "serve", "--hostname", "127.0.0.1", "--port", "0"], {
-      cwd: work, stdout: "pipe", stderr: "inherit", env: { ...sessionEnv(mcpTool, "ask"), OPENCODE_PASSWORD: password },
-    })
-    let serverURL = ""
-    const startupDeadline = setTimeout(() => server.kill("SIGKILL"), 10_000)
+  if (!readResults) {
+    const first = await runSession()
+    const session = first.find(event => event.type === "tool_use")?.sessionID
+    assert.equal(typeof session, "string")
+    const beforeResume = requests
+    const resumed = await runSession(session)
+    assert(!resumed.some(event => event.type === "tool_use"))
+    assert.equal(requests, beforeResume + 1)
+    holdToolInput = true
+    const beforeDispatch = spawnSession("Prepare a shell call.", undefined, "shell")
+    const beforeOutput = Promise.all([new Response(beforeDispatch.stdout).text(), new Response(beforeDispatch.stderr).text()])
+    let pendingSession: string | undefined
     try {
-      for await (const line of server.stdout.pipeThrough(new TextDecoderStream())) {
-        serverURL = line.match(/server listening on (http:\/\/127\.0\.0\.1:\d+)/)?.[1] ?? ""
-        if (serverURL) break
+      for (let attempt = 0; attempt < 200 && !pendingSession && beforeDispatch.exitCode === null; attempt++) {
+        pendingSession = persistedTool("streaming")?.session_id
+        if (!pendingSession) await Bun.sleep(50)
       }
-      clearTimeout(startupDeadline)
-      assert(serverURL, "Native OpenCode listener did not start")
-      async function native(path: string, body?: object, status = 200) {
-        const result = await fetch(serverURL + "/api/session" + path, {
-          headers: { Authorization: "Basic " + btoa("opencode:" + password), "content-type": "application/json" },
-          ...(body && { method: "POST", body: JSON.stringify(body) }),
-          signal: AbortSignal.timeout(5_000),
-        })
-        const content = await result.text()
-        assert.equal(result.status, status, content)
-        if (!content) return undefined
-        const decoded = JSON.parse(content)
-        return decoded.data ?? decoded
+      if (!pendingSession) {
+        const db = new Database(sessionDatabase, { readonly: true })
+        try {
+          assert.fail(JSON.stringify(db.query(
+            `SELECT json_extract(part.value, '$.id') AS id, json_extract(part.value, '$.state.status') AS status
+             FROM session_message, json_each(data, '$.content') AS part
+             WHERE json_extract(part.value, '$.type')='tool' ORDER BY session_message.time_created DESC LIMIT 6`,
+          ).all()))
+        } finally {
+          db.close()
+        }
       }
-      const sessionPath = "/" + (await native("", {
-        title: "Synthetic authorization fixture", model: { providerID: model, id: model },
-      })).id
-      async function permissionFor(callID: string) {
-        for (let attempt = 0; attempt < 150; attempt++) {
-          const pending = await native(sessionPath + "/permission")
-          const permission = pending.find((entry: { source?: { id: string } }) => entry.source?.id === callID)
-          if (permission) {
-            assert.equal(permission.action, mcpTool)
-            assert.deepEqual(permission.metadata.input, mcpArguments)
-            assert.equal(persistedTool("running", callID)?.session_id, sessionPath.slice(1))
-            return sessionPath + "/permission/" + permission.id + "/reply"
+      await assert.rejects(access(effect), { code: "ENOENT" })
+    } finally {
+      beforeDispatch.kill("SIGKILL")
+      await beforeDispatch.exited
+      await beforeOutput
+      holdToolInput = false
+    }
+    recoveringToolInput = true
+    const beforeRecovery = await finish(spawnSession("Report the incomplete call.", pendingSession))
+    recoveringToolInput = false
+    assert(!beforeRecovery.includes('"type":"tool_use"'))
+    assert.deepEqual(persistedTool("error"), { session_id: pendingSession, executed: 0, error: "aborted" })
+    await assert.rejects(access(effect), { code: "ENOENT" })
+    interruption = true
+    const active = spawnSession("Run the synthetic effect once.", undefined, "shell")
+    const observed = Promise.all([new Response(active.stdout).text(), new Response(active.stderr).text()])
+    let interruptedSession = ""
+    let processPath = ""
+    try {
+      for (let attempt = 0; attempt < 200 && !interruptedSession && active.exitCode === null; attempt++) {
+        interruptedSession = (await readFile(effect, "utf8").catch(error => {
+          if (error.code !== "ENOENT") throw error
+          return ""
+        })).trim()
+        if (!interruptedSession) await Bun.sleep(50)
+      }
+      const pid = (await readFile(shellPID, "utf8")).trim()
+      assert.match(pid, /^[1-9]\d*$/)
+      processPath = "/proc/" + pid
+      await access(processPath)
+    } finally {
+      active.kill("SIGKILL")
+      await active.exited
+    }
+    const diagnostics = (await observed).join("\n")
+    assert.match(interruptedSession, /^ses_/, diagnostics)
+    const processExists = () => access(processPath).then(() => true, error => {
+      if (error.code === "ENOENT") return false
+      throw error
+    })
+    for (let attempt = 0; attempt < 40 && await processExists(); attempt++) await Bun.sleep(50)
+    assert.equal(await processExists(), false, "Shell process survived OpenCode termination")
+    const recovery = spawnSession("Report the interrupted operation without repeating it.", interruptedSession)
+    const recoveryTimer = setTimeout(() => recovery.kill("SIGKILL"), 30_000)
+    try {
+      const [code, output, errors] = await Promise.all([
+        recovery.exited, new Response(recovery.stdout).text(), new Response(recovery.stderr).text(),
+      ])
+      assert.equal(code, 0, errors || output)
+      assert(interruptedResult, output + errors)
+      assert.match(output, /Effect uncertain/)
+      assert(!output.includes('"type":"tool_use"'))
+      assert.equal(await readFile(effect, "utf8"), interruptedSession + "\n")
+    } finally {
+      clearTimeout(recoveryTimer)
+    }
+    interruptedResult = false
+    const beforeShellResume = requests
+    const allowedRecovery = await finish(spawnSession("Report the prior operation.", interruptedSession, "shell"))
+    assert(interruptedResult, allowedRecovery)
+    assert(!allowedRecovery.includes('"type":"tool_use"'))
+    assert.equal(requests, beforeShellResume + 1)
+    assert.equal(await readFile(effect, "utf8"), interruptedSession + "\n")
+    interruption = false
+    for (const probe of [
+      { call: "edit_denied", content: "original\n", expected: /permission|denied|reject/i },
+      { call: "edit_conflict", content: "original original\n", expected: /expected exactly one/i, allow: true },
+      { call: "edit_stale", content: "external revision\n", expected: /could not find oldString/i, allow: true },
+      { call: "edit_completed", content: "original\r\nkeep\r\n", expected: /Edited .*1 replacement/i, allow: true,
+        changed: "replacement\r\nkeep\r\n" },
+    ]) {
+      editProbe = probe
+      await writeFile(editPath, probe.content)
+      const output = await finish(spawnSession("Request the synthetic edit.", undefined, probe.allow ? "edit" : undefined))
+      assert.equal(await readFile(editPath, "utf8"), probe.changed ?? probe.content)
+      if (probe.changed || probe.call === "edit_denied") {
+        const edit = output.split("\n").filter(line => line.startsWith("{")).map(line => JSON.parse(line))
+          .find(event => typeof event.sessionID === "string")
+        assert.equal(typeof edit?.sessionID, "string", output)
+        await writeFile(editPath, "original\r\nexternal revision\r\n")
+        const before = requests
+        const resumed = await finish(spawnSession("Report the prior edit result.", edit.sessionID, "edit"))
+        assert(!resumed.includes('"type":"tool_use"'))
+        assert.equal(requests, before + 1)
+        assert.equal(await readFile(editPath, "utf8"), "original\r\nexternal revision\r\n")
+      }
+    }
+    editProbe = undefined
+    for (const phase of ["before", "uncertain", "complete"]) {
+      const directory = join(root, "mcp-" + phase)
+      const id = "call_mcp_" + phase
+      const complete = phase === "complete"
+      await mkdir(directory)
+      mcpProbe = { directory, id, complete, resumed: false }
+      if (phase !== "before") await writeFile(join(directory, "allow-effect"), "")
+      if (complete) await writeFile(join(directory, "allow-reply"), "")
+      const run = spawnSession("Run the synthetic MCP tool.", undefined, mcpTool)
+      let sessionID: string | undefined
+      if (complete) {
+        const output = await finish(run)
+        assert(output.includes('"type":"tool_use"'), output)
+        sessionID = persistedTool("completed", id)?.session_id
+      } else {
+        const output = Promise.all([new Response(run.stdout).text(), new Response(run.stderr).text()])
+        const marker = join(directory, phase === "before" ? "calls" : "effects")
+        try {
+          for (let attempt = 0; attempt < 200 && run.exitCode === null; attempt++) {
+            const reached = await Bun.file(marker).exists()
+            sessionID = persistedTool("running", id)?.session_id
+            if (reached && sessionID) break
+            await Bun.sleep(50)
+          }
+          assert(await Bun.file(marker).exists(), "MCP server did not reach the expected barrier")
+          assert.equal(persistedTool("running", id)?.session_id, sessionID, "MCP call did not remain active")
+        } finally {
+          run.kill("SIGKILL")
+          await run.exited
+          await output
+        }
+      }
+      assert.match(sessionID ?? "", /^ses_/)
+      mcpProbe.resumed = true
+      const before = requests
+      const output = await finish(spawnSession("Report the prior MCP result.", sessionID, complete ? mcpTool : undefined))
+      assert(!output.includes('"type":"tool_use"'))
+      assert.equal(requests, before + 1)
+      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+      if (phase === "before") await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
+      else assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
+      if (!complete) assert.match(persistedTool("error", id)?.error ?? "", /^(aborted|tool\.execution)$/)
+      if (phase === "uncertain") {
+        const deniedID = "call_mcp_equivalent_denied"
+        mcpProbe.fresh = { id: deniedID, allowed: false }
+        const denied = await finish(spawnSession("Request another synthetic append under the current policy.", sessionID))
+        assert.equal(persistedTool("error", deniedID)?.session_id, sessionID, denied)
+        assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+        assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
+      }
+      if (complete || phase === "uncertain") {
+        await writeFile(join(directory, "allow-reply"), "")
+        const freshID = id + "_equivalent"
+        mcpProbe.fresh = { id: freshID, allowed: true }
+        const followUp = await finish(spawnSession("Explicitly request a new synthetic append.", sessionID, mcpTool))
+        assert(followUp.includes('"type":"tool_use"'))
+        assert.equal(persistedTool("completed", freshID)?.session_id, sessionID)
+        assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\ncall\n")
+        assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\neffect\n")
+      }
+    }
+    {
+      const directory = join(root, "mcp-permission")
+      const id = "call_mcp_pending_permission"
+      await mkdir(directory)
+      await writeFile(join(directory, "allow-effect"), "")
+      await writeFile(join(directory, "allow-reply"), "")
+      mcpProbe = { directory, id, complete: false, resumed: false }
+      const password = randomUUID()
+      const env = sessionEnv(mcpTool, "ask")
+      const serverConfig = JSON.parse(env.OPENCODE_CONFIG_CONTENT)
+      serverConfig.permissions.push({ action: "edit", resource: "edit.txt", effect: "ask" })
+      env.OPENCODE_CONFIG_CONTENT = JSON.stringify(serverConfig)
+      const server = Bun.spawn([cli, "serve", "--hostname", "127.0.0.1", "--port", "0"], {
+        cwd: work, stdout: "pipe", stderr: "inherit", env: { ...env, OPENCODE_PASSWORD: password },
+      })
+      let serverURL = ""
+      const startupDeadline = setTimeout(() => server.kill("SIGKILL"), 10_000)
+      try {
+        for await (const line of server.stdout.pipeThrough(new TextDecoderStream())) {
+          serverURL = line.match(/server listening on (http:\/\/127\.0\.0\.1:\d+)/)?.[1] ?? ""
+          if (serverURL) break
+        }
+        clearTimeout(startupDeadline)
+        assert(serverURL, "Native OpenCode listener did not start")
+        async function native(path: string, body?: object, status = 200) {
+          const result = await fetch(serverURL + "/api/session" + path, {
+            headers: { Authorization: "Basic " + btoa("opencode:" + password), "content-type": "application/json" },
+            ...(body && { method: "POST", body: JSON.stringify(body) }),
+            signal: AbortSignal.timeout(5_000),
+          })
+          const content = await result.text()
+          assert.equal(result.status, status, content)
+          if (!content) return undefined
+          const decoded = JSON.parse(content)
+          return decoded.data ?? decoded
+        }
+        const sessionPath = "/" + (await native("", {
+          title: "Synthetic authorization fixture", model: { providerID: model, id: model },
+        })).id
+        async function permissionFor(callID: string) {
+          for (let attempt = 0; attempt < 150; attempt++) {
+            const pending = await native(sessionPath + "/permission")
+            const permission = pending.find((entry: { source?: { id: string } }) => entry.source?.id === callID)
+            if (permission) {
+              assert.equal(permission.action, mcpTool)
+              assert.deepEqual(permission.metadata.input, mcpArguments)
+              assert.equal(persistedTool("running", callID)?.session_id, sessionPath.slice(1))
+              return sessionPath + "/permission/" + permission.id + "/reply"
+            }
+            await Bun.sleep(50)
+          }
+          assert.fail("No permission request for " + callID)
+        }
+        async function waitForTool(status: string, callID: string) {
+          for (let attempt = 0; attempt < 150; attempt++) {
+            if (persistedTool(status, callID)?.session_id === sessionPath.slice(1)) return
+            await Bun.sleep(50)
+          }
+          assert.fail("No " + status + " record for " + callID)
+        }
+        await native(sessionPath + "/prompt", { text: "Request a synthetic append." })
+        const stale = await permissionFor(id)
+        await assert.rejects(access(join(directory, "calls")), { code: "ENOENT" })
+        assert.equal((await native(sessionPath + "/interrupt", {})).interrupted, true)
+        await waitForTool("error", id)
+        await native(stale, { decision: "once" }, 404)
+        await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
+        mcpProbe.resumed = true
+        for (const [suffix, decision] of [["once", "once"], ["reject", "reject"]] as const) {
+          const freshID = id + "_" + suffix
+          mcpProbe.fresh = { id: freshID, allowed: true, reject: decision === "reject" }
+          await native(sessionPath + "/prompt", { text: "Request a new synthetic append." })
+          const reply = await permissionFor(freshID)
+          if (decision === "once") await assert.rejects(access(join(directory, "calls")), { code: "ENOENT" })
+          else assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+          await native(reply, { decision }, 204)
+          await waitForTool(decision === "once" ? "completed" : "error", freshID)
+        }
+        assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+        assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
+        console.log("PASS native permission boundary: complete arguments, interrupt, one-time grant and rejection")
+
+        const race = { call: "edit_permission_race", expected: /Edited |conflict|changed|stale/i, observed: false }
+        editProbe = race
+        await writeFile(editPath, "original\nkeep\n")
+        await chmod(editPath, 0o640)
+        const editSession = "/" + (await native("", {
+          title: "Synthetic edit preview race", model: { providerID: model, id: model },
+        })).id
+        await native(editSession + "/prompt", { text: "Request the synthetic edit." })
+        let pendingEdit
+        for (let attempt = 0; attempt < 150 && !pendingEdit; attempt++) {
+          const pending = await native(editSession + "/permission")
+          pendingEdit = pending.find((entry: { action: string }) => entry.action === "edit")
+          if (!pendingEdit) await Bun.sleep(50)
+        }
+        assert.equal(pendingEdit?.source.id, "call_" + race.call)
+        assert.match(JSON.stringify(pendingEdit.metadata.files), /original/)
+        assert.match(JSON.stringify(pendingEdit.metadata.files), /replacement/)
+        await writeFile(editPath, "external revision\nkeep\n")
+        await native(editSession + "/permission/" + pendingEdit.id + "/reply", { decision: "once" }, 204)
+        for (let attempt = 0; attempt < 150 && !race.observed; attempt++) await Bun.sleep(50)
+        assert(race.observed, "The simulated model did not receive the native edit outcome")
+        assert.equal((await stat(editPath)).mode & 0o777, 0o640)
+        const resultingEdit = await readFile(editPath, "utf8")
+        if (resultingEdit === "replacement\nkeep\n") {
+          console.log("KNOWN LIMITATION: native edit overwrote an external revision after creating its permission preview")
+        } else {
+          assert.equal(resultingEdit, "external revision\nkeep\n")
+          assert.equal(persistedTool("error", "call_" + race.call)?.session_id, editSession.slice(1))
+          console.log("PASS native edit rejected a concurrent revision at the permission preview boundary")
+        }
+        editProbe = undefined
+      } finally {
+        clearTimeout(startupDeadline)
+        server.kill("SIGKILL")
+        await server.exited
+      }
+    }
+    mcpProbe = undefined
+    assert.match(await (await post({ ...payload, instructions: "no usage" })).text(), /response.completed/)
+    assert.equal((await post({ ...payload, model: "unapproved" })).status, 502)
+    for (const instructions of ["partial", "http error"]) {
+      const result = await post({ ...payload, instructions })
+      assert.match(await result.text(), /gateway_error/)
+    }
+    const controller = new AbortController()
+    const pending = await post({ ...payload, instructions: "stall" }, token, "/responses", controller.signal)
+    for (let attempt = 0; !stalled && attempt < 20; attempt++) await Bun.sleep(50)
+    assert(stalled)
+    controller.abort()
+    await pending.body?.cancel().catch(() => {})
+    for (let attempt = 0; !disconnected && attempt < 20; attempt++) await Bun.sleep(50)
+    assert(disconnected, "Responses cancellation did not reach upstream")
+    const before = requests
+    assert.equal((await post({ ...payload, max_output_tokens: 513 })).status, 502)
+    assert.equal(requests, before)
+
+    const db = new Database(ledger, { readonly: true })
+    try {
+      const count = db.query<{ count: number }, [string]>("SELECT count(*) AS count FROM operation WHERE status=?")
+      for (let attempt = 0; attempt < 40 && count.get("cancelled")?.count !== 2; attempt++) await Bun.sleep(50)
+      assert.equal(count.get("cancelled")?.count, 2)
+      assert.equal(count.get("uncertain")?.count, 2)
+      assert.equal(count.get("complete")?.count, requests - 4)
+      assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE prompt_tokens=13 AND completion_tokens=7").get().count,
+        requests - 5)
+      assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE status='complete' AND prompt_tokens IS NULL AND completion_tokens IS NULL").get().count, 1)
+    } finally {
+      db.close()
+    }
+    console.log("PASS Responses: pre-dispatch abort, shell cleanup, edit recovery, permissions, SSE and SQLite usage")
+
+  } else {
+    await mkdir(resultPlugin)
+    await writeFile(join(resultPlugin, "package.json"), JSON.stringify({
+      name: "cli-open-recovery-barrier", private: true, exports: { "./server": "./index.mjs" },
+    }))
+    await writeFile(join(work, "allowed.txt"), "first line\nsearch-anchor " + secret + "\n")
+    for (const probe of [
+      { id: "read", tool: "read", input: { path: "allowed.txt" }, expected: secret },
+      { id: "page", tool: "read", input: { path: "allowed.txt", offset: 2, limit: 1 }, expected: secret },
+      { id: "glob", tool: "glob", input: { pattern: "allow*.txt" }, expected: "allowed.txt" },
+      { id: "grep", tool: "grep", input: { pattern: "search-anchor", path: "allowed.txt", literal: true }, expected: secret },
+    ] as const) {
+      const callID = "call_result_barrier_" + probe.id
+      const barrier = resultBarrier + "_" + probe.id
+      await writeFile(join(resultPlugin, "index.mjs"), `
+        import { writeFile } from "node:fs/promises"
+        export default { id: "cli-open.recovery-barrier", async setup(ctx) {
+          await ctx.tool.hook("execute.after", async event => {
+            if (event.tool !== ${JSON.stringify(probe.tool)} || event.status !== "completed") return
+            await writeFile(${JSON.stringify(barrier)}, JSON.stringify(event.result))
+            await new Promise(resolve => setTimeout(resolve, 15000))
+          })
+        } }
+      `)
+      readProbe = { ...probe, id: callID, phase: "hold" }
+      const active = spawnSession("Read or search for the synthetic fixture.")
+      const diagnostics = Promise.all([new Response(active.stdout).text(), new Response(active.stderr).text()])
+      let sessionID: string | undefined
+      try {
+        for (let attempt = 0; attempt < 160 && active.exitCode === null; attempt++) {
+          if (await Bun.file(barrier).exists()) {
+            sessionID = persistedTool("running", callID)?.session_id
+            if (sessionID) break
           }
           await Bun.sleep(50)
         }
-        assert.fail("No permission request for " + callID)
+        assert.match(sessionID ?? "", /^ses_/, "Result hook did not hold " + probe.id)
+        assert((await readFile(barrier, "utf8")).includes(probe.expected))
+        assert.equal(persistedTool("completed", callID), null)
+      } finally {
+        active.kill("SIGKILL")
+        await active.exited
+        await diagnostics
       }
-      async function waitForTool(status: string, callID: string) {
-        for (let attempt = 0; attempt < 150; attempt++) {
-          if (persistedTool(status, callID)?.session_id === sessionPath.slice(1)) return
-          await Bun.sleep(50)
-        }
-        assert.fail("No " + status + " record for " + callID)
-      }
-      await native(sessionPath + "/prompt", { text: "Request a synthetic append." })
-      const stale = await permissionFor(id)
-      await assert.rejects(access(join(directory, "calls")), { code: "ENOENT" })
-      assert.equal((await native(sessionPath + "/interrupt", {})).interrupted, true)
-      await waitForTool("error", id)
-      await native(stale, { decision: "once" }, 404)
-      await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
-      mcpProbe.resumed = true
-      for (const [suffix, decision] of [["once", "once"], ["reject", "reject"]] as const) {
-        const freshID = id + "_" + suffix
-        mcpProbe.fresh = { id: freshID, allowed: true, reject: decision === "reject" }
-        await native(sessionPath + "/prompt", { text: "Request a new synthetic append." })
-        const reply = await permissionFor(freshID)
-        if (decision === "once") await assert.rejects(access(join(directory, "calls")), { code: "ENOENT" })
-        else assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
-        await native(reply, { decision }, 204)
-        await waitForTool(decision === "once" ? "completed" : "error", freshID)
-      }
-      assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
-      assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
-      console.log("PASS native permission boundary: complete arguments, interrupt, one-time grant and rejection")
-    } finally {
-      clearTimeout(startupDeadline)
-      server.kill("SIGKILL")
-      await server.exited
+      readProbe.phase = "recover"
+      const recovered = await finish(spawnSession("Request the same read under the current policy.", sessionID))
+      assert(!recovered.includes(probe.expected))
+      assert(!recovered.includes(forbidden))
+      assert.match(recovered, /Read-only operation interrupted/)
+      assert.equal(persistedTool("error", callID)?.session_id, sessionID)
+      assert.equal(persistedTool("error", callID + "_denied")?.session_id, sessionID)
+      readProbe.phase = "retry"
+      const retried = await finish(spawnSession("Explicitly repeat the synthetic read or search.", sessionID))
+      assert.match(retried, new RegExp(secret))
+      assert(!retried.includes(forbidden))
+      assert.equal(persistedTool("completed", callID + "_retry")?.session_id, sessionID)
+      assert.equal(persistedTool("error", callID)?.session_id, sessionID)
     }
+    readProbe = undefined
+    console.log("PASS read, paginated read, glob and literal grep interrupted before result persistence")
   }
-  mcpProbe = undefined
-  assert.match(await (await post({ ...payload, instructions: "no usage" })).text(), /response.completed/)
-  assert.equal((await post({ ...payload, model: "unapproved" })).status, 502)
-  for (const instructions of ["partial", "http error"]) {
-    const result = await post({ ...payload, instructions })
-    assert.match(await result.text(), /gateway_error/)
-  }
-  const controller = new AbortController()
-  const pending = await post({ ...payload, instructions: "stall" }, token, "/responses", controller.signal)
-  for (let attempt = 0; !stalled && attempt < 20; attempt++) await Bun.sleep(50)
-  assert(stalled)
-  controller.abort()
-  await pending.body?.cancel().catch(() => {})
-  for (let attempt = 0; !disconnected && attempt < 20; attempt++) await Bun.sleep(50)
-  assert(disconnected, "Responses cancellation did not reach upstream")
-  const before = requests
-  assert.equal((await post({ ...payload, max_output_tokens: 513 })).status, 502)
-  assert.equal(requests, before)
-
-  const db = new Database(ledger, { readonly: true })
-  try {
-    const count = db.query<{ count: number }, [string]>("SELECT count(*) AS count FROM operation WHERE status=?")
-    for (let attempt = 0; attempt < 40 && count.get("cancelled")?.count !== 2; attempt++) await Bun.sleep(50)
-    assert.equal(count.get("cancelled")?.count, 2)
-    assert.equal(count.get("uncertain")?.count, 2)
-    assert.equal(count.get("complete")?.count, requests - 4)
-    assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE prompt_tokens=13 AND completion_tokens=7").get().count,
-      requests - 5)
-    assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE status='complete' AND prompt_tokens IS NULL AND completion_tokens IS NULL").get().count, 1)
-  } finally {
-    db.close()
-  }
-  console.log("PASS Responses: pre-dispatch abort, shell cleanup, edit recovery, permissions, SSE and SQLite usage")
 } finally {
   child.kill()
   await child.exited

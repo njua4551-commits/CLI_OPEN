@@ -96,3 +96,9 @@ Native MCP discovery, dispatch, and permission checks are existing capabilities.
 The native session permission API is **EXISTENTE**. The Responses fixture reuses its pending request list, session interrupt, and one-time or reject reply. The synthetic MCP service records dispatch independently of the OpenCode session. Only a new call ID can represent the explicit equivalent follow-up. Native policy still applies to it.
 
 The supervisor's copy and separate Git review ref are **EXISTENTE**. The publication fixture reuses the final source verification callback. The exact native edit validation-to-write interval and a supervised restart spanning both the runtime and its inference budget still require qualification.
+
+### D07.4 · Composed launcher qualification
+
+Reopen one native session and one existing task ledger after the supervisor launcher exits. Keep the current permission policy independent of persisted operation records. Record whether an old tool result was complete, denied, or uncertain before authorizing any new action. The fixture models recovery using the existing namespace and mount builder. Product task ownership, independent protection of trusted state, and graceful user-driven resumption require their own qualification.
+
+Native edit's permission preview is computed from source contents before the approval completes. The pinned engine applies its remaining match and no-op checks to that snapshot. The write helper's lock coordinates engine writes and reads the BOM, but does not compare the full current contents with the preview snapshot. Keep native editing against live source outside the qualified CLI_OPEN edit path. The existing disposable-copy, source-verification, and separate Git-ref boundary avoids applying edits to the live worktree. Any upstream change needs its own approval and a controlled conflict regression. A last-moment reread alone cannot guarantee an atomic comparison with arbitrary external writers.

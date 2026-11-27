@@ -76,3 +76,7 @@ git diff --check
 ```
 
 The phase gate and authorized next steps are in the continuity guide. [CONTINUAR.md](CONTINUAR.md)
+
+## D07.4 · Launcher recovery
+
+Starting SHA `d3ec56fbb08742b259a846ddb1b5d97187d03771` on `fase-1`, verified as the public `main` at the start of the work. The composed launcher fixture observed the same OpenCode session and SQLite task after a crash, no automatic MCP effect replay, one newly denied operation, one explicitly authorized new operation, retained reservations and deadline, and cleanup of seven observed descendants. Product task orchestration still requires qualification. The native edit preview probe reproduced a stale overwrite. The read/search result-persistence cases passed. The exact final write interval and interruption during filesystem or ripgrep work remain open, so the F8 entry gate stays closed. [Lifecycle evidence](docs/PRUEBAS.md#d074--launcher-restart-with-native-session-and-task-budget)

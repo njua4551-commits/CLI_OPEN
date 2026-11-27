@@ -6,6 +6,7 @@ import sys
 import time
 
 root = Path(sys.argv[1])
+label = sys.argv[2] if len(sys.argv) > 2 else "synthetic"
 
 
 def wait_for_release(marker):
@@ -39,7 +40,7 @@ for line in sys.stdin:
                                              "required": ["label"], "additionalProperties": False}}]}
     elif method == "tools/call":
         assert request["params"]["name"] == "append"
-        assert request["params"]["arguments"] == {"label": "synthetic"}
+        assert request["params"]["arguments"] == {"label": label}
         with (root / "calls").open("a") as calls:
             calls.write("call\n")
         wait_for_release("allow-effect")

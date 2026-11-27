@@ -217,3 +217,8 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 
 - Standardized the phase plan, continuity guide, project state, architectural decisions, technical report reuse section, and D07.3 matrix in English. Preserved the original bootstrap prompt, interface names, fixture inputs, and checkpoint evidence.
 - Reran `python3 -I -B tests/english-context-benchmark.py`. The runtime sample still measures 466 estimated tokens before the earlier migration and 426 afterward. This documentation change contributes zero measured runtime token savings.
+
+## D07.4 · Composed launcher recovery
+
+- Added a synthetic crash/restart regression using the supervisor's Bubblewrap launcher, existing Responses gateway and SQLite ledger, native OpenCode session persistence, and the stdio MCP effect barrier.
+- Added read/search result persistence probes and a native edit permission preview diagnostic. The edit diagnostic observed a stale overwrite on a disposable workspace. Product editing remains confined to the existing copy and Git review path.
