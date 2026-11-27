@@ -168,3 +168,7 @@ El subconjunto admite texto y funciones con SSE y `store=false`. El cliente vuel
 La regresión local de Responses mata el proceso de OpenCode tras observar un efecto de archivo y antes de recibir el resultado de la herramienta. Reabre la sesión por ID con una configuración que vuelve a denegar `shell`. OpenCode conserva la llamada interrumpida, el fixture verifica que el proveedor recibe su resultado de interrupción y que el efecto queda registrado una sola vez. Antes de repetir un efecto incierto, comprobar el estado real y obtener autorización.
 
 D07 externo sigue **BLOCKED**. Para continuar, hace falta una interfaz documentada para enrutar la sesión nativa de ChatGPT por un transporte supervisado sin entregar OAuth al sandbox. La aprobación del fixture remoto es una puerta posterior.
+
+## D07.3 · Continuidad
+
+Reutilizar el fixture `tests/fase6-d07-responses.ts` y la sesión persistida de OpenCode. Antes de autorizar una nueva escritura tras una interrupción, inspeccionar el archivo y sus cambios externos. Priorizar una barrera determinista en un MCP sintético con efecto observable para distinguir efecto aplicado de resultado persistido. Quedan por calificar la interrupción en búsquedas, el reinicio del supervisor con la misma sesión y la interrupción de una edición en el punto de escritura. D07 remoto conserva su puerta de autorización y transporte supervisado.

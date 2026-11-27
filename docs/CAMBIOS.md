@@ -193,3 +193,8 @@
 ## D07.2 · Regresión de recuperación activa y uso desconocido
 
 Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID después de detener OpenCode durante una herramienta con efecto de archivo, sin repetirlo y con una política más restrictiva. La regresión también distingue un SSE completo sin métricas de un SSE truncado y comprueba el rechazo de un modelo distinto. Se reutilizaron el historial, los permisos y el proveedor nativos, el gateway Responses y su registro SQLite.
+
+## D07.3 · Fixture de recuperación
+
+- Amplía la regresión Responses con observación de estado nativo, terminación del proceso de shell, permisos al reanudar y edición sintética con coincidencia ambigua, revisión externa y conservación de CRLF.
+- Registra la viabilidad documental de ChatGPT nativo y la frontera pendiente del transporte supervisado.

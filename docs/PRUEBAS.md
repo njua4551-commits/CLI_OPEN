@@ -275,3 +275,21 @@ La compuerta F7.2 se ejecutó y reprodujo el bloqueo estructural. Faltan consult
 - **BLOCKED** ChatGPT externo. OpenCode documenta `Sign in with ChatGPT`; el motor fijado selecciona un destino específico para la credencial OAuth y admite configuración de proveedores, pero no se encontró soporte documentado para delegar esa sesión a un transporte externo supervisado. La API pública tiene facturación separada. No se consultaron credenciales ni se enviaron solicitudes de inferencia real. [Proveedores de OpenCode](https://opencode.ai/docs/providers/#chatgpt) · [Facturación de ChatGPT y API](https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform).
 
 - **PASS local** Portable (13 pruebas unitarias), Linux y OpenCode. `git diff --check` pasó. GitHub Actions ejecuta Portable y Linux. El perfil OpenCode se verificó localmente con sus artefactos fijados.
+
+## D07.3 · Matriz de interrupciones local
+
+Motor OpenCode v2.3.2, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`. Proveedor Responses simulado. Los procesos de CLI se abren de nuevo con la misma base nativa y la política explícita de cada ejecución. El historial de OpenCode y las reservas SQLite del gateway representan estados distintos.
+
+| Punto | Herramienta y efecto | Estado y permisos al reanudar | Resultado observado y riesgo residual |
+|---|---|---|---|
+| A · Entrada de herramienta iniciada | `shell`, argumentos aún en streaming | `streaming` → `error/aborted`, `executed=false`. La sesión reabre sin `shell` en el catálogo | El archivo de efecto sigue ausente. Queda pendiente interrumpir después de completar los argumentos pero antes de autorizar |
+| B · Ejecución activa | `shell`, archivo de efecto y proceso aún activo | El proceso de OpenCode termina por SIGKILL. La llamada queda interrumpida | Se observa el PID antes del corte y su desaparición después. Un efecto parcial de una operación arbitraria exige comprobar el estado externo |
+| C · Efecto aplicado, resultado pendiente | `shell`, una línea agregada | La reanudación devuelve al proveedor la interrupción, primero con `shell` denegado y luego con `shell` permitido | Una línea exacta tras ambas reanudaciones. Las carreras durante edición y los efectos MCP pendientes requieren fixture propio |
+| D · Resultado almacenado | `read` y `edit` | Resultado recuperado con el mismo ID y permiso vigente. La edición denegada también se conserva tras pasar a permitida | Una solicitud de modelo al reanudar, cero eventos de ejecución nuevos. Una revisión externa se preserva aunque vuelva a contener el texto que la edición buscaría |
+| E · Operación de lectura o búsqueda interrumpida | `read`, `glob`, `grep` | `read` aprobado y denegado cubiertos por Responses. F7.2 cubre rutas, coincidencias y paginación | El valor del archivo denegado queda fuera de las solicitudes y salidas del fixture. Falta interrumpir una búsqueda o lectura ya despachada |
+
+La edición comprueba denegación de la ruta, coincidencia ambigua, texto de origen obsoleto y modificación completa conservando CRLF. El caso de revisión externa reproduce una edición obsoleta con una modificación previa. Queda por calificar una escritura externa entre la lectura interna y el commit, así como la recuperación tras detener un MCP activo o reiniciar el supervisor completo. Una nueva llamada propuesta por el modelo con argumentos iguales es una operación nueva y sujeta a política. El fixture prueba ausencia de reejecución del registro anterior. La deduplicación de nuevas llamadas semánticamente equivalentes sigue sin acreditarse.
+
+Portable pasó con 13 pruebas unitarias y fixtures de memoria, contexto y lectura web. Linux pasó con Bubblewrap, recuperación de reservas SQLite, rechazo de corrupción, plazo, cancelación SSE, concurrencia con clientes HTTP reales y retención de reservas. El uso reportado por el proveedor simulado se almacena aparte y el fixture no establece consumo facturado.
+
+El perfil OpenCode pasó con la matriz ampliada, incluidos el aborto anterior al despacho, la desaparición del proceso de shell y dos cancelaciones registradas en SQLite. Los fixtures de contexto volvieron a pasar con memoria no confiable y selección nativa por ruta, coincidencia y página. En el fixture F7.2, las salidas de herramientas bajaron de 13 205 a 723 bytes. La medición corresponde a este caso sintético.

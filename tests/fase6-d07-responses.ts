@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { randomUUID } from "node:crypto"
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { Database } from "bun:sqlite"
@@ -13,6 +13,7 @@ const secret = randomUUID()
 const forbidden = randomUUID()
 const model = "fixture"
 const ledger = join(root, "task.sqlite")
+const sessionDatabase = join(root, "session.sqlite")
 let requests = 0
 let completed = false
 let stalled = false
@@ -20,6 +21,11 @@ let disconnected = false
 let interruption = false
 let interruptedResult = false
 const effect = join(work, "effect.txt")
+const shellPID = join(work, "shell.pid")
+const editPath = join(work, "edit.txt")
+let editProbe: { call: string; expected: RegExp } | undefined
+let holdToolInput = false
+let recoveringToolInput = false
 
 function events(chunks: object[]) {
   return chunks.map(chunk => "data: " + JSON.stringify(chunk) + "\n\n").join("")
@@ -70,10 +76,31 @@ const upstream = Bun.serve({
       }), { headers: { "content-type": "text/event-stream" } })
     }
     const results = body.input.filter((item: { type: string }) => item.type === "function_call_output")
-    if (interruption && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "shell"))) {
+    if (holdToolInput && body.tools?.some((tool: { name: string }) => tool.name === "shell")) {
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(events([
+            { type: "response.created", response: { id, model, output: [] } },
+            { type: "response.output_item.added", output_index: 0, item: {
+              type: "function_call", id: "fc_before", call_id: "call_before", name: "shell", arguments: "",
+            } },
+          ])))
+        },
+      }), { headers: { "content-type": "text/event-stream" } })
+    } else if (recoveringToolInput) {
+      assert(!body.tools?.some((tool: { name: string }) => tool.name === "shell"))
+    } else if (editProbe && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "edit"))) {
+      const callID = "call_" + editProbe.call
+      if (!results.length) {
+        return toolCalls(id, [{ type: "function_call", id: "fc_" + editProbe.call, call_id: callID, name: "edit",
+          arguments: JSON.stringify({ path: "edit.txt", oldString: "original", newString: "replacement" }) }])
+      }
+      const result = results.find((item: { call_id: string }) => item.call_id === callID)
+      assert.match(JSON.stringify(result), editProbe.expected)
+    } else if (interruption && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "shell"))) {
       if (!results.length) {
         const item = { type: "function_call", id: "fc_effect", call_id: "call_effect", name: "shell",
-          arguments: JSON.stringify({ command: 'printf "%s\\n" "$OPENCODE_SESSION_ID" >> effect.txt; exec sleep 15' }) }
+          arguments: JSON.stringify({ command: 'printf "%s\\n" "$$" > shell.pid; printf "%s\\n" "$OPENCODE_SESSION_ID" >> effect.txt; exec sleep 15' }) }
         return toolCalls(id, [item])
       }
       const result = results.find((item: { call_id: string }) => item.call_id === "call_effect")
@@ -107,7 +134,7 @@ const upstream = Bun.serve({
 
 const child = Bun.spawn(["/usr/bin/python3", "-I", "-B", resolve(import.meta.dir, "../implementacion/gateway"),
   "--port", String(upstream.port), "--model", model, "--listen", "0", "--responses", "--task-budget",
-  "16", "160000", "8192", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
+  "32", "320000", "16384", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
   env: { PATH: "/usr/bin:/bin", CLI_OPEN_GATEWAY_TASK_TOKEN: token }, stdout: "pipe", stderr: "inherit",
 })
 try {
@@ -132,7 +159,8 @@ try {
   await writeFile(join(work, "denied.txt"), forbidden + "\n")
   const config = {
     permissions: [{ action: "*", resource: "*", effect: "deny" },
-      { action: "read", resource: "allowed.txt", effect: "allow" }],
+      { action: "read", resource: "allowed.txt", effect: "allow" },
+      { action: "edit", resource: "other-synthetic-file.txt", effect: "allow" }],
     providers: { fixture: {
       package: "@opencode/ai/providers/openai",
       settings: { baseURL, apiKey: token, transport: "http" },
@@ -140,18 +168,31 @@ try {
         settings: { store: false } } },
     } },
   }
-  function spawnSession(prompt: string, session?: string, allowShell = false) {
+  function spawnSession(prompt: string, session?: string, action?: "shell" | "edit") {
     return Bun.spawn([cli, "--standalone", "run", "--model", "fixture/fixture", "--format", "json",
       ...(session ? ["--session", session] : []),
       prompt],
     { cwd: work, stdout: "pipe", stderr: "pipe", env: {
     PATH: "/usr/bin:/bin", HOME: root, XDG_DATA_HOME: join(root, "data"), XDG_CONFIG_HOME: join(root, "config"),
     XDG_STATE_HOME: join(root, "state"), XDG_CACHE_HOME: join(root, "cache"),
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(allowShell ? { ...config, permissions: [
-      ...config.permissions, { action: "shell", resource: "*", effect: "allow" },
+    OPENCODE_DB: sessionDatabase,
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(action ? { ...config, permissions: [
+      ...config.permissions, { action, resource: action === "edit" ? "edit.txt" : "*", effect: "allow" },
     ] } : config), OPENCODE_DISABLE_MODELS_FETCH: "true",
     OPENCODE_CONFIG_PROJECT_DISABLE: "true", OPENCODE_DISABLE_FILEWATCHER: "true",
     } })
+  }
+  async function finish(run: ReturnType<typeof spawnSession>) {
+    const timer = setTimeout(() => run.kill("SIGKILL"), 30_000)
+    try {
+      const [code, output, errors] = await Promise.all([
+        run.exited, new Response(run.stdout).text(), new Response(run.stderr).text(),
+      ])
+      assert.equal(code, 0, errors || output)
+      return output
+    } finally {
+      clearTimeout(timer)
+    }
   }
   async function runSession(session?: string) {
     const run = spawnSession(session ? "Repeat the policy from the completed read." : "Read the allowed synthetic file.", session)
@@ -175,10 +216,59 @@ try {
   const resumed = await runSession(session)
   assert(!resumed.some(event => event.type === "tool_use"))
   assert.equal(requests, beforeResume + 1)
+  holdToolInput = true
+  const beforeDispatch = spawnSession("Prepare a shell call.", undefined, "shell")
+  const beforeOutput = Promise.all([new Response(beforeDispatch.stdout).text(), new Response(beforeDispatch.stderr).text()])
+  const persistedTool = (status: string) => {
+    const db = new Database(sessionDatabase, { readonly: true })
+    try {
+      return db.query<{ session_id: string; executed: number | null; error: string | null }, [string]>(
+        `SELECT session_id, json_extract(part.value, '$.executed') AS executed,
+                json_extract(part.value, '$.state.error.type') AS error
+         FROM session_message, json_each(data, '$.content') AS part
+         WHERE json_extract(part.value, '$.id')='call_before'
+           AND json_extract(part.value, '$.state.status')=?`,
+      ).get(status)
+    } finally {
+      db.close()
+    }
+  }
+  let pendingSession: string | undefined
+  try {
+    for (let attempt = 0; attempt < 200 && !pendingSession && beforeDispatch.exitCode === null; attempt++) {
+      pendingSession = persistedTool("streaming")?.session_id
+      if (!pendingSession) await Bun.sleep(50)
+    }
+    if (!pendingSession) {
+      const db = new Database(sessionDatabase, { readonly: true })
+      try {
+        assert.fail(JSON.stringify(db.query(
+          `SELECT json_extract(part.value, '$.id') AS id, json_extract(part.value, '$.state.status') AS status
+           FROM session_message, json_each(data, '$.content') AS part
+           WHERE json_extract(part.value, '$.type')='tool' ORDER BY session_message.time_created DESC LIMIT 6`,
+        ).all()))
+      } finally {
+        db.close()
+      }
+    }
+    await assert.rejects(access(effect), { code: "ENOENT" })
+  } finally {
+    beforeDispatch.kill("SIGKILL")
+    await beforeDispatch.exited
+    await beforeOutput
+    holdToolInput = false
+  }
+  recoveringToolInput = true
+  const beforeRecovery = await finish(spawnSession("Report the incomplete call.", pendingSession))
+  recoveringToolInput = false
+  assert(!beforeRecovery.includes('"type":"tool_use"'))
+  assert.deepEqual(persistedTool("error"), { session_id: pendingSession, executed: 0, error: "aborted" })
+  await assert.rejects(access(effect), { code: "ENOENT" })
   interruption = true
-  const active = spawnSession("Run the synthetic effect once.", undefined, true)
+  const active = spawnSession("Run the synthetic effect once.", undefined, "shell")
   const observed = Promise.all([new Response(active.stdout).text(), new Response(active.stderr).text()])
   let interruptedSession = ""
+  let processPath = ""
   try {
     for (let attempt = 0; attempt < 200 && !interruptedSession && active.exitCode === null; attempt++) {
       interruptedSession = (await readFile(effect, "utf8").catch(error => {
@@ -187,12 +277,22 @@ try {
       })).trim()
       if (!interruptedSession) await Bun.sleep(50)
     }
+    const pid = (await readFile(shellPID, "utf8")).trim()
+    assert.match(pid, /^[1-9]\d*$/)
+    processPath = "/proc/" + pid
+    await access(processPath)
   } finally {
     active.kill("SIGKILL")
     await active.exited
   }
   const diagnostics = (await observed).join("\n")
   assert.match(interruptedSession, /^ses_/, diagnostics)
+  const processExists = () => access(processPath).then(() => true, error => {
+    if (error.code === "ENOENT") return false
+    throw error
+  })
+  for (let attempt = 0; attempt < 40 && await processExists(); attempt++) await Bun.sleep(50)
+  assert.equal(await processExists(), false, "Shell process survived OpenCode termination")
   const recovery = spawnSession("Report the interrupted operation without repeating it.", interruptedSession)
   const recoveryTimer = setTimeout(() => recovery.kill("SIGKILL"), 30_000)
   try {
@@ -207,7 +307,38 @@ try {
   } finally {
     clearTimeout(recoveryTimer)
   }
+  interruptedResult = false
+  const beforeShellResume = requests
+  const allowedRecovery = await finish(spawnSession("Report the prior operation.", interruptedSession, "shell"))
+  assert(interruptedResult, allowedRecovery)
+  assert(!allowedRecovery.includes('"type":"tool_use"'))
+  assert.equal(requests, beforeShellResume + 1)
+  assert.equal(await readFile(effect, "utf8"), interruptedSession + "\n")
   interruption = false
+  for (const probe of [
+    { call: "edit_denied", content: "original\n", expected: /permission|denied|reject/i },
+    { call: "edit_conflict", content: "original original\n", expected: /expected exactly one/i, allow: true },
+    { call: "edit_stale", content: "external revision\n", expected: /could not find oldString/i, allow: true },
+    { call: "edit_completed", content: "original\r\nkeep\r\n", expected: /Edited .*1 replacement/i, allow: true,
+      changed: "replacement\r\nkeep\r\n" },
+  ]) {
+    editProbe = probe
+    await writeFile(editPath, probe.content)
+    const output = await finish(spawnSession("Request the synthetic edit.", undefined, probe.allow ? "edit" : undefined))
+    assert.equal(await readFile(editPath, "utf8"), probe.changed ?? probe.content)
+    if (probe.changed || probe.call === "edit_denied") {
+      const edit = output.split("\n").filter(line => line.startsWith("{")).map(line => JSON.parse(line))
+        .find(event => typeof event.sessionID === "string")
+      assert.equal(typeof edit?.sessionID, "string", output)
+      await writeFile(editPath, "original\r\nexternal revision\r\n")
+      const before = requests
+      const resumed = await finish(spawnSession("Report the prior edit result.", edit.sessionID, "edit"))
+      assert(!resumed.includes('"type":"tool_use"'))
+      assert.equal(requests, before + 1)
+      assert.equal(await readFile(editPath, "utf8"), "original\r\nexternal revision\r\n")
+    }
+  }
+  editProbe = undefined
   assert.match(await (await post({ ...payload, instructions: "no usage" })).text(), /response.completed/)
   assert.equal((await post({ ...payload, model: "unapproved" })).status, 502)
   for (const instructions of ["partial", "http error"]) {
@@ -228,19 +359,18 @@ try {
 
   const db = new Database(ledger, { readonly: true })
   try {
-    for (let attempt = 0; attempt < 20 &&
-         !db.query("SELECT 1 FROM operation WHERE status='cancelled'").get(); attempt++) await Bun.sleep(50)
-    const totals = db.query("SELECT status, count(*) AS count FROM operation GROUP BY status").all()
-    assert(totals.some((row: any) => row.status === "complete" && row.count >= 2))
-    assert(totals.some((row: any) => row.status === "uncertain" && row.count === 2))
-    assert(totals.some((row: any) => row.status === "cancelled" && row.count === 1))
+    const count = db.query<{ count: number }, [string]>("SELECT count(*) AS count FROM operation WHERE status=?")
+    for (let attempt = 0; attempt < 40 && count.get("cancelled")?.count !== 2; attempt++) await Bun.sleep(50)
+    assert.equal(count.get("cancelled")?.count, 2)
+    assert.equal(count.get("uncertain")?.count, 2)
+    assert.equal(count.get("complete")?.count, requests - 4)
     assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE prompt_tokens=13 AND completion_tokens=7").get().count,
-      requests - 4)
+      requests - 5)
     assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE status='complete' AND prompt_tokens IS NULL AND completion_tokens IS NULL").get().count, 1)
   } finally {
     db.close()
   }
-  console.log("PASS Responses native tool cycle, deny, SSE, cancellation and persisted usage")
+  console.log("PASS Responses: pre-dispatch abort, shell cleanup, edit recovery, permissions, SSE and SQLite usage")
 } finally {
   child.kill()
   await child.exited

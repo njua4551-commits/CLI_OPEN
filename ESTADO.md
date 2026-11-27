@@ -123,3 +123,7 @@ Canal optativo autenticado con registro existente, validado con proveedor Respon
 Base confirmada en `origin/main`: `a3fbcf4`. La cobertura de reanudación incluye una herramienta activa con efecto observable y resultado aún sin registrar, además de la lectura completada. También cubre un SSE completo sin métricas y el rechazo de un modelo distinto al autorizado. Quedan por calificar los puntos de interrupción previos a ejecutar el efecto y la recuperación para otras herramientas con efectos secundarios y cambios externos.
 
 **BLOCKED** para ChatGPT real. La documentación pública confirma el acceso directo mediante el inicio de sesión nativo de OpenCode, pero no se identificó una interfaz oficialmente admitida para reutilizar esa sesión desde el gateway supervisado. No hubo autenticación ni inferencia real.
+
+## D07.3 · Calificación local de recuperación
+
+Base del trabajo `aca792ea24d7b4d1a28e110252465a1c8e3fb95b`, confirmada también en GitHub antes de editar. Se amplía el fixture local de Responses para distinguir entrada incompleta, efecto de shell interrumpido, edición denegada, conflicto y resultado completado. El estado, el alcance observado y los pendientes por escenario se detallan en [pruebas](docs/PRUEBAS.md). D07 remoto sigue bloqueado y D24 conserva el aplazamiento de extracción estructural.
