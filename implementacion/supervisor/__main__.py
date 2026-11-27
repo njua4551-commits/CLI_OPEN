@@ -84,7 +84,7 @@ def qualify_linux():
         ])
         subprocess.run(command, env={}, check=True, timeout=45)
     except (ValueError, OSError, subprocess.SubprocessError) as error:
-        print(f"Linux: aislamiento no verificado ({type(error).__name__}). PLAN/DIAG disponibles.",
+        print(f"Linux isolation could not be verified ({type(error).__name__}). PLAN and DIAG remain available.",
               file=sys.stderr)
         return 1
     return 0
@@ -92,16 +92,16 @@ def qualify_linux():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Supervisor de CLI_OPEN. PLAN muestra el perfil activo sin herramientas del host.",
+        description="CLI_OPEN supervisor. PLAN displays the active profile without host tools.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Inspeccionar el entorno efectivo")
     commands.add_parser("plan", help="Mostrar capacidades del perfil activo")
-    commands.add_parser("diag", help="Iniciar el broker MCP de solo lectura sobre stdio")
-    commands.add_parser("qualify-linux", help="Calificar el aislamiento con una sesión sintética fija")
-    review = commands.add_parser("review-workspace", help="Revisar una copia desechable con cambios explícitos")
+    commands.add_parser("diag", help="Start the read-only MCP broker over stdio")
+    commands.add_parser("qualify-linux", help="Qualify isolation with a fixed synthetic session")
+    review = commands.add_parser("review-workspace", help="Review a disposable copy with explicit changes")
     review.add_argument("source", type=Path)
-    apply = commands.add_parser("apply-workspace", help="Publicar una revisión aprobada en una rama Git separada")
+    apply = commands.add_parser("apply-workspace", help="Publish an approved review to a separate Git branch")
     apply.add_argument("source", type=Path)
     apply.add_argument("--approve", required=True)
     inject = commands.add_parser("inject-context", help="Incorporar sobre de memoria como datos no confiables")
@@ -133,13 +133,13 @@ def main(argv=None):
                 )
                 report = {"mode": "published-review", "reference": reference, "commit": commit}
         except workspace["SourceChanged"]:
-            print("Revisión rechazada: el original cambió durante la operación.", file=sys.stderr)
+            print("Review rejected because the original changed during the operation.", file=sys.stderr)
             return 1
         except (workspace["IsolatedEditFailed"], subprocess.SubprocessError):
-            print("Edición aislada o validación fallida. Copia descartada.", file=sys.stderr)
+            print("Isolated editing or validation failed. The copy was discarded.", file=sys.stderr)
             return 1
         except (ValueError, OSError, RecursionError):
-            print("Revisión rechazada: entrada u origen inválido, o aislamiento no disponible.", file=sys.stderr)
+            print("Review rejected due to invalid input, an invalid source, or unavailable isolation.", file=sys.stderr)
             return 1
         print(json.dumps(report))
     elif options.command == "diag":
@@ -149,7 +149,7 @@ def main(argv=None):
         context_mod = runpy.run_path(str(Path(__file__).with_name("context.py")))
         try:
             if len(options.envelope.encode("utf-8")) > 65536:
-                raise ValueError("entrada mayor que 64 KiB")
+                raise ValueError("input exceeds 64 KiB")
             envelope_data = json.loads(options.envelope)
             budget = options.max_context_bytes
             if budget is None:
@@ -157,10 +157,10 @@ def main(argv=None):
             prompt = context_mod["incorporate_prompt"](options.prompt, envelope_data, budget)
             print(prompt)
         except (ValueError, RecursionError) as exc:
-            print(f"Sobre de contexto rechazado: {exc}", file=sys.stderr)
+            print(f"Context envelope rejected: {exc}", file=sys.stderr)
             return 1
     else:
-        print("PLAN activo. Ejecución, escritura e inferencia remota deshabilitadas.")
+        print("PLAN active. Execution, writes, and remote inference are disabled.")
     return 0
 
 

@@ -59,7 +59,7 @@ class SupervisorTest(unittest.TestCase):
                 self.assertFalse(marker.exists())
             result = self.run_supervisor("plan", cwd=workdir)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("PLAN activo", result.stdout)
+            self.assertIn("PLAN active", result.stdout)
             self.assertEqual(list(Path(workdir).iterdir()), [])
 
     def test_inject_context_enforces_zero_authority(self):
@@ -84,7 +84,7 @@ class SupervisorTest(unittest.TestCase):
         res_bad = self.run_supervisor("inject-context", "--prompt", "Test",
                                       "--envelope", json.dumps(invalid_envelope))
         self.assertEqual(res_bad.returncode, 1)
-        self.assertIn("autoridad nula", res_bad.stderr)
+        self.assertIn("no authority", res_bad.stderr)
 
     def test_inject_context_applies_encoded_budget_and_deduplicates(self):
         envelope = {

@@ -127,3 +127,7 @@ Base confirmada en `origin/main`: `a3fbcf4`. La cobertura de reanudación incluy
 ## D07.3 · Calificación local de recuperación
 
 Base del trabajo `aca792ea24d7b4d1a28e110252465a1c8e3fb95b`, confirmada también en GitHub antes de editar. Se amplía el fixture local de Responses para distinguir entrada incompleta, efecto de shell interrumpido, edición denegada, conflicto y resultado completado. El estado, el alcance observado y los pendientes por escenario se detallan en [pruebas](docs/PRUEBAS.md). D07 remoto sigue bloqueado y D24 conserva el aplazamiento de extracción estructural.
+
+## English engineering migration
+
+The quickstart, bootstrap prompt, agent policy, selective context preset, memory envelope guidance, and implementation diagnostics use English. Existing contracts and multilingual fixture data are preserved. The remaining Spanish architecture, roadmap, and continuity prose still needs translation. Historical evidence and quoted material retain their original language. See the benchmark in [test evidence](docs/PRUEBAS.md#english-engineering-text-benchmark).

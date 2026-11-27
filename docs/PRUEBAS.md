@@ -293,3 +293,17 @@ La edición comprueba denegación de la ruta, coincidencia ambigua, texto de ori
 Portable pasó con 13 pruebas unitarias y fixtures de memoria, contexto y lectura web. Linux pasó con Bubblewrap, recuperación de reservas SQLite, rechazo de corrupción, plazo, cancelación SSE, concurrencia con clientes HTTP reales y retención de reservas. El uso reportado por el proveedor simulado se almacena aparte y el fixture no establece consumo facturado.
 
 El perfil OpenCode pasó con la matriz ampliada, incluidos el aborto anterior al despacho, la desaparición del proceso de shell y dos cancelaciones registradas en SQLite. Los fixtures de contexto volvieron a pasar con memoria no confiable y selección nativa por ruta, coincidencia y página. En el fixture F7.2, las salidas de herramientas bajaron de 13 205 a 723 bytes. La medición corresponde a este caso sintético.
+
+## English engineering text benchmark
+
+Run `python3 -I -B tests/english-context-benchmark.py` with baseline `b96229d7d3a3b00a2fe5a147444f2a73c48cfa1b` available locally. Both inputs use the same Spanish request, synthetic memory, path and tool schema. The benchmark uses the pinned OpenCode `Token.estimate` formula (UTF-16 code units divided by four and rounded). Byte counts are exact for the fixture. Token counts are estimates without a model tokenizer or provider request.
+
+| Component | UTF-8 bytes before → after | Estimated tokens before → after |
+|---|---:|---:|
+| User request | 44 → 44 | 11 → 11 |
+| Agent instructions | 1107 → 983 | 272 → 246 |
+| Agent description | 66 → 57 | 16 → 14 |
+| Tool description schema | 78 → 78 | 20 → 20 |
+| Context wrapper | 443 → 390 | 110 → 98 |
+| Memory and paths | 152 → 152 | 38 → 38 |
+| Combined input | 1890 → 1704 (−9.84%) | 466 → 426 (−8.58%) |

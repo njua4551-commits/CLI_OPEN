@@ -1,8 +1,8 @@
-"""Memoria persistente por proyecto, con recuperación selectiva e invalidación.
+"""Persistent project memory with selective retrieval and invalidation.
 
-Almacén JSONL fuera del repositorio. Cada entrada referencia archivos y su
-hash; al leer se descartan las entradas cuyos archivos cambiaron o faltan.
-Sin red, sin dependencias externas y con escritura atómica.
+The JSONL store lives outside the repository. Entries reference files by hash.
+Retrieval drops entries if their files changed or disappeared. Writes are
+atomic and require neither network access nor external dependencies.
 """
 import argparse
 from datetime import datetime, timezone
@@ -304,7 +304,7 @@ def doctor(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Memoria persistente por proyecto. Sin red.")
+    parser = argparse.ArgumentParser(description="Persistent project memory without network access.")
     parser.add_argument("--store", default=os.environ.get(
         "XDG_STATE_HOME", str(Path.home() / ".local" / "state")) + "/cli-open/memoria")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -326,7 +326,7 @@ def main():
     context_parser.add_argument("--project", required=True)
     context_parser.add_argument("--query", required=True)
     context_parser.add_argument("--max-bytes", type=int, default=4096)
-    context_parser.add_argument("--with-paths", action="store_true", help="Incluir rutas relevantes con ripgrep")
+    context_parser.add_argument("--with-paths", action="store_true", help="Include relevant paths using ripgrep")
     context_parser.set_defaults(handler=context)
 
     invalidate_parser = commands.add_parser("invalidate")

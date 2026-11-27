@@ -1,41 +1,40 @@
-# Proyecto Agente OpenCode — inicio con Codex
+# CLI_OPEN quickstart with Codex
 
-## 1. Preparar el checkout completo
+## 1. Prepare the full checkout
 
-Extrae el ZIP, abre una terminal dentro de `Agente_OpenCode` y ejecuta (requiere Git e Internet):
+Extract the ZIP, open a terminal in `Agente_OpenCode`, and run the following command with Git and internet access.
 
 ```sh
 git clone --recurse-submodules https://github.com/anomalyco/opencode.git upstream/opencode
 ```
 
-El directorio `upstream/` está incluido. El comando descarga el historial Git sin `--depth`, además de submódulos declarados, si existen. No instala dependencias. Si ya tienes un clon en esa ruta, no repitas el comando: comprueba su origen y estado. La revisión inicial seleccionará un tag/commit adecuado; el checkout inicial no constituye una versión calificada.
+The package includes `upstream/`. The command downloads the full Git history and any declared submodules without installing dependencies. If the clone already exists, verify its origin and status. The initial review selects and qualifies a specific tag or commit.
 
-## 2. Abrir Codex desde esta carpeta
+## 2. Open Codex from this folder
 
-Comprueba `codex --help` y `codex --version`. Si la versión admite estas opciones:
+Check `codex --help` and `codex --version` for the options below.
 
 ```sh
 codex --sandbox read-only --ask-for-approval on-request
 ```
 
-Pega el contenido de `INICIAR_CODEX.txt`. Si Codex usa un servicio remoto, no introduzcas secretos ni datos que no deban procesarse allí.
+Paste the contents of `INICIAR_CODEX.txt`. When using a remote service, exclude secrets and data that must stay local.
 
-## 3. Avanzar por fases
+## 3. Advance by phase
 
-Revisa la evidencia de la fase 0 antes de autorizar la fase 1. No habilites escritura general. Conserva el repositorio original intacto mientras se prueban sus interfaces.
+Review the Phase 0 evidence before authorizing Phase 1. Keep write access scoped and preserve the original repository while testing its interfaces.
 
-## Archivos
+## Files
 
-- AGENTS.md: reglas para Codex.
-- PLAN_PARA_CODEX.md: fases, límites y aceptación.
-- INFORME_TECNICO.md: arquitectura, auditoría y backlog.
-- ESTADO.md: continuidad del proyecto.
-- upstream/opencode/: clon que se obtiene en el paso 1.
+- AGENTS.md: Codex instructions.
+- PLAN_PARA_CODEX.md: phases, limits, and acceptance criteria.
+- INFORME_TECNICO.md: architecture, audit, and backlog.
+- ESTADO.md: project continuity.
+- upstream/opencode/: clone from Step 1.
 
-## Prueba opcional de modelo local físico
+## Optional real local model test
 
-La prueba real usa CPU, no requiere GPU. Comprueba al menos 8 GiB de RAM
-disponible y 2 GiB de espacio temporal. Descarga aproximadamente 800 MiB:
+The test runs on CPU. Check for at least 8 GiB of available RAM and 2 GiB of temporary storage. The download is about 800 MiB.
 
 ```sh
 mkdir -p /tmp/opencode/llama /tmp/opencode/models
@@ -47,7 +46,6 @@ tar -xzf /tmp/opencode/llama/llama.tar.gz -C /tmp/opencode/llama
 python3 -I -B tests/fase6-modelo-local.py
 ```
 
-La prueba ejecuta `llama-server` con dos hilos de CPU y valida chat, streaming
-SSE y tool call mediante el gateway. No se instala ningún servicio global.
+The test runs `llama-server` with two CPU threads and validates chat, SSE streaming, and tool calls through the gateway. It requires no system-wide service.
 
-**Límite del paquete:** no incluye los bytes del repositorio oficial porque la descarga no estuvo disponible al prepararlo. No se ha realizado build ni prueba del agente.
+**Original ZIP limitations.** The upstream download was unavailable when the ZIP was assembled, so the archive omitted the upstream checkout. The original packaging step included no build or agent test. Consult `ESTADO.md` for subsequent qualification.

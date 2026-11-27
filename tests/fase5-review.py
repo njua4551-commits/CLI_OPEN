@@ -69,7 +69,7 @@ def main():
         rejected = run(source, edits)
         assert rejected.returncode == 1, rejected.stderr
         assert not rejected.stdout
-        assert b"Copia descartada." in rejected.stderr
+        assert b"The copy was discarded." in rejected.stderr
         assert (source / "notes.txt").read_text() == "before\n"
         assert sorted(path.name for path in source.iterdir()) == [".git", "notes.txt"]
         print("PASS native edit, validation, reviewed Git publication, concurrent rejection and discard")

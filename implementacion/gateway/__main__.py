@@ -559,7 +559,7 @@ def serve(listen, port, model, task=None, responses=None):
                     pass
 
         def process_request(self, request, client_address):
-            # Rechazo determinista antes de crear el hilo: sin cola ilimitada.
+            # Reject before creating a worker thread to prevent an unbounded queue.
             if not self._concurrency.acquire(blocking=False):
                 self._overloaded(request)
                 return
@@ -582,22 +582,22 @@ def serve(listen, port, model, task=None, responses=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Consulta local y acotada. Sin destinos remotos.")
+    parser = argparse.ArgumentParser(description="Bounded local inference over loopback.")
     parser.add_argument("--port", type=int, required=True, help="Puerto del endpoint IPv4 de loopback")
     parser.add_argument("--model", required=True, help="Identificador exacto del modelo")
     parser.add_argument("--listen", type=int, metavar="PUERTO",
                         help="Sirve un endpoint OpenAI-compatible local (0 elige puerto)")
     parser.add_argument("--task-budget", type=int, nargs=3, metavar=("REQUESTS", "INPUT_BYTES", "OUTPUT_TOKENS"),
-                        help="Presupuesto acumulado para un listener autenticado (CLI_OPEN_GATEWAY_TASK_TOKEN)")
+                        help="Cumulative budget for an authenticated listener (CLI_OPEN_GATEWAY_TASK_TOKEN)")
     parser.add_argument("--task-seconds", type=int, metavar="SECONDS",
-                        help="Vida máxima del listener autenticado (1–300, predeterminado 120)")
+                        help="Maximum lifetime of the authenticated listener (1–300, default 120)")
     parser.add_argument("--task-state", type=Path, help="Base SQLite privada de la tarea")
     parser.add_argument("--task-id", help="Identidad verificable de la tarea persistente")
     parser.add_argument("--create-task", action="store_true", help="Crear un presupuesto persistente nuevo")
-    parser.add_argument("--responses", action="store_true", help="Habilitar sólo Responses SSE en loopback")
+    parser.add_argument("--responses", action="store_true", help="Enable only Responses SSE on loopback")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
-        print("Gateway local sin calificar en este entorno.", file=sys.stderr)
+        print("The local gateway is unqualified in this environment.", file=sys.stderr)
         return 2
     try:
         task = None
@@ -641,7 +641,7 @@ def main():
             request = read_request(sys.stdin.buffer)
             _, report, _ = complete(args.port, args.model, request, stream=False)
     except (Rejected, ValueError, OSError, sqlite3.Error, http.client.HTTPException, RecursionError):
-        print("Consulta local rechazada o fallida. Sin conexión alternativa.", file=sys.stderr)
+        print("Local request rejected or failed. No fallback connection was attempted.", file=sys.stderr)
         return 1
     sys.stdout.buffer.write(report)
     return 0
