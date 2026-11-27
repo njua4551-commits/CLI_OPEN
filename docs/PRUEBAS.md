@@ -380,3 +380,7 @@ The pinned native subscription flow uses direct HTTPS token exchange, credential
 The previous final source verifier accepted a mode-only change when the bytes still matched. A temporary-file reproduction ran that verifier from `0cd96c7` and compared it with the current verifier. The current verifier rejected the same change. The workspace tests also replace a file with a different inode containing identical CRLF bytes, at which point final source verification rejects the snapshot. The real review fixture rejects an old approval even after the original bytes are restored. A new review with no further change can publish a separate Git ref without applying anything to the live index or worktree.
 
 The native edit permission preview case is a separate regression. The public permission hook runs before the reply, and the tool hooks surround the entire tool. Neither provides a post-approval, pre-write check in native `edit`. The existing lock only coordinates cooperating native writes. Version-bound review does not provide filesystem compare-and-swap and does not fix the native preview overwrite.
+
+### D07.5 · Native OAuth handoff preparation
+
+The pinned binary's `auth login --help` was checked with isolated HOME and XDG directories and a cleared environment. It exposes `--standalone`, the integration target, and `--method`. The native plugin registers `chatgpt-token-sharing` for the browser flow. The continuity guide records the user-controlled command. Browser consent, authenticated catalog checks, and inference remain pending.

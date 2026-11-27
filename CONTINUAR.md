@@ -146,3 +146,24 @@ The OpenCode profile tests the native pre-browser step with a clean temporary pr
 ## D07.5 · Version-bound review
 
 Generate a fresh review before applying a change if the source bytes, identity, or metadata changed. Old approval tokens predate the version binding and must be regenerated. The review path keeps native editing in a disposable workspace and publishes a separate Git ref. The next gate is a supported correction and regression for the native `edit` preview-to-write interval. [Evidence](docs/PRUEBAS.md#d075--version-bound-workspace-approval)
+
+### User-controlled native browser handoff
+
+From the project root in a Bash terminal, create a private diagnostic profile and run native OpenCode's interactive login. The following function uses the pinned binary, a temporary empty workspace, no inherited API credentials, and a deny-all tool policy. The diagnostic requires native network access for OAuth, independently of the supervised CLI_OPEN sandbox.
+
+```bash
+diagnostic_cli="$PWD/.fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode"
+diagnostic_dir=$(mktemp -d /tmp/cli-open-native-auth.XXXXXXXX)
+native_diagnostic() (
+  cd "$diagnostic_dir" || exit 1
+  env -i PATH=/usr/bin:/bin HOME="$diagnostic_dir" \
+    XDG_CONFIG_HOME="$diagnostic_dir/config" XDG_DATA_HOME="$diagnostic_dir/data" \
+    XDG_STATE_HOME="$diagnostic_dir/state" XDG_CACHE_HOME="$diagnostic_dir/cache" \
+    OPENCODE_CONFIG_PROJECT_DISABLE=true OPENCODE_DISABLE_MODELS_FETCH=true \
+    OPENCODE_CONFIG_CONTENT='{"permissions":[{"action":"*","resource":"*","effect":"deny"}]}' \
+    "$diagnostic_cli" --standalone "$@"
+)
+native_diagnostic auth login openai --method chatgpt-token-sharing
+```
+
+Complete consent personally. If the clean terminal cannot open a browser, use the URL printed by OpenCode in your browser. Keep that URL and any credential material private. After OpenCode reports completion, `native_diagnostic models | grep '^openai/'` checks the provider's exposed model list without running an inference prompt. Share only the success or failure status and non-sensitive model names if needed. Keep the temporary profile private and separate from CLI_OPEN. [Official ChatGPT setup](https://opencode.ai/docs/providers/#chatgpt)
