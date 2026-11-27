@@ -169,6 +169,8 @@ La regresión local de Responses mata el proceso de OpenCode tras observar un ef
 
 D07 externo sigue **BLOCKED**. Para continuar, hace falta una interfaz documentada para enrutar la sesión nativa de ChatGPT por un transporte supervisado sin entregar OAuth al sandbox. La aprobación del fixture remoto es una puerta posterior.
 
-## D07.3 · Continuidad
+## D07.3 · Continuity
 
-Reutilizar el fixture `tests/fase6-d07-responses.ts` y la sesión persistida de OpenCode. Antes de autorizar una nueva escritura tras una interrupción, inspeccionar el archivo y sus cambios externos. Priorizar una barrera determinista en un MCP sintético con efecto observable para distinguir efecto aplicado de resultado persistido. Quedan por calificar la interrupción en búsquedas, el reinicio del supervisor con la misma sesión y la interrupción de una edición en el punto de escritura. D07 remoto conserva su puerta de autorización y transporte supervisado.
+Reuse `tests/fase6-d07-responses.ts` and the persisted OpenCode session. Before authorizing another write after an interruption, inspect the target and any external changes. Use a deterministic barrier in a synthetic MCP server to distinguish an applied effect from a recorded result. Search interruption, supervisor restart with the same session, and interruption at the edit write boundary still require qualification. Remote D07 retains its authorization and supervised transport gate.
+
+The MCP before-effect, after-effect, and completed-result cases now run in the existing Responses regression. Next, use a native permission request and hold the decision after complete arguments arrive. This can also provide a deterministic edit conflict window. Keep the previous result-replay cases separate from a genuinely new equivalent call carrying a fresh tool call ID.

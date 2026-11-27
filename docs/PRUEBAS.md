@@ -307,3 +307,15 @@ Run `python3 -I -B tests/english-context-benchmark.py` with baseline `b96229d7d3
 | Context wrapper | 443 → 390 | 110 → 98 |
 | Memory and paths | 152 → 152 | 38 → 38 |
 | Combined input | 1890 → 1704 (−9.84%) | 466 → 426 (−8.58%) |
+
+## D07.3 · Native MCP interruption under Bubblewrap
+
+The Responses fixture starts `tests/fase6-d07-mcp-server.py` through OpenCode's native local stdio MCP transport. The server counts calls and appends to disposable state. A release marker gates the append and a separate marker gates the response. The harness verifies the native call is still running at each interruption barrier before killing the CLI.
+
+| Case | Observed result in the OpenCode profile |
+|---|---|
+| Before effect | One MCP invocation reached the first barrier. After resumption with the tool denied, the effect file was still absent. |
+| After effect, before reply | One invocation and one append remained after reopening with the tool denied. OpenCode preserved a terminal error and passed the old call result to the provider. |
+| With a persisted result | The stored completion returned to the provider on resume with the tool still permitted. Invocation and effect counts remained one. |
+
+The fixture accepts an aborted tool or a native MCP connection-closed failure because transport teardown can race session settlement. Neither error determines whether the external effect committed. Temporary state is the evidence for this fixture. No live MCP service or remote inference was used. Recent changes passed the local Portable, Linux, and OpenCode profiles. The OpenCode profile runs locally with pinned artifacts. GitHub Actions currently runs Portable and Linux only.

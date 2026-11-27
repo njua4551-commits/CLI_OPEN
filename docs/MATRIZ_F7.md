@@ -1,31 +1,31 @@
-# Matriz F7.1 — Capacidades nativas de OpenCode V2 frente a propuestas F7
+# F7.1 matrix — Native OpenCode V2 capabilities and F7 proposals
 
-Revisión fijada: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`.
-Ruta del clon: `upstream/upstream/opencode`. Clasificación obligatoria antes de implementar.
+Pinned revision: OpenCode `v2.3.2`, SHA `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`.
+Clone path: `upstream/upstream/opencode`. Classify proposals before implementation.
 
-| Propuesta F7 | Clasificación | Evidencia en el SHA fijado |
+| F7 proposal | Classification | Evidence at the pinned SHA |
 |---|---|---|
-| Repo Map incremental con Tree-sitter / grafos de símbolos | APLAZADA (bloqueo verificado) | `packages/cli-rs/assets/queries/manifest.json` contiene gramáticas Tree-sitter para resaltado; `packages/core/src/tool/plugin/grep.ts` (`Ripgrep`) y `packages/core/src/ripgrep.ts` cubren búsqueda textual. No hay índice de símbolos ni servicio LSP expuesto al agente (`packages/core/src/tool/plugin/` no incluye `lsp`). `tests/fase7-repomap.py`: 36 `highlights.scm`, 0 consultas de símbolos, sin runtime Tree-sitter ni `.wasm` de gramáticas. |
-| Investigación profunda de dependencias bajo demanda | EXTENSIBLE | `packages/core/src/tool/plugin/subagent.ts`, `packages/core/src/tool/plugin/session-search.ts` y `packages/core/src/tool/plugin/mcp.ts`. |
-| Presupuesto dinámico de tokens para contexto | PARCIAL | `implementacion/memoria/__main__.py` (`context`, `tokens`) implementa el sobre acotado; falta adaptación al presupuesto de la sesión. |
-| Code Mode / `execute` nativo | EXISTENTE | `packages/core/src/codemode/tool.ts` (`name = "execute"`). |
-| Descubrimiento dinámico y selectivo de herramientas | EXTENSIBLE | `packages/core/src/tool/search.ts` y `Tool.Service.transform` (AGENTS de `packages/core/src/tool`). |
-| Filtrado determinista de logs y salidas | PARCIAL | `implementacion` no implementa deduplicación; el gateway (`implementacion/gateway/__main__.py`) ya acota cuerpo y respuesta. |
-| Caché e invalidación local | EXISTENTE | `packages/core/src/repository-cache.ts`, `packages/core/src/shared-cache.ts`; memoria propia en `implementacion/memoria/`. |
-| Enrutamiento adaptativo de modelos | EXTENSIBLE | `packages/core/src/model-resolver.ts`, `packages/core/src/variant.ts`, `packages/core/src/provider.ts`. |
-| Compatibilidad con endpoints compatibles con OpenAI | EXISTENTE | `implementacion/gateway/__main__.py` y `tests/fase6-gateway.py`. |
-| Presupuestos compartidos por tarea | PARCIAL | `usage-limits.ts` y `implementacion/gateway/__main__.py` (límites fijos); falta unificación. |
-| Autocorrección guiada por evidencia | AUSENTE | No hay módulo propio; reutilizar `packages/core/src/session/compaction.ts` y `packages/core/src/model-retry.ts`. |
-| Validación automática según lenguaje | AUSENTE | Sin implementación propia; reutilizar `packages/core/src/formatter.ts` y `packages/core/src/vcs.ts`. |
-| Coordinación de subagentes y worktrees | EXISTENTE | `packages/core/src/tool/plugin/subagent.ts`, `packages/core/src/worktree.ts`. |
-| Revisión transaccional y reversión | PARCIAL | `implementacion/supervisor/workspace*.py` y `workspace_git.py`; falta integración con worktrees nativos. |
-| Skills, comandos y flujos reproducibles | EXISTENTE | `packages/core/src/skill.ts`, `packages/core/src/command.ts`. |
-| Ejecución headless gobernada por presupuestos | EXTENSIBLE | `packages/core/src/automation.ts` y `packages/core/src/job.ts`. |
-| Pair Device y Web UI | EXISTENTE | `packages/core/src/app.ts`, `packages/core/src/session/*`. |
-| Tareas asíncronas con cancelación | EXISTENTE | `packages/core/src/session/background.ts`, `packages/core/src/persistent-pty.ts`. |
-| Diagnósticos programados de solo lectura | EXISTENTE | `implementacion/broker/__main__.py` y `implementacion/supervisor/qualify-linux`. |
-| Rendimiento de TUI sin reemplazar el framework | EXISTENTE | `packages/tui` (framework oficial); no duplicar. |
+| Incremental Repo Map with Tree-sitter or symbol graphs | APLAZADA (verified blocker) | `packages/cli-rs/assets/queries/manifest.json` contains Tree-sitter highlighting grammars. `packages/core/src/tool/plugin/grep.ts` (`Ripgrep`) and `packages/core/src/ripgrep.ts` cover text search. The agent has no exposed symbol index or LSP service (`packages/core/src/tool/plugin/` contains no `lsp`). `tests/fase7-repomap.py` found 36 `highlights.scm` files, zero symbol queries, and no Tree-sitter runtime or grammar `.wasm` files. |
+| On-demand dependency research | EXTENSIBLE | `packages/core/src/tool/plugin/subagent.ts`, `packages/core/src/tool/plugin/session-search.ts`, and `packages/core/src/tool/plugin/mcp.ts`. |
+| Dynamic context token budget | PARCIAL | `implementacion/memoria/__main__.py` (`context`, `tokens`) implements a bounded envelope. Session budget integration is pending. |
+| Native Code Mode and `execute` | EXISTENTE | `packages/core/src/codemode/tool.ts` (`name = "execute"`). |
+| Dynamic selective tool discovery | EXTENSIBLE | `packages/core/src/tool/search.ts` and `Tool.Service.transform` (see AGENTS in `packages/core/src/tool`). |
+| Deterministic log and output filtering | PARCIAL | At baseline, `implementacion` had no deduplication. The gateway (`implementacion/gateway/__main__.py`) already bounded request and response bodies. |
+| Local caching and invalidation | EXISTENTE | `packages/core/src/repository-cache.ts` and `packages/core/src/shared-cache.ts`. Project memory lives in `implementacion/memoria/`. |
+| Adaptive model routing | EXTENSIBLE | `packages/core/src/model-resolver.ts`, `packages/core/src/variant.ts`, and `packages/core/src/provider.ts`. |
+| OpenAI-compatible endpoints | EXISTENTE | `implementacion/gateway/__main__.py` and `tests/fase6-gateway.py`. |
+| Shared task budgets | PARCIAL | `usage-limits.ts` and `implementacion/gateway/__main__.py` supply fixed limits. Unified budgeting is pending. |
+| Evidence-guided self-correction | AUSENTE | No project module. Reuse `packages/core/src/session/compaction.ts` and `packages/core/src/model-retry.ts`. |
+| Automated language-specific validation | AUSENTE | No project implementation. Reuse `packages/core/src/formatter.ts` and `packages/core/src/vcs.ts`. |
+| Subagent and worktree coordination | EXISTENTE | `packages/core/src/tool/plugin/subagent.ts` and `packages/core/src/worktree.ts`. |
+| Transactional review and rollback | PARCIAL | `implementacion/supervisor/workspace*.py` and `workspace_git.py`. Native worktree integration is pending. |
+| Reproducible skills, commands, and workflows | EXISTENTE | `packages/core/src/skill.ts` and `packages/core/src/command.ts`. |
+| Budget-governed headless execution | EXTENSIBLE | `packages/core/src/automation.ts` and `packages/core/src/job.ts`. |
+| Pair Device and web UI | EXISTENTE | `packages/core/src/app.ts` and `packages/core/src/session/*`. |
+| Cancellable asynchronous tasks | EXISTENTE | `packages/core/src/session/background.ts` and `packages/core/src/persistent-pty.ts`. |
+| Scheduled read-only diagnostics | EXISTENTE | `implementacion/broker/__main__.py` and `implementacion/supervisor/qualify-linux`. |
+| TUI performance within the existing framework | EXISTENTE | Reuse the official framework in `packages/tui`. |
 
-## Decisión derivada
+## Decision
 
-Repo Map no se implementa como indexador independiente. Debe reutilizar las gramáticas Tree-sitter y las capacidades LSP/ripgrep del motor fijado mediante un adaptador ligero, o clasificarse `AUSENTE` con justificación en una decisión posterior. Hasta entonces, F7.2 avanza únicamente con la línea base y la auditoría. Verificación 2026-11-25 (`tests/fase7-repomap.py`): el entorno no dispone de runtime Tree-sitter ni LSP; la compuerta bloquea la implementación y prohíbe `implementacion/repomap/`.
+Repo Map requires a lightweight adapter that reuses the pinned engine's Tree-sitter grammars and LSP or ripgrep capabilities. A later decision may classify Repo Map as `AUSENTE` with supporting evidence. F7.2 advances through the baseline and audit until that gate is met. On 2026-11-25, `tests/fase7-repomap.py` found no Tree-sitter runtime or LSP in the environment. The gate blocks a standalone indexer and prohibits `implementacion/repomap/`.

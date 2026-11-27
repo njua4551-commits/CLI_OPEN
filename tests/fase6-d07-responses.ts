@@ -26,6 +26,8 @@ const editPath = join(work, "edit.txt")
 let editProbe: { call: string; expected: RegExp } | undefined
 let holdToolInput = false
 let recoveringToolInput = false
+const mcpTool = "probe_append"
+let mcpProbe: { id: string; directory: string; resumed: boolean; complete: boolean } | undefined
 
 function events(chunks: object[]) {
   return chunks.map(chunk => "data: " + JSON.stringify(chunk) + "\n\n").join("")
@@ -89,6 +91,19 @@ const upstream = Bun.serve({
       }), { headers: { "content-type": "text/event-stream" } })
     } else if (recoveringToolInput) {
       assert(!body.tools?.some((tool: { name: string }) => tool.name === "shell"))
+    } else if (mcpProbe) {
+      const result = results.find((item: { call_id: string }) => item.call_id === mcpProbe!.id)
+      const offered = body.tools?.some((tool: { name: string }) => tool.name === mcpTool)
+      if (result) {
+        assert.match(JSON.stringify(result), mcpProbe.complete
+          ? /Synthetic append completed/ : /interrupted|aborted|Connection closed/i)
+        if (mcpProbe.resumed && !mcpProbe.complete) assert(!offered, "The denied MCP tool was advertised")
+      } else if (offered && !mcpProbe.resumed) {
+        return toolCalls(id, [{ type: "function_call", id: "fc_" + mcpProbe.id,
+          call_id: mcpProbe.id, name: mcpTool, arguments: "{}" }])
+      } else if (mcpProbe.resumed && body.tools?.some((tool: { name: string }) => tool.name === "read")) {
+        assert.fail("MCP recovery request omitted the persisted tool result")
+      }
     } else if (editProbe && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "edit"))) {
       const callID = "call_" + editProbe.call
       if (!results.length) {
@@ -134,7 +149,7 @@ const upstream = Bun.serve({
 
 const child = Bun.spawn(["/usr/bin/python3", "-I", "-B", resolve(import.meta.dir, "../implementacion/gateway"),
   "--port", String(upstream.port), "--model", model, "--listen", "0", "--responses", "--task-budget",
-  "32", "320000", "16384", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
+  "48", "480000", "24576", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
   env: { PATH: "/usr/bin:/bin", CLI_OPEN_GATEWAY_TASK_TOKEN: token }, stdout: "pipe", stderr: "inherit",
 })
 try {
@@ -168,7 +183,7 @@ try {
         settings: { store: false } } },
     } },
   }
-  function spawnSession(prompt: string, session?: string, action?: "shell" | "edit") {
+  function spawnSession(prompt: string, session?: string, action?: "shell" | "edit" | typeof mcpTool) {
     return Bun.spawn([cli, "--standalone", "run", "--model", "fixture/fixture", "--format", "json",
       ...(session ? ["--session", session] : []),
       prompt],
@@ -176,9 +191,15 @@ try {
     PATH: "/usr/bin:/bin", HOME: root, XDG_DATA_HOME: join(root, "data"), XDG_CONFIG_HOME: join(root, "config"),
     XDG_STATE_HOME: join(root, "state"), XDG_CACHE_HOME: join(root, "cache"),
     OPENCODE_DB: sessionDatabase,
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(action ? { ...config, permissions: [
-      ...config.permissions, { action, resource: action === "edit" ? "edit.txt" : "*", effect: "allow" },
-    ] } : config), OPENCODE_DISABLE_MODELS_FETCH: "true",
+    OPENCODE_CONFIG_CONTENT: JSON.stringify({ ...config,
+      permissions: action ? [
+        ...config.permissions, { action, resource: action === "edit" ? "edit.txt" : "*", effect: "allow" },
+      ] : config.permissions,
+      ...(mcpProbe ? { mcp: { servers: { probe: { type: "local",
+        command: ["/usr/bin/python3", "-I", "-B", join(import.meta.dir, "fase6-d07-mcp-server.py"), mcpProbe.directory],
+        protocol: "legacy", codemode: false,
+      } } } } : {}),
+    }), OPENCODE_DISABLE_MODELS_FETCH: "true",
     OPENCODE_CONFIG_PROJECT_DISABLE: "true", OPENCODE_DISABLE_FILEWATCHER: "true",
     } })
   }
@@ -219,16 +240,16 @@ try {
   holdToolInput = true
   const beforeDispatch = spawnSession("Prepare a shell call.", undefined, "shell")
   const beforeOutput = Promise.all([new Response(beforeDispatch.stdout).text(), new Response(beforeDispatch.stderr).text()])
-  const persistedTool = (status: string) => {
+  const persistedTool = (status: string, callID = "call_before") => {
     const db = new Database(sessionDatabase, { readonly: true })
     try {
-      return db.query<{ session_id: string; executed: number | null; error: string | null }, [string]>(
+      return db.query<{ session_id: string; executed: number | null; error: string | null }, [string, string]>(
         `SELECT session_id, json_extract(part.value, '$.executed') AS executed,
                 json_extract(part.value, '$.state.error.type') AS error
          FROM session_message, json_each(data, '$.content') AS part
-         WHERE json_extract(part.value, '$.id')='call_before'
+         WHERE json_extract(part.value, '$.id')=?
            AND json_extract(part.value, '$.state.status')=?`,
-      ).get(status)
+      ).get(callID, status)
     } finally {
       db.close()
     }
@@ -339,6 +360,50 @@ try {
     }
   }
   editProbe = undefined
+  for (const phase of ["before", "uncertain", "complete"]) {
+    const directory = join(root, "mcp-" + phase)
+    const id = "call_mcp_" + phase
+    const complete = phase === "complete"
+    await mkdir(directory)
+    mcpProbe = { directory, id, complete, resumed: false }
+    if (phase !== "before") await writeFile(join(directory, "allow-effect"), "")
+    if (complete) await writeFile(join(directory, "allow-reply"), "")
+    const run = spawnSession("Run the synthetic MCP tool.", undefined, mcpTool)
+    let sessionID: string | undefined
+    if (complete) {
+      const output = await finish(run)
+      assert(output.includes('"type":"tool_use"'), output)
+      sessionID = persistedTool("completed", id)?.session_id
+    } else {
+      const output = Promise.all([new Response(run.stdout).text(), new Response(run.stderr).text()])
+      const marker = join(directory, phase === "before" ? "calls" : "effects")
+      try {
+        for (let attempt = 0; attempt < 200 && run.exitCode === null; attempt++) {
+          const reached = await Bun.file(marker).exists()
+          sessionID = persistedTool("running", id)?.session_id
+          if (reached && sessionID) break
+          await Bun.sleep(50)
+        }
+        assert(await Bun.file(marker).exists(), "MCP server did not reach the expected barrier")
+        assert.equal(persistedTool("running", id)?.session_id, sessionID, "MCP call did not remain active")
+      } finally {
+        run.kill("SIGKILL")
+        await run.exited
+        await output
+      }
+    }
+    assert.match(sessionID ?? "", /^ses_/)
+    mcpProbe.resumed = true
+    const before = requests
+    const output = await finish(spawnSession("Report the prior MCP result.", sessionID, complete ? mcpTool : undefined))
+    assert(!output.includes('"type":"tool_use"'))
+    assert.equal(requests, before + 1)
+    assert.equal(await readFile(join(directory, "calls"), "utf8"), "call\n")
+    if (phase === "before") await assert.rejects(access(join(directory, "effects")), { code: "ENOENT" })
+    else assert.equal(await readFile(join(directory, "effects"), "utf8"), "effect\n")
+    if (!complete) assert.match(persistedTool("error", id)?.error ?? "", /^(aborted|tool\.execution)$/)
+  }
+  mcpProbe = undefined
   assert.match(await (await post({ ...payload, instructions: "no usage" })).text(), /response.completed/)
   assert.equal((await post({ ...payload, model: "unapproved" })).status, 502)
   for (const instructions of ["partial", "http error"]) {

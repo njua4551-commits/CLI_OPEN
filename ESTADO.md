@@ -124,10 +124,14 @@ Base confirmada en `origin/main`: `a3fbcf4`. La cobertura de reanudación incluy
 
 **BLOCKED** para ChatGPT real. La documentación pública confirma el acceso directo mediante el inicio de sesión nativo de OpenCode, pero no se identificó una interfaz oficialmente admitida para reutilizar esa sesión desde el gateway supervisado. No hubo autenticación ni inferencia real.
 
-## D07.3 · Calificación local de recuperación
+## D07.3 · Local recovery qualification
 
-Base del trabajo `aca792ea24d7b4d1a28e110252465a1c8e3fb95b`, confirmada también en GitHub antes de editar. Se amplía el fixture local de Responses para distinguir entrada incompleta, efecto de shell interrumpido, edición denegada, conflicto y resultado completado. El estado, el alcance observado y los pendientes por escenario se detallan en [pruebas](docs/PRUEBAS.md). D07 remoto sigue bloqueado y D24 conserva el aplazamiento de extracción estructural.
+The starting point was `aca792ea24d7b4d1a28e110252465a1c8e3fb95b`, also confirmed on GitHub before editing. The local Responses fixture distinguishes incomplete tool input, an interrupted shell effect, a denied edit, a conflict, and a completed result. See [test evidence](docs/PRUEBAS.md) for observed results, scope, and pending cases. Remote D07 remains blocked, and D24 still defers structural extraction.
 
 ## English engineering migration
 
 The quickstart, bootstrap prompt, agent policy, selective context preset, memory envelope guidance, and implementation diagnostics use English. Existing contracts and multilingual fixture data are preserved. The remaining Spanish architecture, roadmap, and continuity prose still needs translation. Historical evidence and quoted material retain their original language. See the benchmark in [test evidence](docs/PRUEBAS.md#english-engineering-text-benchmark).
+
+## D07.3 · MCP recovery continuation
+
+The local OpenCode profile qualified the native stdio MCP fixture before its effect, after its effect but before its reply, and after a recorded completion. Portable and Linux also passed. See [test evidence](docs/PRUEBAS.md#d073--native-mcp-interruption-under-bubblewrap). The authorization dispatch boundary, active read/search interruption, final edit-write race, full supervisor restart, and a distinct equivalent call remain unqualified.

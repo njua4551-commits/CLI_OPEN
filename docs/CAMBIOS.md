@@ -194,7 +194,13 @@
 
 Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID después de detener OpenCode durante una herramienta con efecto de archivo, sin repetirlo y con una política más restrictiva. La regresión también distingue un SSE completo sin métricas de un SSE truncado y comprueba el rechazo de un modelo distinto. Se reutilizaron el historial, los permisos y el proveedor nativos, el gateway Responses y su registro SQLite.
 
-## D07.3 · Fixture de recuperación
+## D07.3 · Recovery fixture
 
-- Amplía la regresión Responses con observación de estado nativo, terminación del proceso de shell, permisos al reanudar y edición sintética con coincidencia ambigua, revisión externa y conservación de CRLF.
-- Registra la viabilidad documental de ChatGPT nativo y la frontera pendiente del transporte supervisado.
+- Extend the Responses regression to observe native tool state, shell process termination, permission changes on resume, and synthetic editing with ambiguous matches, external revisions, and CRLF preservation.
+- Record the documented availability of native ChatGPT and the pending supervised transport boundary.
+
+## English engineering text and MCP recovery
+
+- Move bootstrap instructions, the quickstart, selected documentation, project diagnostics, and selective context guidance to English while keeping existing identifiers and multilingual input.
+- Add a reproducible context size benchmark against `b96229d7d3a3b00a2fe5a147444f2a73c48cfa1b`.
+- Extend the native Responses fixture with a synthetic MCP server that pauses before an effect and before its response.
