@@ -394,3 +394,13 @@ Direct pinned OpenCode still reproduces the preview-to-write conflict in the Res
 ### D07.5 · Brave account diagnostic
 
 Native OpenCode v2.3.2 opened the official authorization flow in `/usr/bin/brave`. After personal consent, the integration API reported a connection and the model API exposed 18 OpenAI model IDs. No inference request was made. The first interactive invocation successfully verified these values and then exited with a fixture error because a final assertion expected the completed attempt to disappear like a cancelled pending attempt. The assertion now applies only to the automated pre-consent mode. The temporary OpenCode profile was cleaned up in both cases. The reported catalog is not a successful inference test.
+
+### D07.6 · Production review stop and restart
+
+`python3 -I -B tests/fase5-supervisor-stop.py` invokes the actual `review-workspace` CLI under Bubblewrap with a controlled worker artifact. The worker writes a marker after mutating only the disposable copy. The test sends SIGTERM to the supervisor at that barrier and verifies exit status 143, no approval report, no active descendants, removal of the copy, and preservation of the source bytes and mode. A new invocation with the pinned OpenCode artifacts produces the intended diff against the unchanged source. This qualifies production review teardown and fresh review. The production CLI has no session-and-budget task owner entry point, and the composed D07 fixture still shares synthetic state. Production restart with an independently protected ledger and authentication state remains unqualified.
+
+### D07.6 · Native search I/O cancellation
+
+`python3 -I -B tests/fase6-d07-native-io.py` compiles a test-only interposer and mounts it read-only in the existing Bubblewrap fixture. It verifies the pinned binary hashes. The fixture holds successful `readdir64` for `glob` and successful `mmap64` for literal `grep` in ripgrep before returning the result to native code. It checks that the OpenCode call is running in SQLite, interrupts it, observes that the ripgrep worker stops, resumes the same session under deny, and then checks an explicitly allowed retry. The previous call remains interrupted. The held result and restricted marker do not appear on recovery.
+
+The libc interception trials for native `read` and paginated `read` did not reach the file barrier on the pinned Bun/OpenCode binary. Symbol interposition alone did not expose those file operations. The existing result-persistence fixture still passes for both; actual native read I/O remains open. These tests observe I/O completion at the libc boundary for search, not cancellation of an outstanding kernel request.

@@ -96,3 +96,7 @@ Starting SHA `a851751e02a7880d0995548b87d0c65a2b2d5107`. The supervised editor o
 ### Native ChatGPT account recognition
 
 The user completed native consent in the installed Brave browser. The pinned OpenCode integration reported a connection and exposed 18 OpenAI model IDs in the temporary profile. Native inference was not requested. Supervised D07 remains blocked on the trusted transport. [Test evidence](docs/PRUEBAS.md#d075--brave-account-diagnostic)
+
+## D07.6 · Review stop and native search I/O
+
+Starting SHA `791c2b3e3caa16dfab4cf2a34be8962e61c664e0` was verified on public `main`. Production `review-workspace` passed SIGTERM cleanup and restart as a fresh review. `glob` and literal `grep` passed at their native libc I/O result boundaries. The native reader has only result-persistence evidence. The full supervised session-and-budget restart with trusted state outside the tools remains open. Native edit containment still passes and F8 stays gated. [D07.6 evidence](docs/PRUEBAS.md#d076--production-review-stop-and-restart)

@@ -6,6 +6,7 @@ import os
 import platform
 import runpy
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -168,5 +169,11 @@ def main(argv=None):
     return 0
 
 
+def terminate(signum, _frame):
+    # Unwind the active subprocess and disposable workspace on service stop.
+    raise SystemExit(128 + signum)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, terminate)
     raise SystemExit(main())

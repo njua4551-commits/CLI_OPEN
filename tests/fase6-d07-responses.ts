@@ -7,7 +7,8 @@ import { Database } from "bun:sqlite"
 import { events, response, toolCalls } from "./responses-fixture"
 
 const cli = resolve(process.argv[2])
-const readResults = process.argv[3] === "--read-results"
+const nativeIO = process.argv[3] === "--native-io"
+const readResults = process.argv[3] === "--read-results" || nativeIO
 const root = await mkdtemp(join(tmpdir(), "responses-"))
 const work = join(root, "work")
 const token = randomUUID()
@@ -31,6 +32,7 @@ let recoveringToolInput = false
 let readProbe: {
   id: string; tool: "read" | "glob" | "grep"; input: object; expected: string
   phase: "hold" | "recover" | "retry"
+  io?: { target: string; marker: string }
 } | undefined
 const resultBarrier = join(root, "result-barrier")
 const resultPlugin = join(root, "result-barrier-plugin")
@@ -234,13 +236,17 @@ try {
         ...(readProbe ? [{ action: readProbe.tool, resource: "*", effect: readProbe.phase === "recover" ? "deny" : "allow" },
           { action: "read", resource: "denied.txt", effect: "deny" }] : []),
       ],
-      ...(readProbe?.phase === "hold" ? { plugins: [resultPlugin] } : {}),
+      ...(readProbe?.phase === "hold" && !nativeIO ? { plugins: [resultPlugin] } : {}),
       ...(mcpProbe ? { mcp: { servers: { probe: { type: "local",
         command: ["/usr/bin/python3", "-I", "-B", join(import.meta.dir, "fase6-d07-mcp-server.py"), mcpProbe.directory],
         protocol: "legacy", codemode: false,
       } } } } : {}),
     }), OPENCODE_DISABLE_MODELS_FETCH: "true",
     OPENCODE_CONFIG_PROJECT_DISABLE: "true", OPENCODE_DISABLE_FILEWATCHER: "true",
+    ...(readProbe?.phase === "hold" && readProbe.io ? {
+      LD_PRELOAD: "/fixture/native-io.so", CLI_OPEN_TEST_IO_TARGET: readProbe.io.target,
+      CLI_OPEN_TEST_IO_MARKER: readProbe.io.marker,
+    } : {}),
     }
   }
   function spawnSession(prompt: string, session?: string, action?: "shell" | "edit" | typeof mcpTool) {
@@ -632,6 +638,7 @@ try {
       { id: "glob", tool: "glob", input: { pattern: "allow*.txt" }, expected: "allowed.txt" },
       { id: "grep", tool: "grep", input: { pattern: "search-anchor", path: "allowed.txt", literal: true }, expected: secret },
     ] as const) {
+      if (nativeIO && probe.tool === "read") continue
       const callID = "call_result_barrier_" + probe.id
       const barrier = resultBarrier + "_" + probe.id
       await writeFile(join(resultPlugin, "index.mjs"), `
@@ -644,10 +651,14 @@ try {
           })
         } }
       `)
-      readProbe = { ...probe, id: callID, phase: "hold" }
+      readProbe = { ...probe, id: callID, phase: "hold", ...(nativeIO ? { io: {
+        target: probe.tool === "glob" ? work : join(work, "allowed.txt"),
+        marker: barrier,
+      } } : {}) }
       const active = spawnSession("Read or search for the synthetic fixture.")
       const diagnostics = Promise.all([new Response(active.stdout).text(), new Response(active.stderr).text()])
       let sessionID: string | undefined
+      let workerPID: string | undefined
       try {
         for (let attempt = 0; attempt < 160 && active.exitCode === null; attempt++) {
           if (await Bun.file(barrier).exists()) {
@@ -656,13 +667,31 @@ try {
           }
           await Bun.sleep(50)
         }
-        assert.match(sessionID ?? "", /^ses_/, "Result hook did not hold " + probe.id)
-        assert((await readFile(barrier, "utf8")).includes(probe.expected))
+        assert.match(sessionID ?? "", /^ses_/, "I/O barrier did not hold " + probe.id)
+        const observed = await readFile(barrier, "utf8")
+        if (nativeIO) {
+          assert.match(observed, probe.tool === "glob" ? /^\d+ readdir(?:64)?\n$/ : /^\d+ (?:read|mmap(?:64)?)\n$/)
+          workerPID = observed.split(" ")[0]
+          console.log("Observed native I/O for " + probe.id + ": " + observed.trim().split(" ")[1])
+        } else {
+          assert(observed.includes(probe.expected))
+        }
         assert.equal(persistedTool("completed", callID), null)
       } finally {
         active.kill("SIGKILL")
         await active.exited
         await diagnostics
+      }
+      if (workerPID) {
+        const stillRunning = async () => {
+          const status = await readFile("/proc/" + workerPID + "/stat", "utf8").catch(error => {
+            if (error.code !== "ENOENT" && error.code !== "ESRCH") throw error
+            return ""
+          })
+          return Boolean(status && status.slice(status.lastIndexOf(")") + 2, status.lastIndexOf(")") + 3) !== "Z")
+        }
+        for (let attempt = 0; attempt < 100 && await stillRunning(); attempt++) await Bun.sleep(50)
+        assert.equal(await stillRunning(), false, "Native search subprocess survived interruption")
       }
       readProbe.phase = "recover"
       const recovered = await finish(spawnSession("Request the same read under the current policy.", sessionID))
@@ -679,7 +708,9 @@ try {
       assert.equal(persistedTool("error", callID)?.session_id, sessionID)
     }
     readProbe = undefined
-    console.log("PASS read, paginated read, glob and literal grep interrupted before result persistence")
+    console.log(nativeIO
+      ? "PASS native glob and literal grep interrupted at the I/O result boundary"
+      : "PASS read, paginated read, glob and literal grep interrupted before result persistence")
   }
 } finally {
   child.kill()

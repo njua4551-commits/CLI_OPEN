@@ -44,6 +44,7 @@ def preflight():
     mounts = [(bun, "/fixture/bun"), (cli, "/fixture/opencode"),
               (ROOT / "tests", "/tests"), (ROOT / "implementacion", "/implementacion")]
     python("tests/fase5-review.py")
+    python("tests/fase5-supervisor-stop.py")
     python("tests/fase6-d07-restart.py")
     supervisor = runpy.run_path(str(ROOT / "implementacion/supervisor/__main__.py"))
     fixtures = (

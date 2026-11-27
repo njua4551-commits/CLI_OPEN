@@ -122,3 +122,7 @@ Keep the native editor in the existing private copy and scope its edit permissio
 ### D07.5 · Native browser handoff
 
 Reuse the native integration API to prepare and observe the official OAuth attempt. Pass the authorization destination directly to the selected Brave executable with its usual profile. Keep OpenCode state in a temporary profile with all tool permissions denied. Verification uses only integration and model metadata. Account recognition does not qualify real inference or the supervised transport.
+
+### D07.6 · Scope of stop and search recovery
+
+Unwind the actual supervisor command on SIGTERM so its subprocess and disposable workspace contexts run cleanup. A stopped review emits no approval. If an apply command stops near Git publication, inspect the review ref before authorizing any retry. Uncatchable termination and production ownership of a separately trusted task ledger are distinct cases. Keep native I/O instrumentation in tests and retain the result-persistence checks for the pinned native reader.
