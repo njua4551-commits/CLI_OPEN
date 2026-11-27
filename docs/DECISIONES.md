@@ -106,3 +106,7 @@ Native edit's permission preview is computed from source contents before the app
 ### D07.4 · Native ChatGPT boundary
 
 Native subscription sign-in is **EXISTENTE**. The pinned local APIs expose the native method and can prepare and cancel the browser flow in an empty profile. The current authenticated gateway is **EXTENSIBLE** for qualified synthetic Responses. Real D07 remains **BLOCKED** until an official provider integration can keep OAuth and external network access on a trusted side and preserve Bubblewrap, destination validation, deadlines, cancellation, and the durable ledger. Native workspace/environment drivers warrant an interface audit before a possible simulated integration. An endpoint override by itself does not isolate credentials or tools. [OpenCode providers](https://opencode.ai/docs/providers/#chatgpt)
+
+### F8.3 · Adaptive Tool Selection & Lazy Activation
+
+Reuse native catalog and invocation, Code Mode schema lookup, agent filters, skill dispatch, permissions, MCP connection lifecycle, and context compaction. Treat model visibility, schema inclusion, and process startup as independently measurable. F8.0 establishes repeatable cost and outcome metrics. F8.1 supplies bounded admission and lifecycle ownership for optional activation. Parallel activation or worker expansion waits for F8.2. Manual activation and trusted policy remain authoritative. A standalone tool chooser or sidecar model is outside the proposed implementation. [Roadmap](../PLAN_PARA_CODEX.md#f83--adaptive-tool-selection--lazy-activation-proposed)
