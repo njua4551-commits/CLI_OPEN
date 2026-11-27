@@ -265,7 +265,7 @@ def cancel_on_disconnect(downstream, upstream):
             watcher.join()
 
 
-def complete_streaming(port, model, request, sink, downstream, *, require_done=False):
+def complete_streaming(port, model, request, sink, downstream, *, require_done=False, responses=None):
     """Relay an upstream response to ``sink`` without buffering it whole.
 
     Validates every SSE event as it arrives and enforces the same size and
@@ -279,6 +279,10 @@ def complete_streaming(port, model, request, sink, downstream, *, require_done=F
     forwarded["model"] = model
     forwarded["max_tokens"] = request.get("max_tokens", request.get("max_completion_tokens", MAX_TOKENS))
     forwarded["stream"] = True
+    route = "/v1/chat/completions"
+    if responses is not None:
+        forwarded = request
+        route = "/v1/responses"
     payload = json.dumps(forwarded, allow_nan=False).encode("ascii")
     if len(payload) > MAX_REQUEST:
         raise Rejected("encoded request too large")
@@ -286,8 +290,10 @@ def complete_streaming(port, model, request, sink, downstream, *, require_done=F
     try:
         connection.connect()
         with cancel_on_disconnect(downstream, connection.sock) as cancelled:
-            connection.request("POST", "/v1/chat/completions", payload, {"Content-Type": "application/json"})
+            connection.request("POST", route, payload, {"Content-Type": "application/json"})
             with connection.getresponse() as response:
+                if responses is not None:
+                    return responses["relay"](response, model, sink, cancelled, MAX_RESPONSE, check_usage)
                 return relay_stream(response, model, sink, cancelled, require_done=require_done)
     finally:
         connection.close()
@@ -411,9 +417,10 @@ class TaskBudget:
             return True
 
 
-def serve(listen, port, model, task=None):
+def serve(listen, port, model, task=None, responses=None):
     if not MODEL_NAME.fullmatch(model):
         raise Rejected("invalid model")
+    route = "/v1/responses" if responses is not None else "/v1/chat/completions"
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -434,17 +441,24 @@ def serve(listen, port, model, task=None):
                     self.close_connection = True
                     self.reply(401, b'{"error":"task authentication required"}')
                     return
-                if self.path != "/v1/chat/completions":
+                if self.path != route:
                     raise Rejected("unexpected path")
                 raw = read_body(self)
-                request = parse_request(raw, clamp=task is None)
+                if responses is None:
+                    request = parse_request(raw, clamp=task is None)
+                    tokens = request["max_tokens"]
+                else:
+                    request = responses["parse"](raw, model, MAX_TOKENS)
+                    tokens = request["max_output_tokens"]
                 if task is not None:
-                    operation = task.reserve(len(raw), request["max_tokens"])
+                    operation = task.reserve(len(raw), tokens)
                     if operation is None:
                         self.close_connection = True
                         self.reply(429, b'{"error":"task budget exhausted"}')
                         return
                 if request.get("stream") is True:
+                    if responses is not None:
+                        outcome = "uncertain"
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
                     self.send_header("Cache-Control", "no-cache")
@@ -458,11 +472,16 @@ def serve(listen, port, model, task=None):
                     try:
                         outcome, usage = complete_streaming(
                             port, model, request, sink, self.connection, require_done=task is not None,
+                            responses=responses,
                         )
                     except (Rejected, ValueError, OSError, http.client.HTTPException, RecursionError) as exc:
                         print(f"rejected: {type(exc).__name__}", file=sys.stderr, flush=True)
                         try:
-                            self.wfile.write(b'data: {"error":"local gateway rejected the request"}\\n\\n')
+                            message = (b'event: error\ndata: {"type":"error","code":"gateway_error",'
+                                       b'"message":"Responses stream incomplete"}\n\n'
+                                       if responses is not None else
+                                       b'data: {"error":"local gateway rejected the request"}\n\n')
+                            self.wfile.write(message)
                             self.wfile.flush()
                         except OSError:
                             pass
@@ -575,6 +594,7 @@ def main():
     parser.add_argument("--task-state", type=Path, help="Base SQLite privada de la tarea")
     parser.add_argument("--task-id", help="Identidad verificable de la tarea persistente")
     parser.add_argument("--create-task", action="store_true", help="Crear un presupuesto persistente nuevo")
+    parser.add_argument("--responses", action="store_true", help="Habilitar sólo Responses SSE en loopback")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
         print("Gateway local sin calificar en este entorno.", file=sys.stderr)
@@ -585,6 +605,9 @@ def main():
         if (persistent != (args.task_id is not None) or args.create_task and not persistent
                 or persistent and args.task_budget is None):
             raise Rejected("incomplete task state configuration")
+        if args.responses and not persistent:
+            raise Rejected("Responses requires a persistent authenticated task")
+        responses = runpy.run_path(str(Path(__file__).with_name("responses.py"))) if args.responses else None
         seconds = 120 if args.task_seconds is None else args.task_seconds
         if args.task_seconds is not None and (args.task_budget is None or not 1 <= seconds <= 300):
             raise Rejected("invalid task deadline")
@@ -601,11 +624,12 @@ def main():
                 try:
                     if persistent:
                         ledger_type = runpy.run_path(str(Path(__file__).with_name("task_ledger.py")))["Ledger"]
-                        with ledger_type.open(args.task_state, args.task_id, (*args.task_budget, args.model, args.port),
+                        ledger_model = args.model + "|responses" if args.responses else args.model
+                        with ledger_type.open(args.task_state, args.task_id, (*args.task_budget, ledger_model, args.port),
                                               seconds, create=args.create_task) as ledger:
                             task.ledger = ledger
                             with deadline(max(0.001, ledger.expires - time.time())):
-                                serve(args.listen, args.port, args.model, task)
+                                serve(args.listen, args.port, args.model, task, responses)
                     else:
                         with deadline(seconds):
                             serve(args.listen, args.port, args.model, task)

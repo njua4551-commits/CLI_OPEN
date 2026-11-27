@@ -76,3 +76,7 @@ El listener autenticado termina al agotar su plazo global. Cada instancia repres
 ### D07 · Registro de tarea duradero
 
 Usar SQLite de la biblioteca estándar para el registro local y un lock exclusivo del archivo. Mantener un archivo privado por tarea y exigir creación explícita. El supervisor elige el archivo, ID y perfil. El registro no da permisos al agente y no contiene prompts, tokens de autenticación ni cabeceras. El proceso retiene la reserva original en todas las transiciones. Las métricas estructuradas reportadas se guardan como evidencia aparte. Si la salida reportada supera su reserva, cerrar la tarea para nuevas operaciones. El proceso no reconstruye una operación previa ni inicia un reintento. Se presupone un estado privado y el reloj del host confiables.
+
+### D07 · Responses sin traducción y sin red externa
+
+Extender el gateway con un listener Responses separado por perfil. El cliente y el proveedor conservan los ítems y eventos del protocolo. El gateway limita el subconjunto a texto y llamadas de función sin estado del proveedor, exige SSE y aplica una ruta fija. El evento `response.completed` valida identidad y permite registrar sólo uso reportado. Errores, EOF prematuro o respuestas incompletas conservan la reserva y se marcan inciertos. La autenticación OpenAI del fixture es efímera, distinta de OAuth. No se ofrece salida remota.

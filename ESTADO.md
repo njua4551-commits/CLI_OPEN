@@ -113,3 +113,7 @@ Autenticación OAuth nativa **DISPONIBLE** en el motor fijado. Acceso de cuenta,
 El perfil autenticado tiene plazo de proceso, retención de reservas ante fallos y terminación SSE estricta. Se calificó cancelación del cliente y expiración con upstream simulado. OAuth real, contabilización de tokens del proveedor y recuperación de una reserva tras reinicio siguen pendientes.
 
 El perfil loopback D07 puede usar una base SQLite privada por tarea. Se calificó reinicio, rechazo de estado corrupto, plazo persistido y uso reportado separado del presupuesto. Sigue **BLOCKED** la inferencia real de ChatGPT con supervisión.
+
+## D07 · Responses local
+
+Canal optativo autenticado con registro existente, validado con proveedor Responses simulado bajo Bubblewrap. Conserva Chat Completions como perfil independiente. Sigue **BLOCKED** el canal remoto autorizado de ChatGPT. La recuperación de una herramienta activa queda pendiente.

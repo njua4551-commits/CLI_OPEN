@@ -185,3 +185,7 @@
 ## D07 · Persistencia de reservas y recuperación
 
 - Registro optativo SQLite por tarea. Añade reserva duradera antes de despacho, recuperación conservadora y métricas reportadas para JSON y SSE completos. El gateway local mantiene su interfaz.
+
+## D07 · Transporte Responses simulado
+
+- El gateway admite un perfil fijo para Responses SSE local y reutiliza autenticación, cancelación, plazo y SQLite. El fixture usa el proveedor nativo de OpenCode y permisos de lectura explícitos.
