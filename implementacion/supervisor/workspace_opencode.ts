@@ -46,7 +46,7 @@ try {
   const config = {
     permissions: [
       { action: "*", resource: "*", effect: "deny" },
-      { action: "edit", resource: "*", effect: "allow" },
+      ...edits.map(({ path }) => ({ action: "edit", resource: path, effect: "allow" })),
     ],
     snapshots: false,
     providers: {

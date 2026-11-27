@@ -384,3 +384,9 @@ The native edit permission preview case is a separate regression. The public per
 ### D07.5 · Native OAuth handoff preparation
 
 The pinned binary's `auth login --help` was checked with isolated HOME and XDG directories and a cleared environment. It exposes `--standalone`, the integration target, and `--method`. The native plugin registers `chatgpt-token-sharing` for the browser flow. The continuity guide records the user-controlled command. Browser consent, authenticated catalog checks, and inference remain pending.
+
+### D07.5 · Disposable edit containment
+
+The supervised entry point mounts only a fresh disposable copy as writable `/work`. The editor permits only the explicit proposal paths. After the sandbox exits, the host reopens each result through the bounded no-follow snapshot and checks exact agreement with the proposal before forming the diff. The focused tests exercise changed bytes, symlinks, and hardlinks at this handoff, as well as same-byte inode replacement and source symlink substitution at final verification. The real OpenCode review test confirms normal approval, stale refusal, fresh approval, and separate Git ref publication without replacing the live source or index.
+
+Direct pinned OpenCode still reproduces the preview-to-write conflict in the Responses fixture. The supervised path contains the defect by keeping live files outside the editor's writable mount. The final host checks are optimistic and do not claim atomicity against external writers.

@@ -165,16 +165,27 @@ def review(root, edits, bubblewrap_command):
                 raise SourceChanged("source directory changed; copy discarded")
             if any(snapshot(directory, name) != original for name, original in originals.items()):
                 raise SourceChanged("source changed concurrently; copy discarded")
-            return [
-                {
-                    "path": name,
-                    "operation": "replace" if originals[name] else "create",
-                    "before_sha256": hashlib.sha256(originals[name][1].encode("utf-8")).hexdigest()
-                    if originals[name] else None,
-                    "before_version": originals[name][0] if originals[name] else None,
-                    "diff": review_diff(name, originals[name], (copy / name).read_bytes().decode("utf-8")),
-                }
-                for name in originals
-            ]
+            staged = os.open(copy, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                changes = []
+                for edit in edits:
+                    name = edit["path"]
+                    original = originals[name]
+                    try:
+                        edited = snapshot(staged, name)
+                    except (OSError, ValueError) as error:
+                        raise IsolatedEditFailed("invalid isolated output; copy discarded") from error
+                    if edited is None or edited[1] != edit["text"]:
+                        raise IsolatedEditFailed("isolated output differs from the proposal; copy discarded")
+                    changes.append({
+                        "path": name,
+                        "operation": edit["operation"],
+                        "before_sha256": hashlib.sha256(original[1].encode("utf-8")).hexdigest() if original else None,
+                        "before_version": original[0] if original else None,
+                        "diff": review_diff(name, original, edited[1]),
+                    })
+                return changes
+            finally:
+                os.close(staged)
     finally:
         os.close(directory)

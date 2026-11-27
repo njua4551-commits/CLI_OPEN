@@ -167,3 +167,7 @@ native_diagnostic auth login openai --method chatgpt-token-sharing
 ```
 
 Complete consent personally. If the clean terminal cannot open a browser, use the URL printed by OpenCode in your browser. Keep that URL and any credential material private. After OpenCode reports completion, `native_diagnostic models | grep '^openai/'` checks the provider's exposed model list without running an inference prompt. Share only the success or failure status and non-sensitive model names if needed. Keep the temporary profile private and separate from CLI_OPEN. [Official ChatGPT setup](https://opencode.ai/docs/providers/#chatgpt)
+
+### Disposable edit containment
+
+Use `review-workspace` and `apply-workspace` for supervised changes. The native editor receives a private copy and permissions limited to the proposal paths. The host checks exact staged bytes before it issues an approval. Production restart with a separate trusted ledger and native in-flight I/O remain the F8 entry dependencies.

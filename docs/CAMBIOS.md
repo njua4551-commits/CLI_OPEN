@@ -230,3 +230,5 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 ## D07.5 · Version-bound review
 
 - Bind approvals and final Git publication checks to the source file version and bytes. Reject restored bytes after an intervening change, mode-only changes, and same-content inode replacement.
+
+- Scoped supervised editing to proposal paths and added a trusted no-follow comparison of staged results before a review can be issued.

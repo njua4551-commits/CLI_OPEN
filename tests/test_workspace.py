@@ -119,6 +119,14 @@ class WorkspaceTest(unittest.TestCase):
             with self.assertRaisesRegex(WORKSPACE["SourceChanged"], "before publication"):
                 WORKSPACE["verify_sources"](source, changes)
             self.assertEqual(target.read_bytes(), b"before\r\n")
+            alternate = source / "alternate.txt"
+            alternate.write_bytes(target.read_bytes())
+            target.unlink()
+            target.symlink_to(alternate)
+            with self.assertRaisesRegex(ValueError, "without links"):
+                WORKSPACE["verify_sources"](source, changes)
+            self.assertTrue(target.is_symlink())
+            self.assertEqual(alternate.read_bytes(), b"before\r\n")
 
     def test_link_and_validation_failure_leave_original_intact(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -140,6 +148,39 @@ class WorkspaceTest(unittest.TestCase):
                     WORKSPACE["review"](source, [request()], command)
             self.assertEqual(target.read_text(), "before\n")
             self.assertFalse(staging[0].exists())
+
+    def test_review_rejects_changed_or_linked_output_after_worker(self):
+        for mutation in ("different-bytes", "symlink", "hardlink"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory)
+                target = source / "fixture.txt"
+                target.write_bytes(b"before\r\n")
+                target.chmod(0o640)
+                copies = []
+
+                def command(*_args, writable_workspace):
+                    copies.append(writable_workspace)
+                    return ["mock-backend"]
+
+                def run(*_args, **_kwargs):
+                    staged = copies[0] / target.name
+                    staged.unlink()
+                    if mutation == "symlink":
+                        staged.symlink_to(target)
+                    elif mutation == "hardlink":
+                        linked = copies[0] / "linked.txt"
+                        linked.write_bytes(b"after\n")
+                        staged.hardlink_to(linked)
+                    else:
+                        staged.write_bytes(b"unreviewed\n")
+                    return subprocess.CompletedProcess(["mock-backend"], 0)
+
+                with patch("shutil.which", return_value="/usr/bin/bwrap"), patch("subprocess.run", side_effect=run):
+                    with self.assertRaises(WORKSPACE["IsolatedEditFailed"]):
+                        WORKSPACE["review"](source, [request()], command)
+                self.assertEqual(target.read_bytes(), b"before\r\n")
+                self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o640)
+                self.assertFalse(copies[0].exists())
 
 
 if __name__ == "__main__":

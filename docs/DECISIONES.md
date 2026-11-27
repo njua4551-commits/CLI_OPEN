@@ -114,3 +114,7 @@ Reuse native catalog and invocation, Code Mode schema lookup, agent filters, ski
 ### D07.5 · Bind reviewed edits to source version
 
 An approval binds the source file signature as well as the existing content hash. The signature includes device, inode, file mode, size, mtime, and ctime. Final verification reuses the same bounded, no-follow snapshot. The version stays internal to preserve the public review fields. Existing approval tokens require a fresh review. Source verification precedes the Git ref transaction, which publishes to a separate review ref. Arbitrary filesystem writers do not participate in that transaction, so this is optimistic verification with no live-worktree mutation. Direct native edits on concurrently mutable source remain outside the qualified flow.
+
+### D07.5 · Disposable edit handoff
+
+Keep the native editor in the existing private copy and scope its edit permission to the requested files. Reuse the bounded, no-follow snapshot on staged results after the worker exits. Construct a diff only when these bytes match the proposal that Git publication will use. Final source verification and separate-ref publication remain in the trusted supervisor. Native in-place edits outside CLI_OPEN are outside this containment.

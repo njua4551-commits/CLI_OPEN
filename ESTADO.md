@@ -88,3 +88,7 @@ The pinned acquisition path passed preparation and cancellation before browser a
 ## D07.5 · Version-bound supervised editing
 
 Starting SHA `0cd96c733a4f503a5e3c4cce772a402672cf237b`, confirmed on public `main`. The supervisor now checks source identity and metadata in addition to bytes during approval and final publication. The public review report keeps its existing fields and earlier approvals require a fresh review. The native editor still lacks a supported post-approval, pre-write validation hook. Its known overwrite and the production lifecycle with a separately protected budget remain open. F8 stays gated. [Evidence](docs/PRUEBAS.md#d075--version-bound-workspace-approval)
+
+### Disposable edit containment
+
+Starting SHA `a851751e02a7880d0995548b87d0c65a2b2d5107`. The supervised editor operates on a disposable copy with permission only for proposed paths. The host rejects linked or changed output before issuing a review, and preserves version-bound approval and a separate publication ref. Direct native editing still has the stale-preview race. Production restart with separate trusted state and native in-flight I/O cancellation remain open. [Test evidence](docs/PRUEBAS.md#d075--disposable-edit-containment)
