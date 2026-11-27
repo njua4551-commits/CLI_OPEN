@@ -583,17 +583,17 @@ def serve(listen, port, model, task=None, responses=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Bounded local inference over loopback.")
-    parser.add_argument("--port", type=int, required=True, help="Puerto del endpoint IPv4 de loopback")
-    parser.add_argument("--model", required=True, help="Identificador exacto del modelo")
-    parser.add_argument("--listen", type=int, metavar="PUERTO",
-                        help="Sirve un endpoint OpenAI-compatible local (0 elige puerto)")
+    parser.add_argument("--port", type=int, required=True, help="IPv4 loopback endpoint port")
+    parser.add_argument("--model", required=True, help="Exact model identifier")
+    parser.add_argument("--listen", type=int, metavar="PORT",
+                        help="Serve a local OpenAI-compatible endpoint (0 selects a port)")
     parser.add_argument("--task-budget", type=int, nargs=3, metavar=("REQUESTS", "INPUT_BYTES", "OUTPUT_TOKENS"),
                         help="Cumulative budget for an authenticated listener (CLI_OPEN_GATEWAY_TASK_TOKEN)")
     parser.add_argument("--task-seconds", type=int, metavar="SECONDS",
                         help="Maximum lifetime of the authenticated listener (1–300, default 120)")
-    parser.add_argument("--task-state", type=Path, help="Base SQLite privada de la tarea")
-    parser.add_argument("--task-id", help="Identidad verificable de la tarea persistente")
-    parser.add_argument("--create-task", action="store_true", help="Crear un presupuesto persistente nuevo")
+    parser.add_argument("--task-state", type=Path, help="Private SQLite task ledger")
+    parser.add_argument("--task-id", help="Verifiable persistent task identity")
+    parser.add_argument("--create-task", action="store_true", help="Create a new persistent budget")
     parser.add_argument("--responses", action="store_true", help="Enable only Responses SSE on loopback")
     args = parser.parse_args()
     if not hasattr(signal, "SIGALRM"):
@@ -634,7 +634,7 @@ def main():
                         with deadline(seconds):
                             serve(args.listen, args.port, args.model, task)
                 except TimeoutError:
-                    print("Plazo global de la tarea agotado.", file=sys.stderr)
+                    print("Task deadline expired.", file=sys.stderr)
                     return 124
             return 0
         with deadline():
