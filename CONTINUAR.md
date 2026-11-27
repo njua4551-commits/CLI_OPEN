@@ -162,3 +162,9 @@ Los contadores se reconstruyen de las reservas. El diario distingue operaciones 
 Ejecutar `python3 -I -B tests/run-suite.py opencode` con los artefactos calificados. El fixture usa el paquete nativo `@opencode/ai/providers/openai`, HTTP y el gateway con `--responses`, perfil de tarea autenticado y registro SQLite. Sólo existe la ruta fija `/v1/responses` hacia el servidor IPv4 de loopback. Usar una base nueva para el perfil Responses. El registro vincula protocolo, modelo y puerto. Se mantiene el plazo, el presupuesto y la reserva conservadora.
 
 El subconjunto admite texto y funciones con SSE y `store=false`. El cliente vuelve a enviar el historial con IDs de llamadas y resultados. Continuación del lado del proveedor, herramientas alojadas, binarios, WebSocket y compactación remota quedan fuera del perfil. No activar OAuth contra este listener ni enviar tokens de ChatGPT. D07 continúa bloqueado hasta calificar una ruta remota oficialmente admitida.
+
+## D07.2 · Recuperación del efecto interrumpido
+
+La regresión local de Responses mata el proceso de OpenCode tras observar un efecto de archivo y antes de recibir el resultado de la herramienta. Reabre la sesión por ID con una configuración que vuelve a denegar `shell`. OpenCode conserva la llamada interrumpida, el fixture verifica que el proveedor recibe su resultado de interrupción y que el efecto queda registrado una sola vez. Antes de repetir un efecto incierto, comprobar el estado real y obtener autorización.
+
+D07 externo sigue **BLOCKED**. Para continuar, hace falta una interfaz documentada para enrutar la sesión nativa de ChatGPT por un transporte supervisado sin entregar OAuth al sandbox. La aprobación del fixture remoto es una puerta posterior.

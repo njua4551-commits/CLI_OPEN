@@ -189,3 +189,7 @@
 ## D07 · Transporte Responses simulado
 
 - El gateway admite un perfil fijo para Responses SSE local y reutiliza autenticación, cancelación, plazo y SQLite. El fixture usa el proveedor nativo de OpenCode y permisos de lectura explícitos.
+
+## D07.2 · Regresión de recuperación activa y uso desconocido
+
+Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID después de detener OpenCode durante una herramienta con efecto de archivo, sin repetirlo y con una política más restrictiva. La regresión también distingue un SSE completo sin métricas de un SSE truncado y comprueba el rechazo de un modelo distinto. Se reutilizaron el historial, los permisos y el proveedor nativos, el gateway Responses y su registro SQLite.

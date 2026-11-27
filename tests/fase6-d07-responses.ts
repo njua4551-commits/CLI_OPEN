@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { randomUUID } from "node:crypto"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { Database } from "bun:sqlite"
@@ -17,19 +17,31 @@ let requests = 0
 let completed = false
 let stalled = false
 let disconnected = false
+let interruption = false
+let interruptedResult = false
+const effect = join(work, "effect.txt")
 
 function events(chunks: object[]) {
   return chunks.map(chunk => "data: " + JSON.stringify(chunk) + "\n\n").join("")
 }
 
-function response(id: string, output: object[], chunks: object[]) {
+function response(id: string, output: object[], chunks: object[], reportUsage = true) {
   const header = { id, model, output: [] }
   return new Response(events([
     { type: "response.created", response: header },
     ...chunks,
     { type: "response.completed", response: { ...header, status: "completed", output,
-      usage: { input_tokens: 13, output_tokens: 7, total_tokens: 20 } } },
+      ...(reportUsage ? { usage: { input_tokens: 13, output_tokens: 7, total_tokens: 20 } } : {}) } },
   ]), { headers: { "content-type": "text/event-stream" } })
+}
+
+function toolCalls(id: string, items: { id: string; arguments: string }[]) {
+  return response(id, items, items.flatMap((item, output_index) => [
+    { type: "response.output_item.added", output_index, item: { ...item, arguments: "" } },
+    { type: "response.function_call_arguments.delta", item_id: item.id, output_index, delta: item.arguments },
+    { type: "response.function_call_arguments.done", item_id: item.id, output_index, arguments: item.arguments },
+    { type: "response.output_item.done", output_index, item },
+  ]))
 }
 
 const upstream = Bun.serve({
@@ -58,7 +70,16 @@ const upstream = Bun.serve({
       }), { headers: { "content-type": "text/event-stream" } })
     }
     const results = body.input.filter((item: { type: string }) => item.type === "function_call_output")
-    if (results.length) {
+    if (interruption && (results.length || body.tools?.some((tool: { name: string }) => tool.name === "shell"))) {
+      if (!results.length) {
+        const item = { type: "function_call", id: "fc_effect", call_id: "call_effect", name: "shell",
+          arguments: JSON.stringify({ command: 'printf "%s\\n" "$OPENCODE_SESSION_ID" >> effect.txt; exec sleep 15' }) }
+        return toolCalls(id, [item])
+      }
+      const result = results.find((item: { call_id: string }) => item.call_id === "call_effect")
+      assert.match(JSON.stringify(result), /interrupted|aborted/i)
+      interruptedResult = true
+    } else if (results.length) {
       const allowed = results.find((item: { call_id: string }) => item.call_id === "call_allowed")
       const denied = results.find((item: { call_id: string }) => item.call_id === "call_denied")
       assert(JSON.stringify(allowed).includes(secret))
@@ -71,27 +92,22 @@ const upstream = Bun.serve({
         type: "function_call", id: "fc_" + path, call_id: "call_" + path, name: "read",
         arguments: JSON.stringify({ path: path + ".txt", offset: 1, limit: 1 }),
       }))
-      return response(id, items, items.flatMap((item, output_index) => [
-        { type: "response.output_item.added", output_index, item: { ...item, arguments: "" } },
-        { type: "response.function_call_arguments.delta", item_id: item.id, output_index, delta: item.arguments },
-        { type: "response.function_call_arguments.done", item_id: item.id, output_index, arguments: item.arguments },
-        { type: "response.output_item.done", output_index, item },
-      ]))
+      return toolCalls(id, items)
     }
-    const text = results.length ? secret : "Fixture title"
+    const text = results.length ? (interruption ? "Effect uncertain. Review before repeating." : secret) : "Fixture title"
     const item = { type: "message", id: "msg_" + requests, role: "assistant",
       content: [{ type: "output_text", text, annotations: [] }] }
     return response(id, [item], [
       { type: "response.output_item.added", output_index: 0, item: { ...item, content: [] } },
       { type: "response.output_text.delta", output_index: 0, content_index: 0, item_id: item.id, delta: text },
       { type: "response.output_item.done", output_index: 0, item },
-    ])
+    ], body.instructions !== "no usage")
   },
 })
 
 const child = Bun.spawn(["/usr/bin/python3", "-I", "-B", resolve(import.meta.dir, "../implementacion/gateway"),
   "--port", String(upstream.port), "--model", model, "--listen", "0", "--responses", "--task-budget",
-  "12", "120000", "6144", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
+  "16", "160000", "8192", "--task-state", ledger, "--task-id", "responses_fixture", "--create-task"], {
   env: { PATH: "/usr/bin:/bin", CLI_OPEN_GATEWAY_TASK_TOKEN: token }, stdout: "pipe", stderr: "inherit",
 })
 try {
@@ -124,16 +140,21 @@ try {
         settings: { store: false } } },
     } },
   }
-  async function runSession(session?: string) {
-    const run = Bun.spawn([cli, "--standalone", "run", "--model", "fixture/fixture", "--format", "json",
+  function spawnSession(prompt: string, session?: string, allowShell = false) {
+    return Bun.spawn([cli, "--standalone", "run", "--model", "fixture/fixture", "--format", "json",
       ...(session ? ["--session", session] : []),
-      session ? "Repeat the policy from the completed read." : "Read the allowed synthetic file."],
+      prompt],
     { cwd: work, stdout: "pipe", stderr: "pipe", env: {
     PATH: "/usr/bin:/bin", HOME: root, XDG_DATA_HOME: join(root, "data"), XDG_CONFIG_HOME: join(root, "config"),
     XDG_STATE_HOME: join(root, "state"), XDG_CACHE_HOME: join(root, "cache"),
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(config), OPENCODE_DISABLE_MODELS_FETCH: "true",
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(allowShell ? { ...config, permissions: [
+      ...config.permissions, { action: "shell", resource: "*", effect: "allow" },
+    ] } : config), OPENCODE_DISABLE_MODELS_FETCH: "true",
     OPENCODE_CONFIG_PROJECT_DISABLE: "true", OPENCODE_DISABLE_FILEWATCHER: "true",
     } })
+  }
+  async function runSession(session?: string) {
+    const run = spawnSession(session ? "Repeat the policy from the completed read." : "Read the allowed synthetic file.", session)
     const timer = setTimeout(() => run.kill("SIGKILL"), 30_000)
     try {
       const [code, output, errors] = await Promise.all([
@@ -154,6 +175,41 @@ try {
   const resumed = await runSession(session)
   assert(!resumed.some(event => event.type === "tool_use"))
   assert.equal(requests, beforeResume + 1)
+  interruption = true
+  const active = spawnSession("Run the synthetic effect once.", undefined, true)
+  const observed = Promise.all([new Response(active.stdout).text(), new Response(active.stderr).text()])
+  let interruptedSession = ""
+  try {
+    for (let attempt = 0; attempt < 200 && !interruptedSession && active.exitCode === null; attempt++) {
+      interruptedSession = (await readFile(effect, "utf8").catch(error => {
+        if (error.code !== "ENOENT") throw error
+        return ""
+      })).trim()
+      if (!interruptedSession) await Bun.sleep(50)
+    }
+  } finally {
+    active.kill("SIGKILL")
+    await active.exited
+  }
+  const diagnostics = (await observed).join("\n")
+  assert.match(interruptedSession, /^ses_/, diagnostics)
+  const recovery = spawnSession("Report the interrupted operation without repeating it.", interruptedSession)
+  const recoveryTimer = setTimeout(() => recovery.kill("SIGKILL"), 30_000)
+  try {
+    const [code, output, errors] = await Promise.all([
+      recovery.exited, new Response(recovery.stdout).text(), new Response(recovery.stderr).text(),
+    ])
+    assert.equal(code, 0, errors || output)
+    assert(interruptedResult, output + errors)
+    assert.match(output, /Effect uncertain/)
+    assert(!output.includes('"type":"tool_use"'))
+    assert.equal(await readFile(effect, "utf8"), interruptedSession + "\n")
+  } finally {
+    clearTimeout(recoveryTimer)
+  }
+  interruption = false
+  assert.match(await (await post({ ...payload, instructions: "no usage" })).text(), /response.completed/)
+  assert.equal((await post({ ...payload, model: "unapproved" })).status, 502)
   for (const instructions of ["partial", "http error"]) {
     const result = await post({ ...payload, instructions })
     assert.match(await result.text(), /gateway_error/)
@@ -179,7 +235,8 @@ try {
     assert(totals.some((row: any) => row.status === "uncertain" && row.count === 2))
     assert(totals.some((row: any) => row.status === "cancelled" && row.count === 1))
     assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE prompt_tokens=13 AND completion_tokens=7").get().count,
-      requests - 3)
+      requests - 4)
+    assert.equal(db.query("SELECT count(*) AS count FROM operation WHERE status='complete' AND prompt_tokens IS NULL AND completion_tokens IS NULL").get().count, 1)
   } finally {
     db.close()
   }
