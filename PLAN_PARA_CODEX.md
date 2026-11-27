@@ -236,6 +236,15 @@ Engine evidence below refers to OpenCode v2.3.2 at `c0ad18b402eb2827fc1ee71c171b
 
 **F8.0 preparation.** Compare native OpenCode and CLI_OPEN on the same synthetic search, reviewed edit, bounded validation command, independent tasks, and cancellation/recovery cases. Add candidates one change at a time. Start with one worker and a fixed request budget and deadline. Detect host CPU and RAM at each run. On Linux, size the task tree with PID and start-time tracking. Report sampled peak sum of RSS separately from per-process peak RSS and describe shared-page double counting and missed short-lived processes. Use cgroup v2 counters only when an isolated, delegated task cgroup is available. Count tool dispatches from native session records and requests from the synthetic upstream and ledger. Record model-reported tokens separately from estimates. Measure supervision overhead only where the tool and provider behavior match.
 
+| Initial workload | Existing fixture to reuse | Equivalent comparison boundary |
+|---|---|---|
+| Search and paginated read | `tests/fase7-contexto-selectivo.ts` | Keep the same corpus, tool policy, synthetic provider, and expected final answer. Hold the selective-context preset constant when comparing launchers. |
+| One edit and validation | `tests/fase5-review.py` and `implementacion/supervisor/workspace_opencode.ts` | Use identical disposable copies and exact output bytes. Measure Git review and publication as a separate cost when the native case has no equivalent. |
+| Cancellation and partial results | `tests/fase6-d07-responses.ts --read-results` | Hold the same result boundary and compare time from interruption to process exit. Treat this as result-persistence cancellation evidence. |
+| Gateway and restart | `tests/fase6-d07-restart.py` | Reuse the synthetic provider and persistent session. Record reservation and descendant cleanup separately from the edit workload. |
+
+These fixtures remain validation workloads until the F8.0 entry gate opens. Run them sequentially and keep existing provider, sandbox, and task boundaries during preparation.
+
 **F8.1 preparation.** The current supervisor constructs Bubblewrap namespaces and calls bounded subprocesses. The gateway limits requests and owns cancellation and task deadlines. The read-only DIAG broker reports visible host-level measurements. These mechanisms have no shared per-task CPU, RAM, or process admission budget. Evaluate one admission point at the supervised task launch after F8.0, retain task-scoped cleanup, and avoid changes to host limits or unrelated processes. **F8.2** depends on that enforcement and evidence that bounded parallel work improves task outcomes.
 
 #### F8.3 — Adaptive Tool Selection & Lazy Activation (proposed)
