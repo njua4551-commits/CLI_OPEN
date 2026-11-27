@@ -138,3 +138,7 @@ Continue with interruption during native filesystem and ripgrep work. The D07.4 
 ## D07.4 · Reproduce launcher recovery
 
 Run `python3 -I -B tests/fase6-d07-restart.py` on qualified Linux with the pinned artifacts. The OpenCode suite also runs this fixture. It crashes the synthetic launcher before an active MCP reply and while a separate gateway reservation is open. The second namespace reopens the session and ledger. Continue with the exact native edit write boundary and production task-state ownership qualification before F8. [Lifecycle evidence](docs/PRUEBAS.md#d074--launcher-restart-with-native-session-and-task-budget)
+
+## D07.4 · Resume the native ChatGPT diagnostic
+
+The OpenCode profile tests the native pre-browser step with a clean temporary profile and all tool permissions denied. Account verification requires the user's participation in OpenCode's official browser flow. Keep the native diagnostic separate from supervised CLI_OPEN and obtain explicit authorization before real synthetic inference. Keep OAuth credentials outside the CLI_OPEN gateway and tool environment. [Diagnostic evidence](docs/PRUEBAS.md#d074--native-chatgpt-pre-browser-diagnostics)

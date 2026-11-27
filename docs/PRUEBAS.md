@@ -359,3 +359,18 @@ This qualifies the composed synthetic launcher lifecycle. The product supervisor
 ### D07.4 · Read and search result interruption
 
 **PASS at result persistence.** The focused `--read-results` run uses the native `execute.after` hook for `read`, paginated `read`, `glob`, and literal `grep`. The trusted fixture holds a tool result after the operation produces it and before the session records completion. It interrupts OpenCode with the original call still running in SQLite. Recovery must return an interruption without disclosing the held result. An explicit new call under deny must fail. A distinct permitted retry must return the expected data and keep the prior interruption and denial records. The paginated retry checks that the omitted first line stays outside the result. This boundary is after native filesystem or ripgrep work. Mid-I/O cancellation remains open.
+
+### D07.4 · Native ChatGPT pre-browser diagnostics
+
+The clean temporary profile in `tests/fase6-d07-chatgpt-auth.ts` starts the pinned native server inside Bubblewrap with private loopback only. The local provider and model APIs are reachable and report no active OpenAI provider or account models before authentication. The initialized integration catalog exposes OpenAI's native OAuth method without an API key. The fixture prepares a pending PKCE attempt with an OpenAI authorization origin and a private loopback callback, cancels it, and verifies that the profile has zero connections. The authorization URL remains private and the test stops before browser authorization and code exchange.
+
+| Check | Evidence |
+|---|---|
+| Native method and pre-browser startup | **PASS**, pinned OpenCode v2.3.2, clean diagnostic profile |
+| Account authentication and subscription model availability | **PENDING**, require browser consent and authenticated verification |
+| Native inference | **NOT RUN**, requires separate authorization |
+| Supervised CLI_OPEN Responses | **PASS, SIMULATED**, private loopback, task bearer, deadlines, cancellation, and SQLite reservations |
+| Supervised transport for native ChatGPT credentials | **BLOCKED**, no qualified official route across the provider and tool boundary |
+| Supervised real inference | **BLOCKED**, depends on the transport and explicit authorization |
+
+The pinned native subscription flow uses direct HTTPS token exchange, credential-bound provider state, and HTTP Responses. The CLI_OPEN listener authenticates a task bearer, strips authorization upstream, forwards only to fixed IPv4 loopback, and accepts a bounded Responses subset. A provider `baseURL` override retains the native connection and does not supply credential isolation or trusted egress. Native workspace/environment drivers are a possible integration seam. No qualified Bubblewrap driver was identified that covers native filesystem, subprocess, MCP, plugin, and background paths while retaining the existing budget and destination guarantees. [OpenCode provider setup](https://opencode.ai/docs/providers/#chatgpt)

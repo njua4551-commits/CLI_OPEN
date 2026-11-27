@@ -222,3 +222,7 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 
 - Added a synthetic crash/restart regression using the supervisor's Bubblewrap launcher, existing Responses gateway and SQLite ledger, native OpenCode session persistence, and the stdio MCP effect barrier.
 - Added read/search result persistence probes and a native edit permission preview diagnostic. The edit diagnostic observed a stale overwrite on a disposable workspace. Product editing remains confined to the existing copy and Git review path.
+
+## D07.4 · Native ChatGPT authentication diagnostics
+
+- Added a clean-profile, tool-denied fixture for native provider, model, and integration discovery. It starts and cancels the official OAuth attempt under Bubblewrap before browser authorization.

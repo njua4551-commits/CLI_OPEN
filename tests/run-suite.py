@@ -49,6 +49,7 @@ def preflight():
     fixtures = (
         ("fase6-cli-gateway",), ("fase6-d07-responses",), ("fase6-d07-responses", "--read-results"),
         ("fase7-contexto-loopback",), ("fase7-contexto-selectivo",), ("lectura-web-loopback",),
+        ("fase6-d07-chatgpt-auth",),
     )
     for fixture, *options in fixtures:
         run(*supervisor["bubblewrap_command"](
