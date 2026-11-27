@@ -126,3 +126,7 @@ Reuse the native integration API to prepare and observe the official OAuth attem
 ### D07.6 · Scope of stop and search recovery
 
 Unwind the actual supervisor command on SIGTERM so its subprocess and disposable workspace contexts run cleanup. A stopped review emits no approval. If an apply command stops near Git publication, inspect the review ref before authorizing any retry. Uncatchable termination and production ownership of a separately trusted task ledger are distinct cases. Keep native I/O instrumentation in tests and retain the result-persistence checks for the pinned native reader.
+
+### D07.6 · Opt-in native OAuth continuity
+
+Use OpenCode's native XDG data storage in a new profile under a user-selected private directory. Retain it only after successful consent and metadata verification. Never mount it into the supervised tool namespace or use it as gateway authentication. A failed diagnostic discards the new profile.

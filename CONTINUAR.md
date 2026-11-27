@@ -188,3 +188,37 @@ end
 ```
 
 Personally complete the authorization in Brave. The diagnostic checks the native integration and model registry and prints only a completion flag and model IDs. The temporary OpenCode profile is removed when the process exits. The automated OpenCode suite omits the browser argument and stops before consent. Remote D07 remains blocked independently.
+
+### Retain a separate native profile after a new consent
+
+An explicit `--retain` parent keeps a newly created private OpenCode profile after successful consent and native metadata verification. Supply a private directory you own outside the repository. The diagnostic creates a unique child and never selects an existing OpenCode profile. It removes the child if the diagnostic fails. Reusing Brave only opens the official consent page.
+
+```fish
+set -l native_parent "$HOME/.local/state/cli-open-native"
+mkdir -p -m 700 "$native_parent"
+set -l browser (command -s brave)
+if test -z "$browser"
+    set browser (command -s brave-browser)
+end
+if test -n "$browser"
+    .fase1/tools/bun-linux-x64-baseline/bun tests/fase6-d07-chatgpt-auth.ts \
+        "$PWD/.fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode" \
+        "$browser" --retain "$native_parent"
+end
+```
+
+To check a successfully retained profile in a fresh native process, use the exact `nativeProfile` directory printed by the diagnostic. Assign `profile` to that directory and run only the native model listing from the project root.
+
+```fish
+env -i PATH=/usr/bin:/bin HOME="$profile" XDG_CONFIG_HOME="$profile/config" \
+    XDG_DATA_HOME="$profile/data" XDG_STATE_HOME="$profile/state" XDG_CACHE_HOME="$profile/cache" \
+    OPENCODE_CONFIG_PROJECT_DISABLE=true OPENCODE_DISABLE_MODELS_FETCH=true \
+    'OPENCODE_CONFIG_CONTENT={"permissions":[{"action":"*","resource":"*","effect":"deny"}]}' \
+    .fase1/opencode/packages/cli/dist/cli-linux-x64/bin/opencode --standalone models | grep '^openai/'
+```
+
+This profile belongs to the native diagnostic. Keep it separate from the supervised workspace and gateway. A retained login needs fresh consent because the previous temporary profile was removed. A model list is metadata and does not qualify inference.
+
+### D07.6 recovery commands
+
+Run `python3 -I -B tests/fase5-supervisor-stop.py` for production review teardown and restart, and `python3 -I -B tests/fase6-d07-native-io.py` for the two native search I/O cases. The native search fixture requires a Linux C compiler and builds only a temporary interposer. Keep the F8 gate closed until the production task owner protects the ledger outside the sandbox and the read I/O cases are qualified.

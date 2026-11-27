@@ -404,3 +404,9 @@ Native OpenCode v2.3.2 opened the official authorization flow in `/usr/bin/brave
 `python3 -I -B tests/fase6-d07-native-io.py` compiles a test-only interposer and mounts it read-only in the existing Bubblewrap fixture. It verifies the pinned binary hashes. The fixture holds successful `readdir64` for `glob` and successful `mmap64` for literal `grep` in ripgrep before returning the result to native code. It checks that the OpenCode call is running in SQLite, interrupts it, observes that the ripgrep worker stops, resumes the same session under deny, and then checks an explicitly allowed retry. The previous call remains interrupted. The held result and restricted marker do not appear on recovery.
 
 The libc interception trials for native `read` and paginated `read` did not reach the file barrier on the pinned Bun/OpenCode binary. Symbol interposition alone did not expose those file operations. The existing result-persistence fixture still passes for both; actual native read I/O remains open. These tests observe I/O completion at the libc boundary for search, not cancellation of an outstanding kernel request.
+
+### D07.6 · Native profile retention preparation
+
+The opt-in diagnostic requires a private user-owned parent outside the repository and creates a unique child for OpenCode's native XDG state. An isolated negative test substituted an executable that exits unsuccessfully for Brave and verified removal of the new profile. Fish syntax for both consent and the native model listing passed. Actual profile retention still requires fresh user consent. No new login or inference was performed in preparing this path.
+
+GitHub Actions reported success for the starting published SHA `791c2b3e3caa16dfab4cf2a34be8962e61c664e0`. [CI run](https://github.com/njua4551-commits/CLI_OPEN/actions/runs/46041750540)

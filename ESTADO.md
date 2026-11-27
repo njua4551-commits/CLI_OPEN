@@ -100,3 +100,7 @@ The user completed native consent in the installed Brave browser. The pinned Ope
 ## D07.6 · Review stop and native search I/O
 
 Starting SHA `791c2b3e3caa16dfab4cf2a34be8962e61c664e0` was verified on public `main`. Production `review-workspace` passed SIGTERM cleanup and restart as a fresh review. `glob` and literal `grep` passed at their native libc I/O result boundaries. The native reader has only result-persistence evidence. The full supervised session-and-budget restart with trusted state outside the tools remains open. Native edit containment still passes and F8 stays gated. [D07.6 evidence](docs/PRUEBAS.md#d076--production-review-stop-and-restart)
+
+### Native authentication continuity
+
+The previous Brave consent succeeded with 18 exposed model IDs, and that temporary profile has been removed. No credential is currently available to CLI_OPEN from that run. The native diagnostic can now retain a newly created profile in an explicitly selected private directory after fresh user consent and metadata verification. The retained success path awaits that consent. Native inference and supervised D07 remain separate and unqualified.

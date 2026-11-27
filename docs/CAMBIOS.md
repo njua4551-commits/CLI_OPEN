@@ -239,3 +239,5 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 
 - Unwind the production review supervisor on SIGTERM and test descendant cleanup, disposable workspace removal, and a fresh review after restart.
 - Add a test-only libc barrier for native ripgrep enumeration and mapping, and reuse the Responses recovery and permission checks.
+
+- Add an explicit retain option for a fresh, separate native diagnostic profile after successful OAuth consent and metadata checks.
