@@ -158,3 +158,7 @@ Use the existing SQLite ledger and its exclusive open lock to bind a task to the
 ### D07.10 · Own a fresh read through the production supervisor
 
 The opt-in Linux read task starts the persistent gateway and embedded SDK as supervised children. The SDK confirms possession of the listener bearer through an authenticated, budget-neutral HEAD request on its configured inference route. Only the trusted SDK receives the bearer. The workspace driver accepts one staged file and uses a fixed Bubblewrap command with bounded range arguments. The worker receives no state mounts or control channel. It checks separate PID and network namespaces, a minimal environment, and absence of the trusted state directory before reading. The public task entry point requires a fresh private state directory and rejects reentry while production effect reconciliation remains unqualified.
+
+### D07.11 · Commit initial task admission atomically
+
+Begin the SQLite transaction before schema creation. Commit the schema, profile, owner and first credential with the first successful admission. After failed initialization, preserve the incomplete file for operator inspection and reject reopening. Require a canonical ancestor path inside the trusted host deployment.

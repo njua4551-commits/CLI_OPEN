@@ -138,3 +138,7 @@ At base `a5382c5`, the standalone gateway passed native ID binding and credentia
 ## D07.10 · Production fresh read
 
 Started at `4330cf77af03a5b2045c3a20bdcf0b09dfef1882`, synchronized with `origin/main` at initial inspection. The new production supervisor command integrates the persistent authenticated gateway, SDK admission, private native session storage, and Bubblewrap worker for a single authorized file read. Recovery is denied for an existing state directory. Full production restart and MCP effect reconciliation still gate F8. [Evidence](docs/PRUEBAS.md#d0710--production-read-task)
+
+## D07.11 · Atomic ledger initialization
+
+Started at `65ff8e6a0d4a93d14460429116a4a86182935230` on `fase-1`. The ledger commits its schema, task, owner and first listener credential together. Initialization failure leaves an incomplete file that fails closed. The ledger rejects paths with symlinked ancestors. Production reopening and MCP reconciliation still gate D07 acceptance and F8. [Evidence](docs/PRUEBAS.md#d0711--ledger-initialization-and-trusted-path)

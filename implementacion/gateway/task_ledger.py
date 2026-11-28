@@ -24,7 +24,9 @@ class Ledger:
             or not isinstance(credential, bytes)
         ):
             raise ValueError("invalid task owner profile")
-        path = Path(path)
+        path = Path(path).absolute()
+        if path.parent.resolve(strict=True) != path.parent:
+            raise ValueError("unsafe task state path")
         parent = path.parent.lstat()
         if (not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", identity)
                 or not stat.S_ISDIR(parent.st_mode)
@@ -54,32 +56,33 @@ class Ledger:
             raise ValueError("invalid task database")
         if create:
             now = time.time()
-            with db:
-                db.executescript("""
-                    CREATE TABLE task (
-                        identity TEXT PRIMARY KEY, request_limit INTEGER NOT NULL,
-                        byte_limit INTEGER NOT NULL, token_limit INTEGER NOT NULL,
-                        model TEXT NOT NULL, port INTEGER NOT NULL, seconds INTEGER NOT NULL,
-                        started REAL NOT NULL, expires REAL NOT NULL,
-                        closed INTEGER NOT NULL DEFAULT 0 CHECK(closed IN (0, 1))
-                    );
-                    CREATE TABLE operation (
-                        id INTEGER PRIMARY KEY,
-                        input_bytes INTEGER NOT NULL CHECK(input_bytes > 0),
-                        output_limit INTEGER NOT NULL CHECK(output_limit > 0),
-                        status TEXT NOT NULL CHECK(status IN
-                            ('reserved', 'uncertain', 'failed', 'cancelled', 'complete')),
-                        prompt_tokens INTEGER CHECK(prompt_tokens >= 0),
-                        completion_tokens INTEGER CHECK(completion_tokens >= 0)
-                    );
-                """)
-                db.execute("INSERT INTO task VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
-                           (identity, *settings, seconds, now, now + seconds))
-                if owner is not None:
-                    db.execute("PRAGMA user_version = 1")
-                    db.execute("CREATE TABLE task_owner (session TEXT NOT NULL, workspace TEXT NOT NULL)")
-                    db.execute("INSERT INTO task_owner VALUES (?, ?)", owner)
-                    db.execute("CREATE TABLE listener_credential (digest BLOB NOT NULL PRIMARY KEY)")
+            # Include schema creation in the admission transaction.
+            db.executescript("""
+                BEGIN IMMEDIATE;
+                CREATE TABLE task (
+                    identity TEXT PRIMARY KEY, request_limit INTEGER NOT NULL,
+                    byte_limit INTEGER NOT NULL, token_limit INTEGER NOT NULL,
+                    model TEXT NOT NULL, port INTEGER NOT NULL, seconds INTEGER NOT NULL,
+                    started REAL NOT NULL, expires REAL NOT NULL,
+                    closed INTEGER NOT NULL DEFAULT 0 CHECK(closed IN (0, 1))
+                );
+                CREATE TABLE operation (
+                    id INTEGER PRIMARY KEY,
+                    input_bytes INTEGER NOT NULL CHECK(input_bytes > 0),
+                    output_limit INTEGER NOT NULL CHECK(output_limit > 0),
+                    status TEXT NOT NULL CHECK(status IN
+                        ('reserved', 'uncertain', 'failed', 'cancelled', 'complete')),
+                    prompt_tokens INTEGER CHECK(prompt_tokens >= 0),
+                    completion_tokens INTEGER CHECK(completion_tokens >= 0)
+                );
+            """)
+            db.execute("INSERT INTO task VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                       (identity, *settings, seconds, now, now + seconds))
+            if owner is not None:
+                db.execute("PRAGMA user_version = 1")
+                db.execute("CREATE TABLE task_owner (session TEXT NOT NULL, workspace TEXT NOT NULL)")
+                db.execute("INSERT INTO task_owner VALUES (?, ?)", owner)
+                db.execute("CREATE TABLE listener_credential (digest BLOB NOT NULL PRIMARY KEY)")
         if db.execute("PRAGMA user_version").fetchone() != (int(owner is not None),):
             raise ValueError("task ownership mode mismatch")
         rows = db.execute("SELECT * FROM task").fetchall()

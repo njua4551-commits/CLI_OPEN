@@ -271,3 +271,8 @@ Added opt-in persistent gateway ownership and single-use listener credentials. E
 ### D07.10 · Supervised native read
 
 Added `run-read-task` to the existing supervisor, combining the owned SQLite gateway, SDK admission barrier and a single-file workspace driver. The gateway exposes a budget-neutral authenticated readiness probe on its persistent inference route. The new profile accepts an explicit local destination and supports a fresh native read.
+
+### D07.11 · Ledger initialization
+
+- Commit the schema and first admission atomically.
+- Reject ledger paths with symlinked ancestors before file creation.

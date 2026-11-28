@@ -10,13 +10,33 @@ import sqlite3
 import stat
 import tempfile
 import threading
+from unittest.mock import patch
 from uuid import uuid4
 
 FIXTURE = runpy.run_path(str(Path(__file__).with_name("fase6-d07-budget.py")))
 HEADERS = {"Authorization": "Bearer " + FIXTURE["TOKEN"]}
 
 
+def verify_initialization_rollback(directory):
+    path = Path(directory) / "incomplete.sqlite"
+    ledger = runpy.run_path(str(Path(__file__).resolve().parents[1] /
+                                "implementacion/gateway/task_ledger.py"))
+    with patch.object(ledger["time"], "time", side_effect=(100, 102)):
+        try:
+            with ledger["Ledger"].open(path, "expired", (1, 1000, 8, "fixture", 12345), 1,
+                                       create=True, owner=("ses_fixture", "wrk_fixture"),
+                                       credential=b"fixture"):
+                raise AssertionError("expired initialization admitted")
+        except ValueError as error:
+            assert "expired" in str(error)
+    with closing(sqlite3.connect(path)) as db:
+        assert db.execute("SELECT name FROM sqlite_schema").fetchall() == []
+        assert db.execute("PRAGMA user_version").fetchone() == (0,)
+
+
 def main():
+    with tempfile.TemporaryDirectory() as directory:
+        verify_initialization_rollback(directory)
     started = threading.Event()
     disconnected = threading.Event()
 
@@ -85,6 +105,13 @@ def main():
             with FIXTURE["listener"](*settings, extra=("--task-state", str(linked / path.name),
                                                        "--task-id", "fixture_task"), rejected=True):
                 pass
+            nested = path.parent / "nested"
+            nested.mkdir(mode=0o700)
+            alias = linked / nested.name / "new.sqlite"
+            with FIXTURE["listener"](*settings, extra=("--task-state", str(alias), "--task-id",
+                                                       "nested", "--create-task"), rejected=True):
+                pass
+            assert not alias.exists()
             missing = path.parent / "missing" / path.name
             with FIXTURE["listener"](*settings, extra=("--task-state", str(missing),
                                                        "--task-id", "fixture_task"), rejected=True):

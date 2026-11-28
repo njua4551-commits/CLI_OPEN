@@ -490,3 +490,7 @@ Run `python3 -I -B tests/d0710-task.py` on Linux x86_64 with the prepared pinned
 Two sequential preliminary trials of `python3 -I -B tests/f8-measure.py production-read --runs 2` at base `64833f2` measured the whole fixture, including a completed task, a cancelled task, and rejected reopen attempts. Wall time was 16.188–16.471 s, wait4 user CPU 19.170–20.358 s, wait4 system CPU 1.567–1.583 s, sampled CPU 125.4–130.4% of one core, sampled aggregate RSS 424.1–425.0 MiB, and sampled peak process count 6–7. The host had four logical CPUs. RSS can count shared pages repeatedly. These are workload measurements and do not isolate native read latency or supervisor overhead.
 
 Portable, Linux, and OpenCode passed on the read-task implementation. OpenCode ran the new production task fixture. Both native file-read cases and both native search cases passed in their standalone I/O regressions.
+
+### D07.11 · Ledger initialization and trusted path
+
+The persistence fixture advances the admission clock beyond the deadline during initialization and verifies that SQLite has no committed schema or ownership version. It also checks that an indirect symlink to a private ledger directory is rejected before a database file is created.
