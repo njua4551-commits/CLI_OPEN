@@ -105,6 +105,13 @@ def main(argv=None):
     apply = commands.add_parser("apply-workspace", help="Publish an approved review to a separate Git branch")
     apply.add_argument("source", type=Path)
     apply.add_argument("--approve", required=True)
+    task = commands.add_parser("run-read-task", help="Run a fresh read-only native task with a local provider")
+    task.add_argument("source", type=Path)
+    task.add_argument("--state", type=Path, required=True)
+    task.add_argument("--identity", required=True)
+    task.add_argument("--port", type=int, required=True)
+    task.add_argument("--model", required=True)
+    task.add_argument("--seconds", type=int, default=45)
     inject = commands.add_parser("inject-context", help="Incorporar sobre de memoria como datos no confiables")
     inject.add_argument("--prompt", required=True, help="Prompt del usuario")
     inject.add_argument("--envelope", required=True, help="Sobre JSON de contexto emitido por memoria context")
@@ -114,6 +121,13 @@ def main(argv=None):
         print(json.dumps(doctor(), ensure_ascii=True, indent=2))
     elif options.command == "qualify-linux":
         return qualify_linux()
+    elif options.command == "run-read-task":
+        try:
+            owner = runpy.run_path(str(Path(__file__).with_name("task_owner.py")))
+            owner["run"](options, bubblewrap_command)
+        except (ValueError, OSError, subprocess.SubprocessError):
+            print("Supervised read task rejected or failed.", file=sys.stderr)
+            return 1
     elif options.command in ("review-workspace", "apply-workspace"):
         workspace = runpy.run_path(str(Path(__file__).with_name("workspace.py")))
         git_workspace = runpy.run_path(str(Path(__file__).with_name("workspace_git.py")))

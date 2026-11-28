@@ -510,6 +510,15 @@ def serve(listen, port, model, task=None, responses=None):
                     except (sqlite3.Error, ValueError, OSError):
                         print("task ledger outcome unknown; reservation retained", file=sys.stderr)
 
+        def do_HEAD(self):
+            self.close_connection = True
+            if self.path != route or task is None or task.ledger is None:
+                self.reply(405)
+            elif not task.allows(self.headers.get_all("Authorization", [])):
+                self.reply(401)
+            else:
+                self.reply(204)
+
         def do_GET(self):
             self.reply(405)
 

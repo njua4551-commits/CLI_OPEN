@@ -238,3 +238,7 @@ Run `python3 -I -B tests/d079-sdk-admission.py` for the native startup barrier o
 Run `python3 -I -B tests/fase6-d07-native-io.py --read` for the Linux x86_64 native file-read interruption cases. The default invocation still runs the search cases. Production task ownership and recovery are the remaining F8 entry dependencies. [Read evidence](docs/PRUEBAS.md#d079--native-file-read-syscall-boundary)
 
 Create an opt-in owned listener with `--task-owner SESSION WORKSPACE` alongside the existing persistent gateway flags. Reopen it with the same owner IDs, settings and identity and a new bearer supplied by the trusted supervisor. The focused regression is `python3 -I -B tests/fase6-d07-persist.py`. Connect listener ownership to the SDK's admission callback and keep MCP dispatch closed until the separate worker path and reconciliation are covered. [Gateway evidence](docs/PRUEBAS.md#d079--bound-gateway-admission)
+
+### D07.10 · Production fresh read
+
+Qualify the command with `python3 -I -B tests/d0710-task.py`. The command is `python3 -I -B implementacion/supervisor run-read-task SOURCE --state NEW_PRIVATE_DIRECTORY --identity TASK --port LOCAL_PORT --model MODEL`. The operator authorizes the explicit local destination and source. The prepared SDK stays on the trusted side. Continue with immutable recovery bindings, a restricted MCP launch path, and reconciliation before opening the native restart barrier. [Evidence](docs/PRUEBAS.md#d0710--production-read-task)

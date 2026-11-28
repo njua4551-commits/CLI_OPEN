@@ -134,3 +134,7 @@ At base `46377d4`, both native file-read cases passed at successful `pread64` be
 ## D07.9 · Gateway ownership binding qualified
 
 At base `a5382c5`, the standalone gateway passed native ID binding and credential rotation, including recovery of an active reservation after gateway termination. The SDK sweep gate and gateway binding now have separate executable regression coverage. Production ownership still needs one supervisor lifecycle for both components, a restricted workspace driver, and uncertain-MCP reconciliation across a full restart. The F8 entry gate remains closed. [Evidence](docs/PRUEBAS.md#d079--bound-gateway-admission)
+
+## D07.10 · Production fresh read
+
+Started at `4330cf77af03a5b2045c3a20bdcf0b09dfef1882`, synchronized with `origin/main` at initial inspection. The new production supervisor command integrates the persistent authenticated gateway, SDK admission, private native session storage, and Bubblewrap worker for a single authorized file read. Recovery is denied for an existing state directory. Full production restart and MCP effect reconciliation still gate F8. [Evidence](docs/PRUEBAS.md#d0710--production-read-task)

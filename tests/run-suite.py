@@ -46,6 +46,10 @@ def preflight():
     python("tests/fase5-review.py")
     python("tests/fase5-supervisor-stop.py")
     python("tests/fase6-d07-restart.py")
+    if (ROOT / ".fase1/opencode/packages/sdk/node_modules/effect").is_dir():
+        python("tests/d0710-task.py")
+    else:
+        print("SKIP production SDK task: prepared SDK dependencies are missing", flush=True)
     supervisor = runpy.run_path(str(ROOT / "implementacion/supervisor/__main__.py"))
     fixtures = (
         ("fase6-cli-gateway",), ("fase6-d07-responses",), ("fase6-d07-responses", "--read-results"),

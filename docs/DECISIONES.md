@@ -154,3 +154,7 @@ Use a test-only child tracer to observe successful `pread64` at the syscall exit
 ### D07.9 · Persist native owner binding in the gateway ledger
 
 Use the existing SQLite ledger and its exclusive open lock to bind a task to the native session and workspace IDs. The opt-in schema version rejects reopening through the unbound profile. Persist only a digest per admitted listener credential and rotate the bearer on each new listener. Rejected owner or credential checks leave reservations untouched. A crash after admission burns that credential and the next qualified listener uses a new one. The trusted deployment provides the private ledger directory and keeps the gateway token outside the execution worker.
+
+### D07.10 · Own a fresh read through the production supervisor
+
+The opt-in Linux read task starts the persistent gateway and embedded SDK as supervised children. The SDK confirms possession of the listener bearer through an authenticated, budget-neutral HEAD request on its configured inference route. Only the trusted SDK receives the bearer. The workspace driver accepts one staged file and uses a fixed Bubblewrap command with bounded range arguments. The worker receives no state mounts or control channel. It checks separate PID and network namespaces, a minimal environment, and absence of the trusted state directory before reading. The public task entry point requires a fresh private state directory and rejects reentry while production effect reconciliation remains unqualified.

@@ -267,3 +267,7 @@ Added an opt-in Linux x86_64 syscall tracer for the pinned OpenCode process. The
 ### D07.9 · Gateway session and workspace binding
 
 Added opt-in persistent gateway ownership and single-use listener credentials. Existing unbound ledger callers keep their current behavior. The persisted gateway test now covers an owner-bound active-request crash and negative admission cases.
+
+### D07.10 · Supervised native read
+
+Added `run-read-task` to the existing supervisor, combining the owned SQLite gateway, SDK admission barrier and a single-file workspace driver. The gateway exposes a budget-neutral authenticated readiness probe on its persistent inference route. The new profile accepts an explicit local destination and supports a fresh native read.
