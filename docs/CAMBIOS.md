@@ -241,3 +241,7 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 - Add a test-only libc barrier for native ripgrep enumeration and mapping, and reuse the Responses recovery and permission checks.
 
 - Add an explicit retain option for a fresh, separate native diagnostic profile after successful OAuth consent and metadata checks.
+
+## D07.7 · Gateway restart admission and context accounting
+
+- Reject linked ledger parent directories and exercise wrong task IDs, missing state directories, and bearer rotation across gateway restarts.

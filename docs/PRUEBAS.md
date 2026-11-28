@@ -412,3 +412,11 @@ The opt-in diagnostic requires a private user-owned parent outside the repositor
 GitHub Actions reported success for the starting published SHA `791c2b3e3caa16dfab4cf2a34be8962e61c664e0`. [CI run](https://github.com/njua4551-commits/CLI_OPEN/actions/runs/46041750540)
 
 The first OpenCode suite rerun exposed a transient SQLite reader collision with the gateway cancellation commit. The test reader now sets a one-second busy timeout on its read-only connection. The cancellation counts and terminal-status assertions are unchanged.
+
+### D07.7 · Gateway restart negative cases
+
+The starting public SHA was `196c3a98278b46083bf5ec28b31acbc129045cf1`. Its Actions run succeeded. [CI run](https://github.com/njua4551-commits/CLI_OPEN/actions/runs/46087227082)
+
+`python3 -I -B tests/fase6-d07-persist.py` passed against the production gateway with a fake loopback provider. Reopening a valid ledger with a different task ID, a missing parent directory, or a symlink as the immediate state directory fails before listening. Reopening after a killed gateway under a fresh bearer rejects the previous bearer with HTTP 401 and leaves all reservation rows unchanged. The new bearer finishes the sole available request and then receives HTTP 429. An expired task, corrupt ledger, concurrent owner, and mismatched budget remain covered.
+
+The production supervisor still exposes review and qualification entry points without a task owner combining OpenCode restart and trusted gateway state. The smallest remaining production seam is a scoped supervisor-owned transport across its private network boundary with the gateway keeping the ledger and bearer outside the tool's mounts and environment. A gateway-only test leaves that integration unqualified. The pinned native read driver exposes its storage abstraction internally, while the previous libc interposition did not reach the pinned Bun file-transfer path. No new read I/O evidence is claimed.

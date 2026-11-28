@@ -130,3 +130,7 @@ Unwind the actual supervisor command on SIGTERM so its subprocess and disposable
 ### D07.6 · Opt-in native OAuth continuity
 
 Use OpenCode's native XDG data storage in a new profile under a user-selected private directory. Retain it only after successful consent and metadata verification. Never mount it into the supervised tool namespace or use it as gateway authentication. A failed diagnostic discards the new profile.
+
+### D07.7 · Ledger restart admission
+
+Reject a symlink as the immediate task-state directory before opening its ledger. The directory remains a trusted host deployment requirement. Restart may rotate the task bearer independently of the ledger, while the task identity, budget, and deadline continue to bind the persisted rows. The supervisor-owned service boundary is still required to qualify production recovery with protected state.

@@ -104,3 +104,7 @@ Starting SHA `791c2b3e3caa16dfab4cf2a34be8962e61c664e0` was verified on public `
 ### Native authentication continuity
 
 The previous Brave consent succeeded with 18 exposed model IDs, and that temporary profile has been removed. No credential is currently available to CLI_OPEN from that run. The native diagnostic can now retain a newly created profile in an explicitly selected private directory after fresh user consent and metadata verification. The retained success path awaits that consent. Native inference and supervised D07 remain separate and unqualified.
+
+## D07.7 · Starting point and gateway recovery
+
+The clean initial branch and public tracking reference were at `196c3a98278b46083bf5ec28b31acbc129045cf1`. GitHub Actions confirmed success. The native checkout remains pinned to OpenCode v2.3.2 at `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`. The gateway passed additional task identity, bearer rotation, and state-directory rejection tests. Full production task ownership and native read I/O qualification still gate F8. Real D07 stays blocked. [Evidence](docs/PRUEBAS.md#d077--gateway-restart-negative-cases)

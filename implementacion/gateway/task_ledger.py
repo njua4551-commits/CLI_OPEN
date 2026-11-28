@@ -18,8 +18,9 @@ class Ledger:
     @contextmanager
     def open(cls, path, identity, settings, seconds, *, create=False):
         path = Path(path)
-        parent = path.parent.stat()
+        parent = path.parent.lstat()
         if (not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", identity)
+                or not stat.S_ISDIR(parent.st_mode)
                 or parent.st_uid != os.geteuid() or parent.st_mode & 0o077):
             raise ValueError("invalid task identity or state directory")
         flags = os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK

@@ -10,6 +10,7 @@ import sqlite3
 import stat
 import tempfile
 import threading
+from uuid import uuid4
 
 FIXTURE = runpy.run_path(str(Path(__file__).with_name("fase6-d07-budget.py")))
 HEADERS = {"Authorization": "Bearer " + FIXTURE["TOKEN"]}
@@ -76,6 +77,18 @@ def main():
                 with FIXTURE["listener"](*settings, extra=state, rejected=True):
                     pass
             assert operations() == [("complete", 8, 3, 2)]
+            with FIXTURE["listener"](*settings, extra=("--task-state", str(path), "--task-id", "other"),
+                                     rejected=True):
+                pass
+            linked = path.parent / "linked"
+            linked.symlink_to(path.parent, target_is_directory=True)
+            with FIXTURE["listener"](*settings, extra=("--task-state", str(linked / path.name),
+                                                       "--task-id", "fixture_task"), rejected=True):
+                pass
+            missing = path.parent / "missing" / path.name
+            with FIXTURE["listener"](*settings, extra=("--task-state", str(missing),
+                                                       "--task-id", "fixture_task"), rejected=True):
+                pass
             with FIXTURE["listener"](provider.server_port, 4, 1000, 24, extra=state, rejected=True):
                 pass
             with FIXTURE["listener"](*settings, extra=(*state, "--create-task"), rejected=True):
@@ -88,13 +101,18 @@ def main():
                     gateway.kill()
                     gateway.wait(timeout=5)
                 assert disconnected.wait(2)
-            with FIXTURE["listener"](*settings, extra=state) as port:
+            rotated = uuid4().hex
+            with FIXTURE["listener"](*settings, extra=state, token=rotated) as port:
                 assert operations()[-1] == ("uncertain", 8, None, None)
+                recorded = operations()
+                assert FIXTURE["request"](port) == 401
+                assert operations() == recorded
                 stream["messages"][0]["content"] = "reported"
                 with closing(HTTPConnection("127.0.0.1", port, timeout=5)) as client:
-                    client.request("POST", "/v1/chat/completions", json.dumps(stream), HEADERS)
+                    client.request("POST", "/v1/chat/completions", json.dumps(stream),
+                                   {"Authorization": "Bearer " + rotated})
                     assert b"data: [DONE]" in client.getresponse().read()
-                assert FIXTURE["request"](port) == 429
+                assert FIXTURE["request"](port, token=rotated) == 429
             assert operations() == [("complete", 8, 3, 2), ("uncertain", 8, None, None), ("complete", 8, 3, 2)]
 
             policy_path = Path(temporary) / "policy.sqlite"
