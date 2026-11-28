@@ -11,7 +11,8 @@ SECRETS = (
 CREDENTIAL_NAME = re.compile(r"secret|credential|password|private.?key", re.IGNORECASE)
 PRIVATE_NAMES = {".aws", ".git", ".ssh", ".netrc", "_netrc", ".npmrc", ".pypirc", ".pgpass",
                  ".docker", "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"}
-PRIVATE_SUFFIXES = (".env", ".pem", ".key", ".p12", ".pfx", ".kdbx")
+PRIVATE_SUFFIXES = (".pem", ".key", ".p12", ".pfx", ".kdbx")
+ENV_NAME = re.compile(r"(?:^|\.)env(?:\.|$)")
 MARKER = "UNTRUSTED_PROJECT_MEMORY_CONTEXT"
 
 
@@ -23,7 +24,7 @@ def sensitive_path(value):
     parts = value.casefold().split("/")
     return (
         looks_secret(value) or CREDENTIAL_NAME.search(value) is not None
-        or any(part in PRIVATE_NAMES or part == ".env" or part.startswith(".env.")
+        or any(part in PRIVATE_NAMES or ENV_NAME.search(part)
                or part.endswith(PRIVATE_SUFFIXES) for part in parts)
     )
 

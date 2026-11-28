@@ -248,3 +248,9 @@ For bounded preliminary measurement, run `python3 -I -B tests/f8-measure.py prod
 ### D07.11 ledger checkpoint
 
 Run `python3 -I -B tests/fase6-d07-persist.py` to verify atomic initialization and trusted path rejection. Continue by binding the source path and content, native database and current permission profile under exclusive supervisor ownership before SDK startup. Reconcile uncertain tool effects before releasing the database-wide startup barrier.
+
+### D07.12 · Recover an eligible production read task
+
+Set `CLI_OPEN_TASK_RECOVERY_TOKEN` to a locally generated high-entropy token when creating the task. Reuse that token and the original CLI settings with `run-read-task --recover` to resume an eligible suspended read or authorize a new read on an eligible terminal session. The gateway rotates its separate listener bearer. The ledger, native database, authorized input and workspace must retain their original identities. Run `python3 -I -B tests/d0710-task.py` for the synthetic production qualification and interrupted rejection. Continue with production MCP effect reconciliation before opening F8.
+
+The next production boundary is MCP operation identity. The pinned native registry has the invocation ID in its tool context and checks permissions before invoking `Mcp.callTool`, which currently forwards server, tool, arguments and session ID. The MCP call boundary itself does not carry the native tool-call ID. A journal at that boundary alone cannot distinguish a repeated invocation from a separately authorized call with identical arguments. Qualify a supported registry-level hook or an operation ID issued by the effect server, with trusted supervision and a durable reconciliation result before admission.

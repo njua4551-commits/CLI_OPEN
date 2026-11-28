@@ -162,3 +162,11 @@ The opt-in Linux read task starts the persistent gateway and embedded SDK as sup
 ### D07.11 · Commit initial task admission atomically
 
 Begin the SQLite transaction before schema creation. Commit the schema, profile, owner and first credential with the first successful admission. After failed initialization, preserve the incomplete file for operator inspection and reject reopening. Require a canonical ancestor path inside the trusted host deployment.
+
+### D07.12 · Bind the production read profile in the existing ledger
+
+Schema v2 extends the logical task owner with the canonical source identity and digest, native SQLite and workspace identities, read scope, policy digest and optional recovery-token digest. Initialize v2 in the existing atomic SQLite transaction. Standalone v0/v1 profiles retain their existing behavior. Earlier tasks cannot be treated as v2 tasks without an explicit migration.
+
+Reopening requires the original recovery credential, exact binding, unchanged permission scope, no jobs or automation, complete prior gateway operations, and remaining budget and deadline. A terminal session can receive an explicitly authorized new read. A suspended read can use the native startup sweep after the trusted admission callback verifies its one-session, one-workspace profile. The supervisor waits for a new durable idle transition before reporting completion. The supervisor holds an advisory lock on the native database through managed teardown. The gateway independently locks its ledger. A new gateway bearer preserves prior accounting. Interruptions with an unresolved gateway operation retain their accounting and are denied before SDK admission. The production read profile admits no MCP effects.
+
+The ledger checks its file identity immediately before and after each pathname-based SQLite connection and requires trusted ancestors. This protects the scoped deployment from pathname substitution by an unrelated UID. A host process with the same UID can still access the trusted files. Load adjacent trusted policy modules with explicit paths under Python `-I`; workspace limits are mounted read-only into Bubblewrap.

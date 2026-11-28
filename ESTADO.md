@@ -1,5 +1,14 @@
 # Project state
 
+## Current checkpoint · D07.12
+
+Work started at `9a1982b20a2cd7560456aab756c18a61738b47fe` on `fase-1`. Public `main` matched. GitHub reported no public `fase-1` branch. Preserved stash `943cc63e`.
+
+Workspace, gateway and memory audit regressions passed locally. The v2 production read owner binding supports authenticated reopening and restart of an eligible suspended read with complete gateway accounting. Interrupted tasks with unresolved work are denied, with their reservations preserved. The native SDK sweep is released only for the validated, dedicated read profile. Native direct editing remains contained. The pinned OpenCode integration profile and official binary provisioning passed locally. Hosted CI, production MCP reconciliation, supervised remote inference, and F8 entry remain open. [Current test evidence](docs/PRUEBAS.md#d0712--external-audit-regressions-and-production-read-recovery)
+
+<details>
+<summary>Earlier checkpoints</summary>
+
 The stabilization directive covers gateway limits, streaming, concurrency, APIs, sandbox connectivity, real editing, CI, and reproducible tests. Real local inference and secure remote integration have separate gates. Computer Use remains deferred. [Agent instructions](AGENTS.md)
 
 The historical public reference is `dfcdd822b358b96f19be2d64c0ad1b61d1404f6a`. The real-client HTTP checkpoint is `5335b70c2bece3a3d8c0256358e1d16e19c88350`, following `242c3b1`. The working branch is `fase-1` and tracks `origin/main`.
@@ -142,3 +151,5 @@ Started at `4330cf77af03a5b2045c3a20bdcf0b09dfef1882`, synchronized with `origin
 ## D07.11 · Atomic ledger initialization
 
 Started at `65ff8e6a0d4a93d14460429116a4a86182935230` on `fase-1`. The ledger commits its schema, task, owner and first listener credential together. Initialization failure leaves an incomplete file that fails closed. The ledger rejects paths with symlinked ancestors. Production reopening and MCP reconciliation still gate D07 acceptance and F8. [Evidence](docs/PRUEBAS.md#d0711--ledger-initialization-and-trusted-path)
+
+</details>

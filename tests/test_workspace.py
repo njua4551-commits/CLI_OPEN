@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+EFFECTIVE_ROOT = getattr(os, "geteuid", lambda: -1)() == 0
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = runpy.run_path(str(ROOT / "implementacion/supervisor/workspace.py"))
 WORKSPACE_GIT = runpy.run_path(str(ROOT / "implementacion/supervisor/workspace_git.py"))
@@ -38,15 +39,29 @@ class WorkspaceTest(unittest.TestCase):
 
     def test_schema_rejects_unauthorized_paths_and_operations(self):
         for edit in (request(name="../fixture.txt"), request(name="/fixture.txt"),
-                     request(name=".hidden.txt"), request(operation="execute")):
+                     request(name=".hidden.txt"), request(name="settings.env"),
+                     request(name="settings.env.local.json"), request(name="docs/.git/config.txt"),
+                     request(operation="execute")):
             with self.assertRaises(ValueError):
                 WORKSPACE["parse_request"](io.BytesIO(json.dumps({"edits": [edit]}).encode()))
+
+    def test_rejects_ambiguous_and_duplicate_targets(self):
+        for alternate in ("d/./a.txt", "d//a.txt", "d/x/../a.txt", "d/a.txt"):
+            with self.subTest(alternate=alternate), self.assertRaises(ValueError):
+                edits = [request(name="d/a.txt"), request(name=alternate)]
+                WORKSPACE["parse_request"](io.BytesIO(json.dumps({"edits": edits}).encode()))
+
+    @unittest.skipUnless(EFFECTIVE_ROOT, "requires root to verify root rejection")
+    def test_production_review_rejects_root(self):
+        with self.assertRaisesRegex(ValueError, "standard-user"):
+            WORKSPACE["review"](Path("."), [request()], None)
 
     def test_diff_reports_missing_final_newlines(self):
         difference = WORKSPACE["review_diff"]("fixture.txt", (None, "before"), "after")
         self.assertIn("-before\n\\ No newline at end of file\n", difference)
         self.assertIn("+after\n\\ No newline at end of file\n", difference)
 
+    @unittest.skipIf(EFFECTIVE_ROOT, "workspace review requires an unprivileged user")
     def test_source_change_aborts_review_and_discards_copy(self):
         for changed in ("replace", "create"):
             with self.subTest(changed=changed), tempfile.TemporaryDirectory() as directory:
@@ -102,6 +117,35 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(git(source, "for-each-ref", "refs/heads/cli-open/"), b"")
             self.assertEqual(WORKSPACE_GIT["base_commit"](source), base)
 
+    def test_repeat_publication_and_conflicting_reference(self):
+        git = WORKSPACE_GIT["git"]
+        publish = WORKSPACE_GIT["publish"]
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            target = source / "fixture.txt"
+            target.write_bytes(b"before\n")
+            git(source, "init", "-b", "main")
+            git(source, "add", target.name)
+            git(source, "commit", "-m", "Synthetic base")
+            base = WORKSPACE_GIT["base_commit"](source)
+            edits = [request()]
+            changes = [{
+                "path": target.name, "operation": "replace",
+                "before_sha256": hashlib.sha256(b"before\n").hexdigest(),
+                "before_version": WORKSPACE["signature"](target.stat()),
+            }]
+            digest = WORKSPACE_GIT["approval"](source, base, changes, edits)
+            args = (source, base, edits, changes, digest, WORKSPACE["verify_sources"])
+            reference, commit, repeated = publish(*args)
+            self.assertFalse(repeated)
+            self.assertEqual(publish(*args), (reference, commit, True))
+            git(source, "update-ref", reference, base, commit)
+            with self.assertRaises(WORKSPACE_GIT["PublicationConflict"]):
+                publish(*args)
+            self.assertEqual(git(source, "rev-parse", reference).strip().decode(), base)
+            self.assertEqual(git(source, "status", "--porcelain"), b"")
+            self.assertEqual(target.read_bytes(), b"before\n")
+
     def test_final_verification_rejects_equal_bytes_on_replaced_inode(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
@@ -147,6 +191,7 @@ class WorkspaceTest(unittest.TestCase):
             self.assertTrue(target.samefile(alternate))
             self.assertEqual(target.read_bytes(), content)
 
+    @unittest.skipIf(EFFECTIVE_ROOT, "workspace review requires an unprivileged user")
     def test_link_and_validation_failure_leave_original_intact(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
@@ -168,6 +213,7 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(target.read_text(), "before\n")
             self.assertFalse(staging[0].exists())
 
+    @unittest.skipIf(EFFECTIVE_ROOT, "workspace review requires an unprivileged user")
     def test_review_rejects_changed_or_linked_output_after_worker(self):
         for mutation in ("different-bytes", "symlink", "hardlink"):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:

@@ -1,14 +1,14 @@
 import { join, resolve } from "node:path"
 import { AbsolutePath, EnvironmentFiles, Location, Model, Provider, Session, Workspace } from "@opencode/sdk/effect"
 import { makeMemoryDriver } from "@opencode/core/environment/index"
-import { Effect } from "effect"
+import { DateTime, Effect } from "effect"
 import { createTaskHost } from "./task_sdk"
 
 // The supervisor supplies the private profile by pipe. Only offsets are appended
 // to its fixed, read-only Bubblewrap command.
 const settings = await Bun.stdin.json() as {
   session: string; workspace: string; directory: string; database: string
-  worker: string[]; size: number; port: number; model: string; bearer: string
+  worker: string[]; size: number; port: number; model: string; bearer: string; recover: boolean; resume: boolean
 }
 const sessionID = Session.ID.make(settings.session)
 const workspaceID = Workspace.ID.make(settings.workspace)
@@ -56,6 +56,7 @@ const driver = {
 
 try {
   const report = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
+    let previousIdle: number | undefined
     const host = yield* createTaskHost({
       database: { path: settings.database },
       config: {
@@ -80,26 +81,51 @@ try {
         if (request.url !== endpoint || request.method !== "POST") throw new Error("destination denied")
         return fetch(request, { redirect: "error" })
       },
-    }, provider, driver, () => Effect.tryPromise({
-      try: async (signal) => {
-        const response = await fetch(endpoint, { method: "HEAD",
-          headers: { Authorization: "Bearer " + settings.bearer }, signal, redirect: "error" })
-        if (response.status !== 204) throw new Error("gateway authentication failed")
-      },
-      catch: () => new Error("gateway admission failed"),
-    }))
-    yield* host.workspace.create({ id: workspaceID, provider })
-    const session = yield* host.sessions.create({
-      id: sessionID,
-      location: Location.Ref.make({ directory: AbsolutePath.make(settings.directory), workspaceID }),
-    })
-    if (session.id !== sessionID) throw new Error("unexpected session")
-    yield* host.sessions.prompt({ sessionID, model, text: "Read input.txt and report the contents." })
+    }, provider, driver, ({ get }) => Effect.gen(function* () {
+      if (settings.recover) {
+        const previous = yield* get({ sessionID })
+        if (previous.id !== sessionID || previous.location.directory !== settings.directory
+            || previous.location.workspaceID !== workspaceID || previous.permissions?.length) {
+          throw new Error("native session authorization changed")
+        }
+        previousIdle = previous.time.idle && DateTime.toEpochMillis(previous.time.idle)
+      }
+      yield* Effect.tryPromise({
+        try: async (signal) => {
+          const response = await fetch(endpoint, { method: "HEAD",
+            headers: { Authorization: "Bearer " + settings.bearer }, signal, redirect: "error" })
+          if (response.status !== 204) throw new Error("gateway authentication failed")
+        },
+        catch: () => new Error("gateway admission failed"),
+      })
+    }), settings.resume)
+    if (!settings.recover) {
+      yield* host.workspace.create({ id: workspaceID, provider })
+      const session = yield* host.sessions.create({
+        id: sessionID,
+        location: Location.Ref.make({ directory: AbsolutePath.make(settings.directory), workspaceID }),
+      })
+      if (session.id !== sessionID) throw new Error("unexpected session")
+    }
+    if (settings.resume) {
+      yield* host.awaitRecovery
+    } else {
+      yield* host.sessions.prompt({ sessionID, model, text: "Read input.txt and report the contents." })
+    }
     yield* host.experimental.session.wait({ sessionID })
+    let current = yield* host.sessions.get({ sessionID })
+    // The startup sweep forks native execution. The wait endpoint can observe
+    // the old idle state before that execution attaches to the coordinator.
+    while (settings.resume
+        && (!current.time.idle || DateTime.toEpochMillis(current.time.idle) === previousIdle)) {
+      yield* Effect.sleep("25 millis")
+      current = yield* host.sessions.get({ sessionID })
+    }
     const history = yield* host.message.list({ sessionID })
     const parts = history.data.flatMap((message) => message.type === "assistant" ? message.content : [])
-    const complete = parts.find((part) => part.type === "tool" && part.name === "read" && part.state.status === "completed")
-    if (!reads || !complete || complete.type !== "tool" || complete.state.status !== "completed") {
+    const complete = parts.findLast((part) => part.type === "tool" && part.name === "read" && part.state.status === "completed")
+    if ((!reads && !settings.resume) || current.outcome !== "succeeded"
+        || !complete || complete.type !== "tool" || complete.state.status !== "completed") {
       throw new Error("native read did not complete")
     }
     return { reads, result: complete.state.content.flatMap((part) => part.type === "text" ? [part.text] : []).join("\n").slice(0, 8000) }

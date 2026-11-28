@@ -1,5 +1,7 @@
 """First workspace fixture: edit an isolated copy and review its diff."""
 import difflib
+import io
+import json
 from pathlib import Path
 import os
 import platform
@@ -31,7 +33,8 @@ assert target.read_text() == "synthetic after\\n"
 
 def main():
     if platform.system() != "Linux" or platform.machine() != "x86_64" or os.geteuid() == 0:
-        raise SystemExit("Standard-user Linux x86_64 required")
+        print("SKIP workspace integration: requires standard-user Linux x86_64")
+        return
     backend = shutil.which("bwrap", path="/usr/bin:/bin")
     if not backend:
         raise SystemExit("Bubblewrap unavailable")
@@ -58,6 +61,38 @@ def main():
             fromfile="fixture.txt (original)", tofile="fixture.txt (copy)",
         )
         print("".join(diff), end="")
+        supervisor = SUPERVISOR.parent
+        parse = runpy.run_path(str(supervisor / "workspace.py"))["parse_request"]
+        command = bubblewrap_command(
+            backend,
+            [(supervisor / "workspace_worker.py", "/worker.py"),
+             (supervisor / "workspace_limits.py", "/workspace_limits.py")],
+            ["/usr/bin/python3", "-I", "-B", "/worker.py"],
+            writable_workspace=copy,
+        )
+        for operation in ("create", "replace"):
+            target = copy / "fixture.txt"
+            target.unlink()
+            if operation == "replace":
+                target.write_text(BEFORE)
+            for size in (65535, 65536, 65537, 200 * 1024, 262144, 262145):
+                proposed = "x" * size
+                edits = [{"operation": operation, "path": target.name, "text": proposed}]
+                request = io.BytesIO(json.dumps({"edits": edits}).encode())
+                if size <= 262144:
+                    assert parse(request) == edits
+                else:
+                    try:
+                        parse(request)
+                    except ValueError:
+                        pass
+                    else:
+                        raise AssertionError("parser accepted an oversized file")
+                target.write_text(proposed)
+                result = subprocess.run(command, env={}, input=json.dumps(edits).encode(),
+                                        capture_output=True, timeout=15)
+                assert (result.returncode == 0) == (size <= 262144), (operation, size, result.stderr)
+        print("PASS isolated workspace validator size boundaries")
 
 
 if __name__ == "__main__":

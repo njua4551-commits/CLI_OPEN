@@ -14,6 +14,13 @@ ENV = {
     "GIT_AUTHOR_NAME": "CLI_OPEN", "GIT_AUTHOR_EMAIL": "cli-open@localhost",
     "GIT_COMMITTER_NAME": "CLI_OPEN", "GIT_COMMITTER_EMAIL": "cli-open@localhost",
 }
+COMMIT_MESSAGE = "Reviewed CLI_OPEN workspace changes"
+
+
+class PublicationConflict(ValueError):
+    """An existing reference does not contain the approved result."""
+
+
 OID = re.compile(r"(?:[a-f0-9]{40}|[a-f0-9]{64})")
 
 
@@ -78,12 +85,32 @@ def publish(root, base, edits, changes, digest, verify_sources):
                 f"{mode},{blob.decode('ascii')},{edit['path']}", index=index)
         tree = git(root, "write-tree", index=index).decode("ascii").strip()
         commit = git(root, "commit-tree", tree, "-p", base, "-m",
-                     "Reviewed CLI_OPEN workspace changes").decode("ascii").strip()
+                     COMMIT_MESSAGE).decode("ascii").strip()
     if not OID.fullmatch(commit):
         raise ValueError("invalid Git commit")
     check_base(root, base, changes)
     verify_sources(root, changes)
     reference = f"refs/heads/cli-open/review-{digest}"
     transaction = f"start\nverify HEAD {base}\ncreate {reference} {commit}\nprepare\ncommit\n"
-    git(root, "update-ref", "--stdin", data=transaction.encode("ascii"))
-    return reference, commit
+    try:
+        git(root, "update-ref", "--no-deref", "--stdin", data=transaction.encode("ascii"))
+        return reference, commit, False
+    except subprocess.CalledProcessError:
+        existing = git(root, "for-each-ref", "--format=%(refname) %(objectname) %(objecttype) %(symref)",
+                       reference).decode("ascii").splitlines()
+        record = next((line.split() for line in existing if line.startswith(reference + " ")), [])
+        if not record:
+            raise
+        if len(record) != 3 or record[2] != "commit":
+            raise PublicationConflict("review reference already exists with a different result")
+        existing_commit = record[1]
+        raw = git(root, "cat-file", "commit", existing_commit)
+        headers, _, message = raw.partition(b"\n\n")
+        parents = [line for line in headers.splitlines() if line.startswith(b"parent ")]
+        if (headers.splitlines()[0] != f"tree {tree}".encode()
+                or parents != [f"parent {base}".encode()]
+                or message != (COMMIT_MESSAGE + "\n").encode()):
+            raise PublicationConflict("review reference already exists with a different result")
+        transaction = f"start\nverify HEAD {base}\nverify {reference} {existing_commit}\nprepare\ncommit\n"
+        git(root, "update-ref", "--no-deref", "--stdin", data=transaction.encode("ascii"))
+        return reference, existing_commit, True

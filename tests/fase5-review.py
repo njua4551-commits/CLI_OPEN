@@ -67,8 +67,9 @@ def main():
         assert git(source, "show", f"{reference}:notes.txt") == "after"
         assert git(source, "show", f"{reference}:data.json") == '{"synthetic":true}'
         assert git(source, "rev-parse", "HEAD") == base
-        collision = run(source, edits, approval)
-        assert collision.returncode == 1 and not collision.stdout
+        repeated = run(source, edits, approval)
+        assert repeated.returncode == 0, repeated.stderr
+        assert json.loads(repeated.stdout) == {**published, "mode": "already-published"}
         assert git(source, "rev-parse", reference) == published["commit"]
 
         edits[1]["text"] = "{invalid\n"
@@ -78,7 +79,20 @@ def main():
         assert b"The copy was discarded." in rejected.stderr
         assert (source / "notes.txt").read_text() == "before\n"
         assert sorted(path.name for path in source.iterdir()) == [".git", "notes.txt"]
-        print("PASS native edit, validation, reviewed Git publication, concurrent rejection and discard")
+        nested = source / "nested"
+        nested.mkdir()
+        (nested / "large.txt").write_text("before\n")
+        large = [
+            {"operation": "replace", "path": "nested/large.txt", "text": "x" * (200 * 1024)},
+            {"operation": "create", "path": "created.txt", "text": "y" * 262144},
+        ]
+        result = run(source, large)
+        assert result.returncode == 0, result.stderr
+        by_path = {entry["path"]: entry for entry in json.loads(result.stdout)["changes"]}
+        assert set(by_path) == {"nested/large.txt", "created.txt"}
+        assert "+x" in by_path["nested/large.txt"]["diff"] and "+y" in by_path["created.txt"]["diff"]
+        assert (nested / "large.txt").read_text() == "before\n" and not (source / "created.txt").exists()
+        print("PASS native edit, large create and replace, reviewed Git publication, concurrent rejection and discard")
 
 
 if __name__ == "__main__":

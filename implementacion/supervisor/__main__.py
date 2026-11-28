@@ -7,6 +7,7 @@ import platform
 import runpy
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,8 @@ def doctor():
     )
     backend = shutil.which("bwrap") is not None if system == "Linux" else None
     shell = os.environ.get("SHELL") or os.environ.get("ComSpec")
+    project = Path(__file__).resolve().parents[2]
+    artifacts = Path(os.environ.get("CLI_OPEN_ARTIFACTS", str(project / ".fase1")))
     return {
         "profile": "PLAN",
         "system": system,
@@ -37,6 +40,16 @@ def doctor():
         "shell": shell.replace("\\", "/").rsplit("/", 1)[-1] if shell else None,
         "wsl": wsl,
         "elevated": elevated(system),
+        "runtime": {
+            "python": platform.python_version(),
+            "python_3_11_or_later": sys.version_info >= (3, 11),
+            "git_on_path": shutil.which("git") is not None,
+            "node_on_path": shutil.which("node") is not None,
+            "ripgrep_on_path": shutil.which("rg") is not None,
+            "prepared_bun": (artifacts / "tools/bun-linux-x64-baseline/bun").is_file(),
+            "prepared_opencode": (artifacts / "opencode/packages/cli/dist/cli-linux-x64/bin/opencode").is_file(),
+            "prepared_sdk": (artifacts / "opencode/packages/sdk/node_modules/effect").is_dir(),
+        },
         "isolation": {"bubblewrap_on_path": backend, "verified": False},
         "capabilities": {"execute": False, "write": False, "remote": False},
     }
@@ -105,13 +118,15 @@ def main(argv=None):
     apply = commands.add_parser("apply-workspace", help="Publish an approved review to a separate Git branch")
     apply.add_argument("source", type=Path)
     apply.add_argument("--approve", required=True)
-    task = commands.add_parser("run-read-task", help="Run a fresh read-only native task with a local provider")
+    task = commands.add_parser("run-read-task", help="Run or reopen a read-only native task with a local provider")
     task.add_argument("source", type=Path)
     task.add_argument("--state", type=Path, required=True)
     task.add_argument("--identity", required=True)
     task.add_argument("--port", type=int, required=True)
     task.add_argument("--model", required=True)
     task.add_argument("--seconds", type=int, default=45)
+    task.add_argument("--recover", action="store_true",
+                      help="Reopen an eligible task using CLI_OPEN_TASK_RECOVERY_TOKEN")
     inject = commands.add_parser("inject-context", help="Incorporar sobre de memoria como datos no confiables")
     inject.add_argument("--prompt", required=True, help="Prompt del usuario")
     inject.add_argument("--envelope", required=True, help="Sobre JSON de contexto emitido por memoria context")
@@ -125,7 +140,7 @@ def main(argv=None):
         try:
             owner = runpy.run_path(str(Path(__file__).with_name("task_owner.py")))
             owner["run"](options, bubblewrap_command)
-        except (ValueError, OSError, subprocess.SubprocessError):
+        except (ValueError, OSError, sqlite3.Error, subprocess.SubprocessError):
             print("Supervised read task rejected or failed.", file=sys.stderr)
             return 1
     elif options.command in ("review-workspace", "apply-workspace"):
@@ -147,10 +162,16 @@ def main(argv=None):
             if options.command == "apply-workspace":
                 if not base or options.approve != digest:
                     raise workspace["SourceChanged"]("missing Git base or approval mismatch")
-                reference, commit = git_workspace["publish"](
+                reference, commit, already_published = git_workspace["publish"](
                     source, base, edits, changes, digest, workspace["verify_sources"],
                 )
-                report = {"mode": "published-review", "reference": reference, "commit": commit}
+                report = {
+                    "mode": "already-published" if already_published else "published-review",
+                    "reference": reference, "commit": commit,
+                }
+        except git_workspace["PublicationConflict"] as error:
+            print(str(error), file=sys.stderr)
+            return 1
         except workspace["SourceChanged"]:
             print("Review rejected because the original changed during the operation.", file=sys.stderr)
             return 1

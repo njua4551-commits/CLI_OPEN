@@ -1,0 +1,15 @@
+# Security model
+
+The supervisor, authenticated gateway, bundled policy code, pinned OpenCode SDK, and protected state belong to the trusted host. Prompts, inferred plans, memory entries, path hints, workspace files, and tool results are input data. An untrusted memory envelope carries zero authority. Its framing helps distinguish data in prompts. Permission enforcement and filesystem isolation remain outside that framing.
+
+The qualified supervisor profile requires an unprivileged Linux x86-64 user and Bubblewrap with private user, PID, network, IPC and UTS namespaces. The read worker sees a read-only staged input and bounded runtime mounts. Workspace editing uses a disposable copy. Reviewed publication verifies the source revision and stages the result in a private Git index. Native direct editing has a known validation-to-write race and remains contained in supervised review.
+
+The inference gateway accepts IPv4 loopback traffic and uses a configured local destination. An authenticated production task uses an ephemeral listener bearer. SQLite records cumulative reservations, the original deadline and ownership. The recovery token is supplied separately in the supervisor environment and only its digest is persisted. A new authenticated listener receives a fresh bearer. Protected state stays outside worker mounts.
+
+The read-only supervisor can reopen an eligible terminal native session for an explicitly authorized new read. It checks the original source and workspace identities, source bytes, native database identity, scope, policy and remaining budget. A suspended read may use the native sweep only in the dedicated single-session profile with complete gateway accounting and no jobs or automation. Unresolved operations and changed bindings are denied. General production MCP reconciliation remains pending.
+
+Memory uses owner-only storage and a stable advisory lock for cooperating processes. It validates records, caps each store at 4 MiB, and atomically replaces the file after syncing the new bytes. Existing memory directories with group or world permissions are rejected. An owner can inspect and correct permissions before reopening the same data. A failed update preserves the previous store. A killed writer can leave an owner-only temporary file.
+
+Threats outside this model include arbitrary processes with the same host UID, privileged host users, compromised kernel or runtime binaries, and an untrusted clock or host filesystem. SQLite reopens by pathname within trusted ancestors and checks the file identity. This is a cooperative host boundary. Linux namespace support depends on the actual kernel and runner policy. macOS, Windows, WSL2 and hosted CI require separate qualification for the isolated production profile. Remote provider transport and authorization are separate gates.
+
+OpenCode v2.3.2 is MIT-licensed. Preserve its copyright and license text with any redistributed OpenCode artifact. Before packaging, inventory licenses for the bundled runtime and libraries and retain their applicable notices. The project owner decides the CLI_OPEN license.

@@ -276,3 +276,11 @@ Added `run-read-task` to the existing supervisor, combining the owned SQLite gat
 
 - Commit the schema and first admission atomically.
 - Reject ledger paths with symlinked ancestors before file creation.
+
+## D07.12 · Production read binding and external audit remediation
+
+- Share the workspace limit across review and worker, reject ambiguous paths, and return an idempotent reviewed publication result only after checking the existing Git commit.
+- Bound HTTP parsing separately from inference, reject malformed chunk framing and non-finite JSON before admission, and validate documented Responses summary frames.
+- Protect memory storage and atomic rewrites, reject corrupt records without discarding them, share credential filters, and cache verified file digests within each query.
+- Persist the production read binding in the existing ledger, authenticate terminal reopening and suspended read recovery, and deny unresolved tasks before native admission.
+- Add the OpenCode CI profile, bounded checksum-pinned release provisioning, and complete change-range whitespace validation for protected branches and pull requests.

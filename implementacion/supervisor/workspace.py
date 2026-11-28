@@ -6,18 +6,22 @@ import os
 from pathlib import Path
 import platform
 import re
+import runpy
 import shutil
 import stat
 import subprocess
 import tempfile
 
-MAX_FILE = 262_144
+sensitive_path = runpy.run_path(str(Path(__file__).resolve().parents[1] / "context_policy.py"))["sensitive_path"]
+
+WORKER_POLICY = runpy.run_path(str(Path(__file__).with_name("workspace_limits.py")))
+MAX_FILE = WORKER_POLICY["MAX_FILE"]
 MAX_REQUEST = 8 * (MAX_FILE * 6 + 256)
 CODE_EXTENSIONS = (
     "txt", "md", "json", "py", "ts", "tsx", "js", "jsx", "mjs", "cjs",
     "go", "rs", "java", "c", "h", "cpp", "hpp", "cc", "cs", "rb", "php",
     "sh", "bash", "yaml", "yml", "toml", "ini", "cfg", "conf", "sql",
-    "css", "html", "htm", "xml", "lock", "env", "gitignore",
+    "css", "html", "htm", "xml", "lock", "gitignore",
 )
 NAME = re.compile(
     r"[A-Za-z0-9][A-Za-z0-9_.\-/]{0,240}\.(?:" + "|".join(CODE_EXTENSIONS) + r")"
@@ -48,9 +52,8 @@ def parse_request(source):
             raise ValueError("invalid edit schema")
         name, operation, text = edit["path"], edit["operation"], edit["text"]
         if (
-            not isinstance(name, str) or not NAME.fullmatch(name) or name in seen
-            or name.startswith("/") or ".." in name.split("/")
-            or any(part == "" for part in name.split("/"))
+            not WORKER_POLICY["canonical_relative"](name) or not NAME.fullmatch(name)
+            or sensitive_path(name) or name in seen
         ):
             raise ValueError("invalid or duplicate file name")
         if operation not in ("create", "replace") or not isinstance(text, str):
@@ -141,6 +144,7 @@ def review(root, edits, bubblewrap_command):
             artifacts = Path(os.environ.get("CLI_OPEN_ARTIFACTS", str(supervisor.parents[1] / ".fase1")))
             mounts = [
                 (supervisor / "workspace_worker.py", "/worker.py"),
+                (supervisor / "workspace_limits.py", "/workspace_limits.py"),
                 (supervisor / "workspace_opencode.ts", "/fixture/editor.ts"),
                 (artifacts / "tools/bun-linux-x64-baseline/bun", "/fixture/bun"),
                 (artifacts / "opencode/packages/cli/dist/cli-linux-x64/bin/opencode", "/fixture/opencode"),

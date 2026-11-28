@@ -14,10 +14,12 @@ export const createTaskHost = <E, R>(
   provider: string,
   driver: WorkspaceDriver.Interface,
   admit: (session: Pick<OpenCode.Interface["sessions"], "get">) => Effect.Effect<void, E, R>,
+  sweep = true,
 ) =>
   Effect.gen(function* () {
     const admitted = yield* Deferred.make<void>()
     const ready = Deferred.await(admitted)
+    const swept = yield* Deferred.make<void>()
     const gatedDriver = WorkspaceDriver.make({
       create: (input) => ready.pipe(Effect.andThen(Effect.suspend(() => driver.create(input)))),
       connect: (input) => ready.pipe(Effect.andThen(Effect.suspend(() => driver.connect(input)))),
@@ -30,7 +32,12 @@ export const createTaskHost = <E, R>(
       Layer.effect(
         SessionRestart.Service,
         Effect.map(SessionRestart.Service, (native) =>
-          SessionRestart.Service.of({ resumeSuspendedSessions: ready.pipe(Effect.andThen(native.resumeSuspendedSessions)) }),
+          SessionRestart.Service.of({
+            resumeSuspendedSessions: sweep
+              ? ready.pipe(Effect.andThen(native.resumeSuspendedSessions),
+                  Effect.onExit((exit) => Deferred.done(swept, exit)))
+              : Effect.void,
+          }),
         ),
       ).pipe(Layer.provide(layer)),
     )
@@ -42,7 +49,7 @@ export const createTaskHost = <E, R>(
       )
       yield* admit({ get: host.sessions.get })
       yield* Deferred.succeed(admitted, undefined)
-      return host
+      return { ...host, awaitRecovery: sweep ? Deferred.await(swept) : Effect.void }
     }).pipe(
       Scope.provide(scope),
       Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),

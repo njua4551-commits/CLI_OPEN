@@ -22,9 +22,7 @@ Preserve F0–F7, original OpenCode capabilities, and existing protections. Make
 
 - State and checkpoint: `ESTADO.md`. Continuity: `CONTINUAR.md`. Roadmap and gates: `PLAN_PARA_CODEX.md`. Architecture and decisions: `docs/DECISIONES.md`. Tests and evidence: `docs/PRUEBAS.md`. Changes: `docs/CAMBIOS.md`. F7 matrix: `docs/MATRIZ_F7.md`. Technical report: `INFORME_TECNICO.md`.
 - Use existing files. Avoid duplicate state, architecture, roadmap, and audit documents.
-- Earlier verified checkpoint: `26aea30` on `fase-1`, synchronized with `origin/main` at the time. See `ESTADO.md` for later evidence.
-- Verified at that checkpoint: F0–F7, OpenCode V2, Bubblewrap isolation, supervisor, broker, gateway, budgets, cancellation, bounded streaming and concurrency, exact aliases, isolated subdirectory edits, persistent memory, and an untrusted context envelope.
-- At that checkpoint, real local inference, remote budget authorization (D07), real-client HTTP concurrency, and F7.2 Repo Map adaptation remained pending.
+- Consult `ESTADO.md` for verified capabilities, pending gates, and checkpoint revisions.
 
 ## Autonomy within an approved phase
 
