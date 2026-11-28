@@ -255,3 +255,7 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 - Verify OpenCode Effect SDK workspace-provider registration and first-tool gating in the pinned upstream tests.
 - Cover source hard links added after initial verification and reject unsupported arguments to the native search interruption fixture.
 - Report sampler CPU and minimum, median, and maximum measurements. Reduce process-tree sampling overhead through a single directory scan and binary stat reads.
+
+### D07.9 · SDK recovery admission adapter
+
+Added the supervisor's internal Effect SDK adapter and an isolated regression against native suspended-session state. The adapter coordinates startup ordering through the existing recovery service and workspace provider hooks. The supervisor CLI retains its existing launch modes while production task ownership remains open.

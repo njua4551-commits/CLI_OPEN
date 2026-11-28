@@ -230,3 +230,7 @@ Run `python3 -I -B tests/f8-measure.py context` for the independent memory envel
 ### D07.8 continuation
 
 Start with the Effect SDK workspace-provider path. Exercise one deterministic native read through a workspace driver with a real isolated worker and the existing authenticated gateway. Check the selected session and task identity, deadline and reservation binding, enabled MCP launch paths, and the embedded startup recovery sweep before adding a production entry point. Use the result-persistence test for native read recovery until there is an observable I/O boundary on the pinned artifact. [Driver evidence](docs/PRUEBAS.md#d078--workspace-driver-and-containment-evidence)
+
+### D07.9 continuation
+
+Run `python3 -I -B tests/d079-sdk-admission.py` for the native startup barrier on the pinned source and Bun artifacts. Wire the trusted admission callback to one supervisor-owned task and the existing ledger and authenticated gateway. Qualify one isolated native read with a restricted driver, then crash at an observable MCP effect. Reopen only after proving ownership and reconciliation against a dedicated native database. An unclassified effect must keep the sweep blocked. [Evidence](docs/PRUEBAS.md#d079--native-sdk-startup-admission)

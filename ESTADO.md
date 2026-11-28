@@ -122,3 +122,7 @@ The pinned SDK passed workspace-driver registration and first-tool gating with a
 Repeated synthetic trials now record variability and sampler CPU. The production F8 gate still requires D07.8 recovery and native read I/O. The next eligible D07.8 task is a deterministic workspace-driver proof using the production gateway and a Bubblewrap worker with separately protected task state. [Measurement evidence](docs/PRUEBAS.md#f8--sampler-overhead-and-trial-variability)
 
 The portable, Linux and pinned OpenCode profiles passed locally. The focused native search I/O fixture and two SDK tests passed independently. The OpenCode profile reproduced the known native edit overwrite and passed its separate result-persistence read cases. [Test evidence](docs/PRUEBAS.md#d078--workspace-driver-and-containment-evidence)
+
+## D07.9 · SDK recovery barrier qualified in isolation
+
+Started at `bfc1185a9b0f4ecf2fb04478340c58ab385ac44f` on `fase-1`, two local commits ahead of confirmed remote `ea66e91c6a974dfd0777b5a74c375eb308337c6c`. Stash `943cc63e` remains preserved. The internal SDK adapter passed startup ordering against a native suspended-session claim. Portable, Linux, OpenCode, and the standalone native search I/O fixture passed. D07.9 production task ownership, separate trusted gateway and state, and the in-flight native file reads remain open. The F8 entry gate remains closed. [Evidence](docs/PRUEBAS.md#d079--native-sdk-startup-admission)
