@@ -242,3 +242,5 @@ Create an opt-in owned listener with `--task-owner SESSION WORKSPACE` alongside 
 ### D07.10 · Production fresh read
 
 Qualify the command with `python3 -I -B tests/d0710-task.py`. The command is `python3 -I -B implementacion/supervisor run-read-task SOURCE --state NEW_PRIVATE_DIRECTORY --identity TASK --port LOCAL_PORT --model MODEL`. The operator authorizes the explicit local destination and source. The prepared SDK stays on the trusted side. Continue with immutable recovery bindings, a restricted MCP launch path, and reconciliation before opening the native restart barrier. [Evidence](docs/PRUEBAS.md#d0710--production-read-task)
+
+For bounded preliminary measurement, run `python3 -I -B tests/f8-measure.py production-read --runs 2`. The fixture includes successful completion and cancellation. The matched native comparison remains behind the production recovery gate.

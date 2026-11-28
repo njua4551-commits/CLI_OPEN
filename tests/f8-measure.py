@@ -21,6 +21,7 @@ FIXTURES = {
     "context": "tests/fase7-contexto.py",
     "review": "tests/fase5-review.py",
     "recovery": "tests/fase6-d07-restart.py",
+    "production-read": "tests/d0710-task.py",
 }
 
 
