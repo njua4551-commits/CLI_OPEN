@@ -4,26 +4,22 @@ Validate and label retrieved memory with no authority ('authority': 'none')
 before passing it to OpenCode. The envelope never changes permissions,
 policies, or budgets.
 """
-import json
+from pathlib import Path
 import re
+import runpy
 
 MAX_CONTEXT_BYTES = 16384
 
-SECRETS = (
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    re.compile(r"\b(?:sk|rk|ghp|gho|ghs|xox[baprs])[-_][A-Za-z0-9_-]{16,}"),
-    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-)
+POLICY = runpy.run_path(str(Path(__file__).resolve().parents[1] / "context_policy.py"))
+encode = POLICY["encode_context"]
 PATH = re.compile(r"[\w.-]+(?:/[\w.-]+)*")
-PRIVATE_PATH = re.compile(r"secret|credential|password|private.?key", re.IGNORECASE)
 
 
 def safe_reference(value):
     return (isinstance(value, str) and len(value) <= 512
             and PATH.fullmatch(value) is not None
             and all(not part.startswith(".") for part in value.split("/"))
-            and PRIVATE_PATH.search(value) is None
-            and not any(pattern.search(value) for pattern in SECRETS))
+            and not POLICY["sensitive_path"](value))
 
 
 class InvalidEnvelope(ValueError):
@@ -77,7 +73,7 @@ def validate_envelope(envelope, max_bytes=MAX_CONTEXT_BYTES):
             continue
         if entry_id in seen_ids or text in seen_text:
             continue
-        if any(pattern.search(text) for pattern in SECRETS):
+        if POLICY["looks_secret"](text):
             continue
         candidate = {"id": entry_id, "text": text}
         cost = len(encode(candidate)) + bool(validated_entries)
@@ -87,10 +83,6 @@ def validate_envelope(envelope, max_bytes=MAX_CONTEXT_BYTES):
             seen_text.add(text)
             used += cost
     return valid
-
-
-def encode(value):
-    return json.dumps(value, ensure_ascii=True, separators=(",", ":"))
 
 
 def incorporate_prompt(user_prompt, envelope, max_bytes=MAX_CONTEXT_BYTES):
