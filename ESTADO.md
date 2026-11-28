@@ -126,3 +126,7 @@ The portable, Linux and pinned OpenCode profiles passed locally. The focused nat
 ## D07.9 · SDK recovery barrier qualified in isolation
 
 Started at `bfc1185a9b0f4ecf2fb04478340c58ab385ac44f` on `fase-1`, two local commits ahead of confirmed remote `ea66e91c6a974dfd0777b5a74c375eb308337c6c`. Stash `943cc63e` remains preserved. The internal SDK adapter passed startup ordering against a native suspended-session claim. Portable, Linux, OpenCode, and the standalone native search I/O fixture passed. D07.9 production task ownership, separate trusted gateway and state, and the in-flight native file reads remain open. The F8 entry gate remains closed. [Evidence](docs/PRUEBAS.md#d079--native-sdk-startup-admission)
+
+## D07.9 · Native file-read interruption qualified
+
+At base `46377d4`, both native file-read cases passed at successful `pread64` before userspace delivery. Search remains qualified at its libc result boundaries. Full production task ownership and restart with a separate trusted ledger and authentication still block F8. [Evidence](docs/PRUEBAS.md#d079--native-file-read-syscall-boundary)

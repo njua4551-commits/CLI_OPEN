@@ -259,3 +259,7 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 ### D07.9 · SDK recovery admission adapter
 
 Added the supervisor's internal Effect SDK adapter and an isolated regression against native suspended-session state. The adapter coordinates startup ordering through the existing recovery service and workspace provider hooks. The supervisor CLI retains its existing launch modes while production task ownership remains open.
+
+### D07.9 · Native file-read interruption
+
+Added an opt-in Linux x86_64 syscall tracer for the pinned OpenCode process. The regression exercises both a first ranged read and a later page, retaining the existing search launcher and pre-result fixtures.

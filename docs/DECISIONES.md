@@ -146,3 +146,7 @@ The pinned OpenCode Effect SDK is **EXTENSIBLE** through `CreateOptions.workspac
 ### D07.9 · Gate the native recovery sweep before admission
 
 Use the Effect SDK layer replacement to decorate the pinned `SessionRestart` service. The adapter holds the whole sweep, including its background recovery work, and gates the supplied workspace driver's lifecycle with the same deferred admission. Only the trusted admission code receives the session lookup before release. Rejection and interruption close the SDK scope. Production use requires a dedicated native database, a trusted configuration with other startup dispatch paths disabled, and an exclusive task owner that validates identity, permissions, and uncertainty before release. The SDK sweep is global to its database and retains its at-least-once semantics.
+
+### D07.9 · Observe positional reads in the synthetic fixture
+
+Use a test-only child tracer to observe successful `pread64` at the syscall exit boundary. A separate paginated case requires a nonzero offset. The production reader and supervisor isolation policy stay on their existing paths.
