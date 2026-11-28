@@ -284,3 +284,8 @@ Added `run-read-task` to the existing supervisor, combining the owned SQLite gat
 - Protect memory storage and atomic rewrites, reject corrupt records without discarding them, share credential filters, and cache verified file digests within each query.
 - Persist the production read binding in the existing ledger, authenticate terminal reopening and suspended read recovery, and deny unresolved tasks before native admission.
 - Add the OpenCode CI profile, bounded checksum-pinned release provisioning, and complete change-range whitespace validation for protected branches and pull requests.
+
+## D07.13 · Native invocation boundary and hosted search prerequisites
+
+- Exercise OpenCode's native before and after hooks in the existing composed MCP interruption fixture. Correlate synced synthetic effect receipts with two distinct native identities for authorized calls with identical arguments.
+- Install the system ripgrep dependency in Linux CI and check that the OpenCode profile can find it in the Bubblewrap PATH. Report the native tool state and barrier marker when the Responses fixture fails to reach an interruption boundary.

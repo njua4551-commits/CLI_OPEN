@@ -1,5 +1,7 @@
 """Synthetic stdio MCP server with barriers before an append and before its reply."""
 import json
+import os
+import re
 from pathlib import Path
 import select
 import sys
@@ -7,6 +9,7 @@ import time
 
 root = Path(sys.argv[1])
 label = sys.argv[2] if len(sys.argv) > 2 else "synthetic"
+receipts = sys.argv[3:] == ["--receipts"]
 
 
 def wait_for_release(marker):
@@ -38,14 +41,32 @@ for line in sys.stdin:
         result = {"tools": [{"name": "append", "description": "Append a fixed line to a synthetic file.",
                              "inputSchema": {"type": "object", "properties": {"label": {"type": "string"}},
                                              "required": ["label"], "additionalProperties": False}}]}
+        if receipts:
+            schema = result["tools"][0]["inputSchema"]
+            schema["properties"]["operationId"] = {"type": "string"}
     elif method == "tools/call":
         assert request["params"]["name"] == "append"
-        assert request["params"]["arguments"] == {"label": label}
+        arguments = request["params"]["arguments"]
+        operation = arguments.pop("operationId", None) if receipts else None
+        assert arguments == {"label": label}
+        if receipts:
+            assert isinstance(operation, str) and re.fullmatch(r"[a-f0-9]{64}", operation)
         with (root / "calls").open("a") as calls:
             calls.write("call\n")
         wait_for_release("allow-effect")
-        with (root / "effects").open("a") as effects:
-            effects.write("effect\n")
+        with (root / "effects").open("a+") as effects:
+            if receipts:
+                effects.seek(0)
+                record = f"effect {operation}\n"
+                assert len(effects.read()) < 8192
+                effects.seek(0)
+                assert record not in effects
+            else:
+                record = "effect\n"
+            effects.write(record)
+            if receipts:
+                effects.flush()
+                os.fsync(effects.fileno())
         wait_for_release("allow-reply")
         result = {"content": [{"type": "text", "text": "Synthetic append completed."}]}
     elif method == "ping":

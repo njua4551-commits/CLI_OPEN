@@ -1,10 +1,12 @@
 # Project state
 
-## Current checkpoint · D07.12
+## Current checkpoint · D07.13 preparation
 
 Work started at `9a1982b20a2cd7560456aab756c18a61738b47fe` on `fase-1`. Public `main` matched. GitHub reported no public `fase-1` branch. Preserved stash `943cc63e`.
 
 Workspace, gateway and memory audit regressions passed locally. The v2 production read owner binding supports authenticated reopening and restart of an eligible suspended read with complete gateway accounting. Interrupted tasks with unresolved work are denied, with their reservations preserved. The native SDK sweep is released only for the validated, dedicated read profile. Native direct editing remains contained. The pinned OpenCode integration profile and official binary provisioning passed locally. Hosted CI, production MCP reconciliation, supervised remote inference, and F8 entry remain open. [Current test evidence](docs/PRUEBAS.md#d0712--external-audit-regressions-and-production-read-recovery)
+
+D07.13 started at `d99d815a91f7d9bdae13cda44febb2a404506275`. Native MCP hooks preserve invocation IDs in the composed fixture. Production still requires authorized invocation-to-receipt binding and supervisor-level reconciliation. On the published D07.12 SHA, hosted Portable and Linux passed and OpenCode failed at the glob interruption barrier after pinned provisioning and SDK admission. A local CI change makes system ripgrep explicit. [D07.13 evidence](docs/PRUEBAS.md#d0713--execution-environment-native-mcp-hooks-and-hosted-ci)
 
 <details>
 <summary>Earlier checkpoints</summary>
