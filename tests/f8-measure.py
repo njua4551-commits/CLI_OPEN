@@ -8,6 +8,7 @@ import platform
 import runpy
 import signal
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -49,15 +50,19 @@ def command(workload):
 
 def process_tree(root_pid):
     table = {}
-    for entry in Path("/proc").glob("[0-9]*/stat"):
-        try:
-            values = entry.read_text().rsplit(")", 1)[1].split()
-        except (FileNotFoundError, ProcessLookupError, PermissionError):
-            continue
-        if values[0] != "Z":
-            table[int(entry.parent.name)] = (
-                int(values[1]), max(0, int(values[21])), int(values[19]), int(values[11]), int(values[12]),
-            )
+    with os.scandir("/proc") as entries:
+        for entry in entries:
+            if not entry.name.isdecimal():
+                continue
+            try:
+                with open(entry.path + "/stat", "rb") as stat_file:
+                    values = stat_file.read().rsplit(b")", 1)[1].split()
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
+                continue
+            if values[0] != b"Z":
+                table[int(entry.name)] = (
+                    int(values[1]), max(0, int(values[21])), int(values[19]), int(values[11]), int(values[12]),
+                )
     seen = {root_pid} & table.keys()
     pending = list(seen)
     children = {}
@@ -80,6 +85,8 @@ def measure(args, home):
         with subprocess.Popen(args, cwd=ROOT, stdout=log, stderr=log, start_new_session=True,
                               env={"PATH": "/usr/bin:/bin", "HOME": home}) as child:
             peak_count = peak_tree_rss = 0
+            samples = 0
+            sampling_cpu = 0.0
             observed_cpu = {}
             try:
                 while True:
@@ -89,7 +96,10 @@ def measure(args, home):
                         break
                     if time.monotonic() - start >= TIMEOUT:
                         raise TimeoutError("Synthetic workload exceeded its deadline")
+                    sample_started = time.process_time()
                     count, rss, cpu = process_tree(child.pid)
+                    sampling_cpu += time.process_time() - sample_started
+                    samples += 1
                     observed_cpu.update(cpu)
                     peak_count = max(peak_count, count)
                     peak_tree_rss = max(peak_tree_rss, rss)
@@ -124,10 +134,27 @@ def measure(args, home):
             "wait4_peak_rss_kib": usage.ru_maxrss,
             "sampled_peak_processes": peak_count,
             "sampled_peak_tree_rss_bytes": peak_tree_rss,
+            "process_tree_samples": samples,
+            "sampler_cpu_seconds": round(sampling_cpu, 6),
             "tool_output_estimates": tokens,
             "restart_timing": restart,
             "evidence": evidence,
         }
+
+
+def summarize(results):
+    metrics = (
+        "wall_seconds", "wait4_user_cpu_seconds", "wait4_system_cpu_seconds",
+        "sampled_cpu_percent_one_core", "sampled_peak_tree_rss_bytes",
+        "sampled_peak_processes", "sampler_cpu_seconds",
+    )
+    summary = {}
+    for metric in metrics:
+        values = [result[metric] for result in results]
+        summary[metric] = {
+            "min": min(values), "median": statistics.median(values), "max": max(values),
+        }
+    return summary
 
 
 def main():
@@ -148,6 +175,7 @@ def main():
                  "affinity_cpus": len(os.sched_getaffinity(0)),
                  "ram_bytes": os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")},
         "runs": results,
+        "summary": summarize(results),
     }, indent=2))
 
 

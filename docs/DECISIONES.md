@@ -138,3 +138,7 @@ Reject a symlink as the immediate task-state directory before opening its ledger
 ### F8 · Preliminary measurement boundary
 
 Use a test-only allowlist of synthetic fixtures for independent measurement. Identify sampled processes by PID and birth time for CPU accounting. Report sampled aggregate RSS and launcher accounting separately. Keep the governor, concurrency defaults, production permissions, and F8 entry gate unchanged.
+
+### D07.8 · Embedded workspace driver audit
+
+The pinned OpenCode Effect SDK is **EXTENSIBLE** through `CreateOptions.workspaceProviders`. Its embedded host registers drivers, and `Environment` routes workspace-bound file operations and child spawning through the selected driver. The normal CLI registry is empty. Local MCP also has its own local driver path, and the embedded host starts the native suspended-session recovery sweep during initialization. The native service documents at-least-once recovery, so admission through the same budget by itself cannot guarantee that uncertain effects stay unrepeated. A trusted host proof must demonstrate coverage of every enabled execution path and defer execution until the current task policy and uncertainty have been reconciled. Passing an authenticated gateway credential into the current shared OpenCode and tool namespace fails the required separation.

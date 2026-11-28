@@ -226,3 +226,7 @@ Run `python3 -I -B tests/fase5-supervisor-stop.py` for production review teardow
 ### Bounded F8 measurement preparation
 
 Run `python3 -I -B tests/f8-measure.py context` for the independent memory envelope measurement. Use `search`, `review --runs 1`, or `recovery --runs 1` for pinned Linux fixtures with Bubblewrap available. The JSON separates sampled tree CPU and RSS from launcher accounting. The F8 production gate still requires isolated task ownership and native read I/O. Keep these runs sequential. [Measurement evidence](docs/PRUEBAS.md#f8--bounded-preliminary-measurements)
+
+### D07.8 continuation
+
+Start with the Effect SDK workspace-provider path. Exercise one deterministic native read through a workspace driver with a real isolated worker and the existing authenticated gateway. Check the selected session and task identity, deadline and reservation binding, enabled MCP launch paths, and the embedded startup recovery sweep before adding a production entry point. Use the result-persistence test for native read recovery until there is an observable I/O boundary on the pinned artifact. [Driver evidence](docs/PRUEBAS.md#d078--workspace-driver-and-containment-evidence)

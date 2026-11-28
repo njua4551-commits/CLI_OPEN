@@ -112,3 +112,13 @@ The clean initial branch and public tracking reference were at `196c3a98278b4608
 ### F7.2 budget and preliminary F8 measurements
 
 The regression reduced a 1,268-byte envelope to 204 bytes under a 256-byte limit and preserved the memory entry. The independent F8 harness measured context, pinned search, reviewed editing, and composed recovery sequentially on Linux. No full baseline comparison, governor, worker coordination, concurrency adjustment, or automatic tool activation was enabled. [Measurement evidence](docs/PRUEBAS.md#f8--bounded-preliminary-measurements)
+
+## D07.8 preparation and preliminary F8 measurements
+
+Work started at `ea66e91c6a974dfd0777b5a74c375eb308337c6c` on `fase-1`, matching remote `main`. The Repo Map stash remains at `943cc63e`. Published CI succeeded for the starting SHA. [CI run](https://github.com/njua4551-commits/CLI_OPEN/actions/runs/46088689868)
+
+The pinned SDK passed workspace-driver registration and first-tool gating with an in-memory driver. Checkpoint `366a444` adds the late hard-link containment case and makes the native I/O fixture reject unsupported case selectors. The tool trust boundary still requires production integration. Direct editing remains **CONTAINED**. Native read and paginated read interruption at the actual I/O boundary remain unqualified. The standalone gateway and the composed restart fixture are narrower evidence than full production recovery. Supervised remote inference stays blocked. [Driver and containment evidence](docs/PRUEBAS.md#d078--workspace-driver-and-containment-evidence)
+
+Repeated synthetic trials now record variability and sampler CPU. The production F8 gate still requires D07.8 recovery and native read I/O. The next eligible D07.8 task is a deterministic workspace-driver proof using the production gateway and a Bubblewrap worker with separately protected task state. [Measurement evidence](docs/PRUEBAS.md#f8--sampler-overhead-and-trial-variability)
+
+The portable, Linux and pinned OpenCode profiles passed locally. The focused native search I/O fixture and two SDK tests passed independently. The OpenCode profile reproduced the known native edit overwrite and passed its separate result-persistence read cases. [Test evidence](docs/PRUEBAS.md#d078--workspace-driver-and-containment-evidence)

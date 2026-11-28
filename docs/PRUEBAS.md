@@ -441,3 +441,24 @@ The host reported four logical CPUs and 16,635,437,056 bytes of RAM. Values comb
 The two search trials each recorded 8 synthetic provider requests and 6 tool calls on the selective path, and 4 requests and 2 tool calls on the full-read path. Tool-output estimates were 181 and 3,301 tokens, respectively. The estimator divides UTF-8 bytes by four and excludes total model context and schema tokens. This compares two explicit fixture strategies on the same engine. Gateway admission is covered separately by the Linux concurrency case. Parallel execution, matched launcher overhead, and governor overhead remain unmeasured.
 
 The OpenCode regression observed 0.132 s from interrupting the composed launcher to confirming descendant cleanup, and 8.757 s for its resume invocation. These are single fixture observations. The recovery workload now records both intervals separately when run through the measurement harness.
+
+### D07.8 · Workspace-driver and containment evidence
+
+At project base `ea66e91c6a974dfd0777b5a74c375eb308337c6c`, two tests from the pinned OpenCode SDK `test/embedded.test.ts` passed under network-isolated Bubblewrap using a read-only dependency tree. The test names are `configures workspace providers through the SDK facade` and `blocks the model-selected first tool on lazy provisioning`. Their in-memory driver establishes registration and first-tool gating. Production task ownership, isolated driver execution, and supervisor-to-gateway restart qualification remain open.
+
+The portable workspace regression rejects a source hard link inserted after initial verification and preserves the bytes on both names. The native direct edit race remains **CONTAINED** through disposable editing and reviewed Git publication. The native I/O launcher now rejects unsupported positional arguments. Its default run exercised `glob` and literal `grep`. At OpenCode `c0ad18b`, text and paginated reads go through `ReadToolFileSystem` ranges and the local driver's `node:fs/promises` `FileHandle.read`. The tested libc barrier still provides no evidence at that boundary.
+
+### F8 · Sampler overhead and trial variability
+
+The bounded harness now reports sample counts, sampler CPU time, and per-metric minimum, median, and maximum. The sampler uses a `scandir` pass and binary stat reads. The 100 ms setting is the sleep between samples. Whole-tree RSS may count shared pages repeatedly, and processes shorter than the sampling period can be missed.
+
+| Synthetic fixture | Trials | Wall seconds | Sampled user / system CPU seconds | Peak sampled RSS MiB | Peak sampled processes |
+|---|---:|---:|---:|---:|---:|
+| Context envelope | 3 | 1.144–1.699 | 0.50–0.82 / 0.04–0.09 | 34.4–34.7 | 2 |
+| Selective search | 2 | 7.673–8.706 | 10.84–12.54 / 0.75–0.87 | 489.6–492.4 | 5 |
+| Disposable review, original sampler | 2 | 24.732–28.706 | 32.86–37.83 / 2.34–2.84 | 526.0–528.8 | 7 |
+| Composed recovery | 2 | 16.089–16.184 | 21.68–22.67 / 1.56–1.70 | 556.9–559.2 | 9 |
+
+In search the sampler used 0.79–0.89 CPU seconds, compared with 1.51–1.97 before the scanner change. The trials were sequential and the host load could vary. The composed recovery recorded cleanup in 0.033–0.137 s and resume in 7.608–7.655 s. Selective versus full tool output was 181 versus 3,301 estimated tokens, with six versus two tool calls. The measurements still lack a matched production/native benchmark and measured supervisor overhead.
+
+The Linux host exposes cgroup v2 CPU, memory, and PID controllers and readable CPU and memory PSI. The existing session scope exposes read-only CPU, memory, and PID counters. An isolated writable task cgroup and user systemd delegation were not qualified. Existing Bubblewrap PID isolation and process cleanup remain the qualified mechanisms in this environment. No host resource settings were changed.

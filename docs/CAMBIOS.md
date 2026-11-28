@@ -249,3 +249,9 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 - Charge each accepted F7.2 path hint against the same cumulative envelope budget. Preserve room for ranked memory and retain the public schema.
 
 - Add a bounded sequential measurement harness over existing synthetic fixtures and record the provider requests and tool calls in the F7.2 comparison fixture.
+
+## D07.8 preparation and F8 sampling
+
+- Verify OpenCode Effect SDK workspace-provider registration and first-tool gating in the pinned upstream tests.
+- Cover source hard links added after initial verification and reject unsupported arguments to the native search interruption fixture.
+- Report sampler CPU and minimum, median, and maximum measurements. Reduce process-tree sampling overhead through a single directory scan and binary stat reads.
