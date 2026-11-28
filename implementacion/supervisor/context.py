@@ -63,6 +63,7 @@ def validate_envelope(envelope, max_bytes=MAX_CONTEXT_BYTES):
             if used + cost <= path_limit:
                 valid["paths"].append(path)
                 seen_paths.add(path)
+                used += cost
     seen_ids = set()
     seen_text = set()
     for item in entries:

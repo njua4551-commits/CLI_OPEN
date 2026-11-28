@@ -32,6 +32,20 @@ class SupervisorTest(unittest.TestCase):
         self.assertFalse(report["isolation"]["verified"])
         self.assertEqual(report["capabilities"], {"execute": False, "write": False, "remote": False})
 
+    def test_context_paths_share_one_cumulative_budget(self):
+        entry = {"id": "0123456789abcdef", "text": "Keep this memory entry."}
+        paths = [f"src/fixture{index:02}.py" for index in range(60)]
+        envelope = {"authority": "none", "source": "project-memory", "paths": paths, "entries": [entry]}
+        result = self.run_supervisor("inject-context", "--prompt", "Inspect.",
+                                     "--envelope", json.dumps(envelope), "--max-context-bytes", "256")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        encoded = next(line for line in result.stdout.splitlines() if line.startswith("{"))
+        valid = json.loads(encoded)
+        self.assertLessEqual(len(encoded.encode()) + 1, 256)
+        self.assertGreater(len(valid["paths"]), 1)
+        self.assertEqual(valid["paths"], paths[:len(valid["paths"])])
+        self.assertEqual(valid["entries"], [entry])
+
     @unittest.skipUnless(platform.system() == "Linux", "Bubblewrap detection is Linux-specific")
     def test_missing_backend_keeps_plan_without_access(self):
         result = self.run_supervisor("doctor", env={**os.environ, "PATH": ""})

@@ -245,3 +245,5 @@ Se amplió `tests/fase6-d07-responses.ts` para verificar la reanudación por ID 
 ## D07.7 · Gateway restart admission and context accounting
 
 - Reject linked ledger parent directories and exercise wrong task IDs, missing state directories, and bearer rotation across gateway restarts.
+
+- Charge each accepted F7.2 path hint against the same cumulative envelope budget. Preserve room for ranked memory and retain the public schema.
