@@ -424,3 +424,20 @@ The production supervisor still exposes review and qualification entry points wi
 ### D07.7 · Cumulative path budget regression
 
 The supervisor CLI regression supplies 60 individually valid path hints and a memory entry under a 256-byte envelope budget. Before the fix, the envelope was 1,268 bytes and the assertion failed. Afterward it was 204 bytes, including its newline, with four ordered hints and the original memory entry. The focused supervisor and F7.2 context fixtures passed.
+
+### F8 · Bounded preliminary measurements
+
+Use `python3 -I -B tests/f8-measure.py context` or `search`, `review`, and `recovery`. The pinned OpenCode workloads require Bubblewrap. The harness uses a 75-second deadline, a 100 ms process-tree sample, a fixed fixture allowlist, and one to three sequential trials. Environment variables are restricted to a private HOME and system PATH. The local measurements below are preliminary observations while the production entry gate remains closed.
+
+| Fixture | Trials | Wall seconds | Sampled user/system CPU seconds | Sampled peak tree RSS MiB | Sampled process peak |
+|---|---:|---:|---:|---:|---:|
+| Context envelope | 2 | 1.013–1.119 | 0.61–0.62 / 0.05–0.06 | 34.7 | 2 |
+| Native selective search fixture | 2 | 6.995–7.062 | 10.55–11.02 / 0.71–0.73 | 475.6–481.7 | 5 |
+| Disposable edit and Git review regression | 1 | 24.177 | 36.30 / 2.32 | 515.8 | 7 |
+| Composed gateway and MCP restart | 1 | 15.609 | 20.63 / 1.40 | 560.3 | 9 |
+
+The host reported four logical CPUs and 16,635,437,056 bytes of RAM. Values combine only observed process samples and can miss work between samples. CPU percentages are relative to one core. Summed RSS can count shared pages multiple times. `wait4` provides separate launcher accounting and cannot be substituted for complete process-tree usage through nested PID namespaces. Cross-workload times are not matched OpenCode versus CLI_OPEN speedups. The review includes several intentional stop/reject cases.
+
+The two search trials each recorded 8 synthetic provider requests and 6 tool calls on the selective path, and 4 requests and 2 tool calls on the full-read path. Tool-output estimates were 181 and 3,301 tokens, respectively. The estimator divides UTF-8 bytes by four and excludes total model context and schema tokens. This compares two explicit fixture strategies on the same engine. Gateway admission is covered separately by the Linux concurrency case. Parallel execution, matched launcher overhead, and governor overhead remain unmeasured.
+
+The OpenCode regression observed 0.132 s from interrupting the composed launcher to confirming descendant cleanup, and 8.757 s for its resume invocation. These are single fixture observations. The recovery workload now records both intervals separately when run through the measurement harness.

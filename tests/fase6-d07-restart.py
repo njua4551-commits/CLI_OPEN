@@ -1,5 +1,6 @@
 """Crash the supervisor's launcher while a fixed synthetic sandbox is active."""
 from contextlib import closing
+import json
 from pathlib import Path
 import runpy
 import shutil
@@ -82,6 +83,7 @@ def main():
                 task, reserved = snapshot(work)
                 assert reserved[-1][3] == "reserved"
             finally:
+                interrupted_at = time.monotonic()
                 supervisor.kill()
                 supervisor.wait(timeout=5)
 
@@ -91,13 +93,18 @@ def main():
                        for pid, started in tracked.items())
 
         wait_until(cleaned_up, 5, "A managed descendant survived the launcher crash")
+        cleanup_seconds = time.monotonic() - interrupted_at
+        resumed_at = time.monotonic()
         subprocess.run([*command, "resume"], env={}, check=True, timeout=50)
+        resume_seconds = time.monotonic() - resumed_at
         reopened, final = snapshot(work)
         assert reopened == task
         assert final[:len(reserved) - 1] == reserved[:-1]
         open_operation = reserved[-1]
         assert final[len(reserved) - 1] == (*open_operation[:3], "uncertain", *open_operation[4:])
         assert len(final) == task[1], (len(final), task[1])
+    print(json.dumps({"restartTiming": {"cleanup_seconds": round(cleanup_seconds, 3),
+                                       "resume_seconds": round(resume_seconds, 3)}}))
     print(f"PASS D07 restart: native session, MCP uncertainty, SQLite budget and {len(tracked)} stopped descendants")
 
 

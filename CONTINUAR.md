@@ -222,3 +222,7 @@ This profile belongs to the native diagnostic. Keep it separate from the supervi
 ### D07.6 recovery commands
 
 Run `python3 -I -B tests/fase5-supervisor-stop.py` for production review teardown and restart, and `python3 -I -B tests/fase6-d07-native-io.py` for the two native search I/O cases. The native search fixture requires a Linux C compiler and builds only a temporary interposer. Keep the F8 gate closed until the production task owner protects the ledger outside the sandbox and the read I/O cases are qualified.
+
+### Bounded F8 measurement preparation
+
+Run `python3 -I -B tests/f8-measure.py context` for the independent memory envelope measurement. Use `search`, `review --runs 1`, or `recovery --runs 1` for pinned Linux fixtures with Bubblewrap available. The JSON separates sampled tree CPU and RSS from launcher accounting. The F8 production gate still requires isolated task ownership and native read I/O. Keep these runs sequential. [Measurement evidence](docs/PRUEBAS.md#f8--bounded-preliminary-measurements)

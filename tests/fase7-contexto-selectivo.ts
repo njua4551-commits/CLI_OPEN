@@ -19,7 +19,11 @@ const turns = [
   ["glob", { pattern: missing, limit: 1 }],
   ["grep", { path: "src", include: "auth_*.py", pattern: "verify_token", literal: true, limit: 6 }],
 ] as const
-let mode = "selected"
+let mode: "selected" | "baseline" = "selected"
+const counts = {
+  selected: { requests: 0, toolCalls: 0 },
+  baseline: { requests: 0, toolCalls: 0 },
+}
 let measured = 0
 let baseline = 0
 
@@ -50,6 +54,7 @@ const server = Bun.serve({
   async fetch(request) {
     assert.equal(new URL(request.url).pathname, "/v1/chat/completions")
     const body = await request.json()
+    counts[mode].requests++
     const results = body.messages.filter((message: { role: string }) => message.role === "tool")
     if (!results.length && !body.tools?.length) return sse({ content: "Fixture title" }, "stop")
     const contents = results.map((message: { content: unknown }) =>
@@ -60,6 +65,7 @@ const server = Bun.serve({
     ]
     const limit = mode === "selected" ? 6 : fullReads.length
     if (contents.length < limit) {
+      counts[mode].toolCalls++
       const [name, input] = mode === "selected" ? selectedCall(contents) : fullReads[contents.length]
       return sse({ tool_calls: [{ index: 0, id: "call_" + contents.length, type: "function",
         function: { name, arguments: JSON.stringify(input) } }] }, "tool_calls")
@@ -118,7 +124,7 @@ try {
     settings: { baseURL: new URL("/v1", server.url).href, apiKey: "fixture" },
     models: { synthetic: { capabilities: { tools: true } } },
   } } }
-  for (mode of ["selected", "baseline"]) {
+  for (mode of ["selected", "baseline"] as const) {
     const job = Bun.spawn([cli, "--standalone", "run", "--agent", "contexto-selectivo",
       "--model", "fixture/synthetic", "--format", "json", injected], {
       cwd: workspace, env: {
@@ -144,7 +150,7 @@ try {
   assert(baseline > measured)
   console.log(JSON.stringify({ baselineToolBytes: baseline, selectedToolBytes: measured,
     memoryEnvelopeBytes: Buffer.byteLength(envelope), baselineEstimatedTokens: Math.round(baseline / 4),
-    selectedEstimatedTokens: Math.round(measured / 4) }))
+    selectedEstimatedTokens: Math.round(measured / 4), counts }))
   console.log("PASS native glob, literal grep, paginated read, ambiguity, missing and denied access")
 } finally {
   await server.stop(true)

@@ -108,3 +108,7 @@ The previous Brave consent succeeded with 18 exposed model IDs, and that tempora
 ## D07.7 · Starting point and gateway recovery
 
 The clean initial branch and public tracking reference were at `196c3a98278b46083bf5ec28b31acbc129045cf1`. GitHub Actions confirmed success. The native checkout remains pinned to OpenCode v2.3.2 at `c0ad18b402eb2827fc1ee71c171b1177b3fc02d1`. The gateway passed additional task identity, bearer rotation, and state-directory rejection tests. Full production task ownership and native read I/O qualification still gate F8. Real D07 stays blocked. [Evidence](docs/PRUEBAS.md#d077--gateway-restart-negative-cases)
+
+### F7.2 budget and preliminary F8 measurements
+
+The regression reduced a 1,268-byte envelope to 204 bytes under a 256-byte limit and preserved the memory entry. The independent F8 harness measured context, pinned search, reviewed editing, and composed recovery sequentially on Linux. No full baseline comparison, governor, worker coordination, concurrency adjustment, or automatic tool activation was enabled. [Measurement evidence](docs/PRUEBAS.md#f8--bounded-preliminary-measurements)

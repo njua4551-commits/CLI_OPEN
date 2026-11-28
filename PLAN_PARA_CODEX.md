@@ -243,7 +243,7 @@ Engine evidence below refers to OpenCode v2.3.2 at `c0ad18b402eb2827fc1ee71c171b
 | Cancellation and partial results | `tests/fase6-d07-responses.ts --read-results` | Hold the same result boundary and compare time from interruption to process exit. Treat this as result-persistence cancellation evidence. |
 | Gateway and restart | `tests/fase6-d07-restart.py` | Reuse the synthetic provider and persistent session. Record reservation and descendant cleanup separately from the edit workload. |
 
-These fixtures remain validation workloads until the F8.0 entry gate opens. Run them sequentially and keep existing provider, sandbox, and task boundaries during preparation.
+These fixtures remain validation workloads until the F8.0 entry gate opens. Run them sequentially and keep existing provider, sandbox, and task boundaries during preparation. The test-only `tests/f8-measure.py` harness can collect bounded preliminary samples under those restrictions. Treat its output as fixture evidence until equivalent production and native workloads are qualified.
 
 **F8.1 preparation.** The current supervisor constructs Bubblewrap namespaces and calls bounded subprocesses. The gateway limits requests and owns cancellation and task deadlines. The read-only DIAG broker reports visible host-level measurements. These mechanisms have no shared per-task CPU, RAM, or process admission budget. Evaluate one admission point at the supervised task launch after F8.0, retain task-scoped cleanup, and avoid changes to host limits or unrelated processes. **F8.2** depends on that enforcement and evidence that bounded parallel work improves task outcomes.
 

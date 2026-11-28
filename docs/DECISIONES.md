@@ -134,3 +134,7 @@ Use OpenCode's native XDG data storage in a new profile under a user-selected pr
 ### D07.7 · Ledger restart admission
 
 Reject a symlink as the immediate task-state directory before opening its ledger. The directory remains a trusted host deployment requirement. Restart may rotate the task bearer independently of the ledger, while the task identity, budget, and deadline continue to bind the persisted rows. The supervisor-owned service boundary is still required to qualify production recovery with protected state.
+
+### F8 · Preliminary measurement boundary
+
+Use a test-only allowlist of synthetic fixtures for independent measurement. Identify sampled processes by PID and birth time for CPU accounting. Report sampled aggregate RSS and launcher accounting separately. Keep the governor, concurrency defaults, production permissions, and F8 entry gate unchanged.
