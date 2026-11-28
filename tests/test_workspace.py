@@ -128,6 +128,25 @@ class WorkspaceTest(unittest.TestCase):
             self.assertTrue(target.is_symlink())
             self.assertEqual(alternate.read_bytes(), b"before\r\n")
 
+    def test_final_verification_rejects_source_hard_link_added_after_approval(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            target = source / "fixture.txt"
+            content = b"before\n"
+            target.write_bytes(content)
+            changes = [{
+                "path": target.name,
+                "before_sha256": hashlib.sha256(content).hexdigest(),
+                "before_version": WORKSPACE["signature"](target.stat()),
+            }]
+            WORKSPACE["verify_sources"](source, changes)
+            alternate = source / "alternate.txt"
+            alternate.hardlink_to(target)
+            with self.assertRaisesRegex(ValueError, "without links"):
+                WORKSPACE["verify_sources"](source, changes)
+            self.assertTrue(target.samefile(alternate))
+            self.assertEqual(target.read_bytes(), content)
+
     def test_link_and_validation_failure_leave_original_intact(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)

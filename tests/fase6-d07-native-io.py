@@ -1,4 +1,5 @@
 """Build and mount the test-only native I/O barrier for OpenCode on Linux."""
+import argparse
 from pathlib import Path
 import hashlib
 import runpy
@@ -10,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    argparse.ArgumentParser(
+        description="Interrupt native glob and literal grep at their instrumented I/O boundaries."
+    ).parse_args()
     compiler = shutil.which("cc", path="/usr/bin:/bin")
     backend = shutil.which("bwrap", path="/usr/bin:/bin")
     if not compiler or not backend:
