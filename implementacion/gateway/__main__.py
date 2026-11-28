@@ -23,6 +23,8 @@ import sqlite3
 import sys
 import time
 
+load_json = runpy.run_path(str(Path(__file__).with_name("strict_json.py")))["load"]
+
 UNKNOWN_USAGE = (None, None)
 
 
@@ -53,6 +55,9 @@ TIMEOUT = _env_int(
     _env_int("CLI_OPEN_GATEWAY_TIMEOUT", 30, 1, 300),
     1, 300,
 )
+CLIENT_IDLE = _env_int("CLI_OPEN_GATEWAY_CLIENT_IDLE_SECONDS", 5, 1, 60)
+PARSE_TIMEOUT = _env_int("CLI_OPEN_GATEWAY_PARSE_SECONDS", 10, 1, 60)
+CHUNK_SIZE = re.compile(rb"[0-9A-Fa-f]{1,8}\r\n")
 MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 REQUEST_FIELDS = {"model", "messages", "max_tokens", "max_completion_tokens", "tools", "stream", "stream_options",
                   "tool_choice", "temperature", "top_p", "frequency_penalty", "presence_penalty", "seed", "stop",
@@ -66,7 +71,7 @@ class Rejected(ValueError):
 
 
 def parse_request(data, clamp=False):
-    request = json.loads(data)
+    request = load_json(data)
     if not isinstance(request, dict):
         raise Rejected("request must be a JSON object")
     if request.keys() - REQUEST_FIELDS:
@@ -355,30 +360,31 @@ def relay_stream(response, model, sink, cancelled, *, require_done=False):
 
 
 def read_body(handler):
-    if handler.headers.get("Transfer-Encoding"):
-        if handler.headers["Transfer-Encoding"].lower() != "chunked":
+    encodings = handler.headers.get_all("Transfer-Encoding", [])
+    lengths = handler.headers.get_all("Content-Length", [])
+    if encodings:
+        if len(encodings) != 1 or encodings[0].lower() != "chunked" or lengths:
             raise Rejected("unsupported transfer encoding")
-        chunks, total = [], 0
+        data = bytearray()
         while True:
-            line = handler.rfile.readline(1024)
-            if not line:
-                raise Rejected("truncated chunked request")
-            size = int(line.split(b";")[0].strip(), 16)
+            line = handler.rfile.readline(11)
+            if not CHUNK_SIZE.fullmatch(line):
+                raise Rejected("invalid chunk size")
+            size = int(line, 16)
             if size == 0:
-                while handler.rfile.readline(1024) not in (b"\r\n", b"\n", b""):
-                    pass
-                break
-            total += size
-            if total > MAX_REQUEST:
+                if handler.rfile.read(2) != b"\r\n":
+                    raise Rejected("unsupported chunk trailer")
+                return bytes(data)
+            if len(data) + size > MAX_REQUEST:
                 raise Rejected("request too large")
             chunk = handler.rfile.read(size)
-            if len(chunk) != size:
-                raise Rejected("truncated chunked request")
-            chunks.append(chunk)
-            handler.rfile.read(2)
-        return b"".join(chunks)
-    length = handler.headers.get("Content-Length", "")
-    if not length.isdigit() or not 1 <= int(length) <= MAX_REQUEST:
+            if len(chunk) != size or handler.rfile.read(2) != b"\r\n":
+                raise Rejected("invalid chunk body")
+            data.extend(chunk)
+    if len(lengths) != 1 or not re.fullmatch(r"[0-9]{1,10}", lengths[0]):
+        raise Rejected("invalid content length")
+    length = lengths[0]
+    if not 1 <= int(length) <= MAX_REQUEST:
         raise Rejected("invalid content length")
     data = handler.rfile.read(int(length))
     if len(data) != int(length):
@@ -425,6 +431,30 @@ def serve(listen, port, model, task=None, responses=None):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
+        def handle(self):
+            self.connection.settimeout(CLIENT_IDLE)
+            self.parse_expires = time.monotonic() + PARSE_TIMEOUT
+            self.parse_timer = threading.Timer(PARSE_TIMEOUT, self.expire_parsing)
+            self.parse_timer.daemon = True
+            self.parse_timer.start()
+            try:
+                self.handle_one_request()
+            finally:
+                self.parse_timer.cancel()
+
+        def expire_parsing(self):
+            try:
+                self.connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+        def finish_parsing(self):
+            self.parse_timer.cancel()
+            self.parse_timer.join()
+            if time.monotonic() >= self.parse_expires:
+                raise TimeoutError("request parsing deadline expired")
+            self.connection.settimeout(TIMEOUT)
+
         def reply(self, status, body=b""):
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -450,6 +480,7 @@ def serve(listen, port, model, task=None, responses=None):
                 else:
                     request = responses["parse"](raw, model, MAX_TOKENS)
                     tokens = request["max_output_tokens"]
+                self.finish_parsing()
                 if task is not None:
                     operation = task.reserve(len(raw), tokens)
                     if operation is None:
@@ -501,7 +532,10 @@ def serve(listen, port, model, task=None, responses=None):
                     self.wfile.write(body)
             except (Rejected, ValueError, OSError, sqlite3.Error, http.client.HTTPException, RecursionError) as exc:
                 print(f"rejected: {type(exc).__name__}", file=sys.stderr, flush=True)
-                self.reply(502, b'{"error":"local gateway rejected the request"}')
+                try:
+                    self.reply(502, b'{"error":"local gateway rejected the request"}')
+                except OSError:
+                    pass
             finally:
                 self.close_connection = True
                 if operation is not None and task.ledger is not None:
@@ -535,11 +569,19 @@ def serve(listen, port, model, task=None, responses=None):
         def _overloaded(self, request):
             body = b'{"error":"gateway concurrency limit reached"}'
             try:
-                # Consumir la solicitud antes de cerrar evita RST hacia el cliente.
-                request.settimeout(0.25)
+                # Drain briefly before closing so clients can receive the response.
+                expires = time.monotonic() + 0.05
+
+                def receive():
+                    remaining = expires - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError
+                    request.settimeout(remaining)
+                    return request.recv(4096)
+
                 head = b""
                 while b"\r\n\r\n" not in head and len(head) < 8192:
-                    chunk = request.recv(4096)
+                    chunk = receive()
                     if not chunk:
                         break
                     head += chunk
@@ -549,10 +591,11 @@ def serve(listen, port, model, task=None, responses=None):
                     if line.lower().startswith(b"content-length:"):
                         length = int(line.split(b":", 1)[1].strip() or b"0")
                 while len(payload) < min(length, MAX_REQUEST):
-                    chunk = request.recv(4096)
+                    chunk = receive()
                     if not chunk:
                         break
                     payload += chunk
+                request.settimeout(0.05)
                 request.sendall(
                     b"HTTP/1.1 503 Service Unavailable\r\n"
                     b"Content-Type: application/json\r\n"
@@ -613,6 +656,12 @@ def main():
     try:
         task = None
         persistent = args.task_state is not None
+        raw_binding = os.environ.get("CLI_OPEN_GATEWAY_TASK_BINDING")
+        if raw_binding is not None and (not args.task_owner or not persistent or len(raw_binding) > 8192):
+            raise Rejected("invalid supervised binding profile")
+        binding = load_json(raw_binding) if raw_binding is not None else None
+        if raw_binding is not None and not isinstance(binding, dict):
+            raise Rejected("invalid supervised task binding")
         if (persistent != (args.task_id is not None) or (args.create_task or args.task_owner) and not persistent
                 or persistent and args.task_budget is None):
             raise Rejected("incomplete task state configuration")
@@ -638,7 +687,7 @@ def main():
                         ledger_model = args.model + "|responses" if args.responses else args.model
                         with ledger_type.open(args.task_state, args.task_id, (*args.task_budget, ledger_model, args.port),
                                               seconds, create=args.create_task, owner=args.task_owner,
-                                              credential=task.authorization) as ledger:
+                                              credential=task.authorization, binding=binding) as ledger:
                             task.ledger = ledger
                             with deadline(max(0.001, ledger.expires - time.time())):
                                 serve(args.listen, args.port, args.model, task, responses)

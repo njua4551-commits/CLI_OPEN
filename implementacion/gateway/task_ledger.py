@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 import fcntl
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -10,23 +11,55 @@ import stat
 import time
 
 
-def connect(path):
-    return sqlite3.connect(path.absolute().as_uri() + "?mode=rw", uri=True)
+def validate_ancestors(path):
+    if path.resolve(strict=True) != path:
+        raise ValueError("unsafe task state path")
+    system_owner = Path(path.anchor).stat().st_uid
+    for ancestor in (path, *path.parents):
+        info = ancestor.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid not in (system_owner, os.geteuid())
+                or (info.st_mode & 0o022 and not info.st_mode & stat.S_ISVTX)):
+            raise ValueError("untrusted task state ancestor")
+
+
+def connect(path, expected):
+    def check():
+        info = path.lstat()
+        if ((info.st_dev, info.st_ino) != expected or not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+            raise ValueError("task state identity changed")
+
+    check()
+    db = sqlite3.connect(path.absolute().as_uri() + "?mode=rw", uri=True)
+    try:
+        check()
+    except BaseException:
+        db.close()
+        raise
+    return db
 
 
 class Ledger:
     @classmethod
     @contextmanager
-    def open(cls, path, identity, settings, seconds, *, create=False, owner=None, credential=None):
+    def open(cls, path, identity, settings, seconds, *, create=False, owner=None, credential=None, binding=None):
         if owner is not None and (
             not re.fullmatch(r"ses_[A-Za-z0-9_-]{1,128}", owner[0])
             or not re.fullmatch(r"wrk_[A-Za-z0-9_-]{1,128}", owner[1])
             or not isinstance(credential, bytes)
         ):
             raise ValueError("invalid task owner profile")
+        if binding is not None:
+            if (owner is None or not isinstance(binding, dict)
+                    or set(binding) != {"source", "source_directory", "source_version", "source_digest",
+                                       "workspace_directory", "native_database", "policy", "scope", "recovery_key"}
+                    or binding["scope"] != "read:input.txt"):
+                raise ValueError("invalid supervised task binding")
+            binding = json.dumps(binding, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+            if len(binding) > 8192:
+                raise ValueError("supervised task binding too large")
         path = Path(path).absolute()
-        if path.parent.resolve(strict=True) != path.parent:
-            raise ValueError("unsafe task state path")
+        validate_ancestors(path.parent)
         parent = path.parent.lstat()
         if (not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", identity)
                 or not stat.S_ISDIR(parent.st_mode)
@@ -40,20 +73,23 @@ class Ledger:
                     or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
                 raise ValueError("unsafe task state file")
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            db = connect(path)
+            signature = (info.st_dev, info.st_ino)
+            db = connect(path, signature)
             try:
-                ledger = cls(db, identity, settings, seconds, create, owner, credential)
+                ledger = cls(db, identity, settings, seconds, create, owner, credential, binding)
             finally:
                 db.close()
             ledger.path = path
+            ledger.signature = signature
             yield ledger
         finally:
             os.close(fd)
 
-    def __init__(self, db, identity, settings, seconds, create, owner, credential):
+    def __init__(self, db, identity, settings, seconds, create, owner, credential, binding=None):
         self.requests, self.input_bytes, self.output_tokens, self.model, self.port = settings
         if db.execute("PRAGMA quick_check").fetchone() != ("ok",):
             raise ValueError("invalid task database")
+        version = 2 if binding is not None else int(owner is not None)
         if create:
             now = time.time()
             # Include schema creation in the admission transaction.
@@ -79,11 +115,18 @@ class Ledger:
             db.execute("INSERT INTO task VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                        (identity, *settings, seconds, now, now + seconds))
             if owner is not None:
-                db.execute("PRAGMA user_version = 1")
-                db.execute("CREATE TABLE task_owner (session TEXT NOT NULL, workspace TEXT NOT NULL)")
-                db.execute("INSERT INTO task_owner VALUES (?, ?)", owner)
+                if binding is None:
+                    db.execute("PRAGMA user_version = 1")
+                    db.execute("CREATE TABLE task_owner (session TEXT NOT NULL, workspace TEXT NOT NULL)")
+                    db.execute("INSERT INTO task_owner VALUES (?, ?)", owner)
+                else:
+                    db.execute("PRAGMA user_version = 2")
+                    db.execute("""CREATE TABLE task_owner (
+                        session TEXT NOT NULL, workspace TEXT NOT NULL, binding TEXT NOT NULL
+                    )""")
+                    db.execute("INSERT INTO task_owner VALUES (?, ?, ?)", (*owner, binding))
                 db.execute("CREATE TABLE listener_credential (digest BLOB NOT NULL PRIMARY KEY)")
-        if db.execute("PRAGMA user_version").fetchone() != (int(owner is not None),):
+        if db.execute("PRAGMA user_version").fetchone() != (version,):
             raise ValueError("task ownership mode mismatch")
         rows = db.execute("SELECT * FROM task").fetchall()
         if len(rows) != 1:
@@ -94,10 +137,16 @@ class Ledger:
             raise ValueError("task profile mismatch, closed or expired")
         if any(used > limit for used, limit in zip(self.reserved(db), settings[:3])):
             raise ValueError("inconsistent persisted budget")
+        if binding is not None and not create:
+            if any(used >= limit for used, limit in zip(self.reserved(db), settings[:3])):
+                raise ValueError("supervised task budget exhausted")
+            if db.execute("SELECT 1 FROM operation WHERE status != 'complete' LIMIT 1").fetchone():
+                raise ValueError("supervised task has an unresolved operation")
         self.expires = expires
         with db:
             if owner is not None:
-                if db.execute("SELECT session, workspace FROM task_owner LIMIT 2").fetchall() != [tuple(owner)]:
+                expected = tuple(owner) if binding is None else (*owner, binding)
+                if db.execute("SELECT * FROM task_owner LIMIT 2").fetchall() != [expected]:
                     raise ValueError("task owner mismatch")
                 digest = hashlib.sha256(credential).digest()
                 if db.execute("INSERT OR IGNORE INTO listener_credential VALUES (?)", (digest,)).rowcount != 1:
@@ -113,7 +162,7 @@ class Ledger:
 
     @contextmanager
     def connection(self):
-        db = connect(self.path)
+        db = connect(self.path, self.signature)
         try:
             with db:
                 yield db

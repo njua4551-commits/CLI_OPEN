@@ -11,6 +11,7 @@ import http.client
 import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import threading
@@ -78,6 +79,8 @@ def serve_fixture(fixture):
                     self.end_headers()
                     self.wfile.write(body)
                     self.wfile.flush()
+            except BrokenPipeError:
+                pass  # The upstream timeout fixture intentionally closes its socket.
             finally:
                 fixture.leave()
                 self.close_connection = True
@@ -92,11 +95,12 @@ def serve_fixture(fixture):
     return server, thread
 
 
-def start_gateway(port, limit, timeout):
+def start_gateway(port, limit, timeout, **settings):
     env = {
         **os.environ,
         "CLI_OPEN_GATEWAY_MAX_CONCURRENCY": str(limit),
         "CLI_OPEN_GATEWAY_TIMEOUT_SECONDS": str(timeout),
+        **settings,
     }
     child = subprocess.Popen([
         sys.executable, "-I", "-B", str(GATEWAY), "--port", str(port),
@@ -108,11 +112,14 @@ def start_gateway(port, limit, timeout):
 
 
 def post(port, request):
+    return raw_post(port, json.dumps(request).encode())
+
+
+def raw_post(port, body, **headers):
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
     try:
-        body = json.dumps(request).encode()
         connection.request("POST", "/v1/chat/completions", body, {
-            "Content-Type": "application/json", "Connection": "close",
+            "Content-Type": "application/json", "Connection": "close", **headers,
         })
         response = connection.getresponse()
         return response.status, response.read()
@@ -123,6 +130,53 @@ def post(port, request):
 def load(port, request, clients):
     with ThreadPoolExecutor(max_workers=clients) as pool:
         return list(pool.map(lambda _: post(port, request), range(clients)))
+
+
+def check_validation(upstream, fixture):
+    child, gateway = start_gateway(upstream, 1, 5, CLI_OPEN_GATEWAY_CLIENT_IDLE_SECONDS="1",
+                                   CLI_OPEN_GATEWAY_PARSE_SECONDS="2")
+    try:
+        before = fixture.requests
+        address = ("127.0.0.1", gateway)
+        with socket.create_connection(address, timeout=3) as idle:
+            start = time.monotonic()
+            assert idle.recv(1) == b""
+            assert 0.75 < time.monotonic() - start < 1.8
+        with socket.create_connection(address, timeout=3) as drip:
+            start = time.monotonic()
+            for char in (b"P", b"O", b"S", b"T", b" "):
+                drip.sendall(char)
+                time.sleep(0.43)
+            assert drip.recv(1) == b""
+            assert time.monotonic() - start < 2.8
+
+        def admitted(body, **headers):
+            expires = time.monotonic() + 2
+            while time.monotonic() < expires:
+                status, response = raw_post(gateway, body, **headers)
+                if status != 503:
+                    return status, response
+                time.sleep(0.02)
+            raise AssertionError("gateway did not release its HTTP worker slot")
+
+        for stream in (False, True):
+            for number in (b"NaN", b"Infinity", b"-Infinity", b"1e999"):
+                data = json.dumps({**REQUEST, "stream": stream}).encode()
+                data = data[:-1] + b',"response_format":{"nested":[' + number + b']}}'
+                status, _ = admitted(data)
+                assert status == 502, (stream, number, status)
+        for body in (b"+1\r\nx\r\n0\r\n\r\n", b"0x1\r\nx\r\n0\r\n\r\n",
+                     b"1;a=b\r\nx\r\n0\r\n\r\n", b"1\r\nx!!0\r\n\r\n",
+                     b"0\r\nX-Synthetic: yes\r\n\r\n"):
+            status, _ = admitted([body], **{"Transfer-Encoding": "chunked"})
+            assert status == 502, (body, status)
+        assert fixture.requests == before, (fixture.requests, before)
+        data = json.dumps(REQUEST).encode()
+        chunked = f"{len(data):x}\r\n".encode() + data + b"\r\n0\r\n\r\n"
+        assert admitted([chunked], **{"Transfer-Encoding": "chunked"})[0] == 200
+    finally:
+        child.terminate()
+        child.wait(timeout=5)
 
 
 def main():
@@ -186,6 +240,12 @@ def main():
         assert status == 502, status
         assert json.loads(body)["error"]
         assert 0.9 <= elapsed < 1.9, elapsed
+        child.terminate()
+        child.wait(timeout=5)
+        child = None
+        fixture.delay = 0
+        check_validation(upstream, fixture)
+        print("PASS idle clients, absolute HTTP parsing deadline, chunk framing and strict JSON")
         print("PASS fase6 concurrencia: 12+2+10 clientes HTTP reales, limite 2, 503 y timeout 1s")
     finally:
         if child is not None:

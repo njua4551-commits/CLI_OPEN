@@ -1,18 +1,27 @@
 """Streaming, stateless Responses subset for the authenticated loopback profile."""
-import json
+from pathlib import Path
+import runpy
+
+load_json = runpy.run_path(str(Path(__file__).with_name("strict_json.py")))["load"]
 
 FIELDS = {
     "model", "input", "instructions", "tools", "tool_choice", "store", "stream",
     "max_output_tokens", "parallel_tool_calls", "temperature", "top_p", "text", "reasoning", "prompt_cache_key", "include",
 }
 ITEM_TYPES = {"message", "function_call", "function_call_output", "reasoning"}
+SUMMARY_EVENTS = {
+    "response.reasoning_summary_part.added": "part",
+    "response.reasoning_summary_part.done": "part",
+    "response.reasoning_summary_text.delta": "delta",
+    "response.reasoning_summary_text.done": "text",
+}
 EVENT_TYPES = {
     "response.created", "response.in_progress", "response.output_item.added",
     "response.output_item.done", "response.content_part.added", "response.content_part.done",
     "response.output_text.delta", "response.output_text.done",
     "response.function_call_arguments.delta", "response.function_call_arguments.done",
     "response.completed", "response.incomplete", "response.failed", "error",
-}
+} | SUMMARY_EVENTS.keys()
 TERMINAL_ERRORS = {"response.incomplete", "response.failed", "error"}
 ITEM_FIELDS = {
     "message": {"type", "role", "content", "id", "status", "phase"},
@@ -30,7 +39,7 @@ def text_content(content):
 
 
 def parse(raw, model, max_tokens):
-    body = json.loads(raw)
+    body = load_json(raw)
     if not isinstance(body, dict) or body.keys() - FIELDS or body.get("model") != model:
         raise ValueError("unsupported Responses request")
     if body.get("stream") is not True or body.get("store", False) is not False:
@@ -88,6 +97,25 @@ def parse(raw, model, max_tokens):
     return body
 
 
+def check_summary(event, kind):
+    field = SUMMARY_EVENTS[kind]
+    indices = {"output_index", "summary_index", "sequence_number"}
+    required = indices | {"type", "item_id", field}
+    allowed = required | ({"status"} if kind == "response.reasoning_summary_part.done" else set())
+    if (required - event.keys() or event.keys() - allowed
+            or not isinstance(event["item_id"], str) or not event["item_id"]
+            or any(type(event[key]) is not int or event[key] < 0 for key in indices)
+            or ("status" in event and event["status"] != "incomplete")):
+        raise ValueError("invalid Responses reasoning summary event")
+    value = event[field]
+    if field == "part":
+        if (not isinstance(value, dict) or value.keys() != {"type", "text"}
+                or value["type"] != "summary_text" or not isinstance(value["text"], str)):
+            raise ValueError("invalid Responses reasoning summary part")
+    elif not isinstance(value, str):
+        raise ValueError("invalid Responses reasoning summary text")
+
+
 def relay(response, model, sink, cancelled, max_bytes, check_usage):
     if response.status != 200 or response.getheader("Content-Type", "").split(";")[0].strip() != "text/event-stream":
         raise ValueError("upstream rejected Responses stream")
@@ -109,11 +137,13 @@ def relay(response, model, sink, cancelled, max_bytes, check_usage):
         if not data:
             frame.clear()
             continue
-        event = json.loads(b"\n".join(data))
+        event = load_json(b"\n".join(data))
         kind = event.get("type") if isinstance(event, dict) else None
         names = [part[6:].strip() for part in fields if part.startswith(b"event:")]
         if not isinstance(kind, str) or kind not in EVENT_TYPES or names not in ([], [kind.encode("ascii")]):
             raise ValueError("invalid Responses event")
+        if kind in SUMMARY_EVENTS:
+            check_summary(event, kind)
         if kind in TERMINAL_ERRORS:
             raise ValueError("Responses upstream did not complete")
         if kind == "response.created":
