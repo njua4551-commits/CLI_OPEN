@@ -1,5 +1,8 @@
 name: Deterministic tests
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, fase-1]
+  pull_request:
 permissions:
   contents: read
 jobs:
@@ -11,17 +14,24 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Check patch whitespace
-        run: |
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            git diff --check HEAD^1 HEAD
-          else
-            git diff --check HEAD^ HEAD
-          fi
+      - name: Check change range whitespace
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_BRANCH: ${{ github.ref_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash tests/check-change-range.sh
       - run: python3 -I -B tests/run-suite.py portable
   linux:
+    name: Linux / ${{ matrix.profile }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [linux, opencode]
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -42,4 +52,34 @@ jobs:
           command -v bwrap
           bwrap --version
           df -h /tmp
-      - run: python3 -I -B tests/run-suite.py linux
+      - name: Check kernel namespace support
+        run: |
+          test "$(id -u)" -ne 0
+          if ! bwrap --unshare-user --unshare-pid --unshare-net --disable-userns \
+              --ro-bind / / /usr/bin/true; then
+            echo "::error::This runner cannot provide the unprivileged Bubblewrap namespaces."
+            exit 1
+          fi
+      - name: Check out the pinned SDK source
+        if: matrix.profile == 'opencode'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: anomalyco/opencode
+          ref: c0ad18b402eb2827fc1ee71c171b1177b3fc02d1
+          path: .fase1/opencode
+          persist-credentials: false
+      - name: Provision pinned OpenCode and Bun
+        if: matrix.profile == 'opencode'
+        run: python3 -I -B tests/provision-engine.py
+      - name: Prepare the pinned SDK dependencies
+        if: matrix.profile == 'opencode'
+        working-directory: .fase1/opencode
+        run: |
+          test "$(git rev-parse HEAD)" = c0ad18b402eb2827fc1ee71c171b1177b3fc02d1
+          test "$(git hash-object bun.lock)" = 0ea44ccaa17fcfccbc057839ae8aa8fe31e38af3
+          timeout 300 ../tools/bun-linux-x64-baseline/bun install --frozen-lockfile --ignore-scripts
+          git diff --exit-code -- bun.lock
+      - name: Run the integration profile
+        env:
+          TEST_PROFILE: ${{ matrix.profile }}
+        run: python3 -I -B tests/run-suite.py "$TEST_PROFILE"

@@ -1,6 +1,7 @@
 """Run the portable, Linux or prebuilt OpenCode test profile."""
 import argparse
 import hashlib
+import os
 from pathlib import Path
 import platform
 import runpy
@@ -14,6 +15,7 @@ ARTIFACTS = {
     "tools/bun-linux-x64-baseline/bun": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235",
     "opencode/packages/cli/dist/cli-linux-x64/bin/opencode": "2a04919c134da80f95ffb8b2e3661d1c9aa6ca6c31c775a7efad6b497e6b6d24",
 }
+OFFICIAL_OPENCODE_SHA = "e6543f6e5c39c40971ba38afd1819ac852c29ac735b5a89065d3d148d47f27ad"
 
 
 def run(*args, timeout=120):
@@ -31,7 +33,9 @@ def preflight():
         if not path.is_file():
             raise SystemExit(f"BLOCKED: missing {path.relative_to(ROOT)}")
         with path.open("rb") as binary:
-            if hashlib.file_digest(binary, "sha256").hexdigest() != expected:
+            digest = hashlib.file_digest(binary, "sha256").hexdigest()
+            official = path.name == "opencode" and digest == OFFICIAL_OPENCODE_SHA
+            if digest != expected and not official:
                 raise SystemExit(f"BLOCKED: SHA-256 mismatch for {path.relative_to(ROOT)}")
     bun, cli = (ROOT / ".fase1" / name for name in ARTIFACTS)
     with tempfile.TemporaryDirectory() as home:
@@ -47,7 +51,10 @@ def preflight():
     python("tests/fase5-supervisor-stop.py")
     python("tests/fase6-d07-restart.py")
     if (ROOT / ".fase1/opencode/packages/sdk/node_modules/effect").is_dir():
+        python("tests/d079-sdk-admission.py")
         python("tests/d0710-task.py")
+    elif os.environ.get("CI") == "true":
+        raise SystemExit("BLOCKED: OpenCode CI requires pinned SDK dependencies")
     else:
         print("SKIP production SDK task: prepared SDK dependencies are missing", flush=True)
     supervisor = runpy.run_path(str(ROOT / "implementacion/supervisor/__main__.py"))
