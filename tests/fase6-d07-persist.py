@@ -115,6 +115,51 @@ def main():
                 assert FIXTURE["request"](port, token=rotated) == 429
             assert operations() == [("complete", 8, 3, 2), ("uncertain", 8, None, None), ("complete", 8, 3, 2)]
 
+            owned_path = Path(temporary) / "owned.sqlite"
+            owned_state = ("--task-state", str(owned_path), "--task-id", "owned")
+            owner = (*owned_state, "--task-owner", "ses_fixture", "wrk_fixture")
+            first_credential, next_credential = uuid4().hex, uuid4().hex
+            budget = (provider.server_port, 1, 1000, 8)
+            started.clear()
+            disconnected.clear()
+            stream["messages"][0]["content"] = "stall"
+            with FIXTURE["listener"](*budget, extra=(*owner, "--create-task"),
+                                     token=first_credential, with_process=True) as (port, gateway):
+                with FIXTURE["listener"](*budget, extra=owner, token=next_credential, rejected=True):
+                    pass
+                with closing(HTTPConnection("127.0.0.1", port, timeout=5)) as client:
+                    client.request("POST", "/v1/chat/completions", json.dumps(stream),
+                                   {"Authorization": "Bearer " + first_credential})
+                    assert started.wait(3)
+                    gateway.kill()
+                    gateway.wait(timeout=5)
+                assert disconnected.wait(2)
+            with closing(sqlite3.connect(owned_path)) as db:
+                original_task = db.execute("SELECT * FROM task").fetchone()
+            for profile, token in (
+                (owner, first_credential),
+                (owned_state, next_credential),
+                ((*owned_state, "--task-owner", "ses_other", "wrk_fixture"), next_credential),
+                ((*owned_state, "--task-owner", "ses_fixture", "wrk_other"), next_credential),
+            ):
+                with FIXTURE["listener"](*budget, extra=profile, token=token, rejected=True):
+                    pass
+            with closing(sqlite3.connect(owned_path)) as db:
+                assert db.execute("SELECT status FROM operation").fetchall() == [("reserved",)]
+            with FIXTURE["listener"](*budget, extra=owner, token=next_credential) as port:
+                assert FIXTURE["request"](port, token=first_credential) == 401
+                assert FIXTURE["request"](port, token=next_credential) == 429
+            with FIXTURE["listener"](*budget, extra=owner, token=first_credential, rejected=True):
+                pass
+            with closing(sqlite3.connect(owned_path)) as db:
+                assert db.execute("SELECT * FROM task").fetchone() == original_task
+                assert db.execute("SELECT count(*) FROM listener_credential").fetchone() == (2,)
+                assert db.execute("SELECT status FROM operation").fetchall() == [("uncertain",)]
+                db.execute("UPDATE task_owner SET session = 'corrupt'")
+                db.commit()
+            with FIXTURE["listener"](*budget, extra=owner, token=uuid4().hex, rejected=True):
+                pass
+
             policy_path = Path(temporary) / "policy.sqlite"
             policy = ("--task-state", str(policy_path), "--task-id", "policy")
             with FIXTURE["listener"](*settings, extra=(*policy, "--create-task")) as port:

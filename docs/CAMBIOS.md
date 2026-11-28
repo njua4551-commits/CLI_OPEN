@@ -263,3 +263,7 @@ Added the supervisor's internal Effect SDK adapter and an isolated regression ag
 ### D07.9 · Native file-read interruption
 
 Added an opt-in Linux x86_64 syscall tracer for the pinned OpenCode process. The regression exercises both a first ranged read and a later page, retaining the existing search launcher and pre-result fixtures.
+
+### D07.9 · Gateway session and workspace binding
+
+Added opt-in persistent gateway ownership and single-use listener credentials. Existing unbound ledger callers keep their current behavior. The persisted gateway test now covers an owner-bound active-request crash and negative admission cases.

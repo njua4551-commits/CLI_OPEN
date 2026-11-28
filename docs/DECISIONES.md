@@ -150,3 +150,7 @@ Use the Effect SDK layer replacement to decorate the pinned `SessionRestart` ser
 ### D07.9 · Observe positional reads in the synthetic fixture
 
 Use a test-only child tracer to observe successful `pread64` at the syscall exit boundary. A separate paginated case requires a nonzero offset. The production reader and supervisor isolation policy stay on their existing paths.
+
+### D07.9 · Persist native owner binding in the gateway ledger
+
+Use the existing SQLite ledger and its exclusive open lock to bind a task to the native session and workspace IDs. The opt-in schema version rejects reopening through the unbound profile. Persist only a digest per admitted listener credential and rotate the bearer on each new listener. Rejected owner or credential checks leave reservations untouched. A crash after admission burns that credential and the next qualified listener uses a new one. The trusted deployment provides the private ledger directory and keeps the gateway token outside the execution worker.

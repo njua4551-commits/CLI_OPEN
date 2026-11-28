@@ -130,3 +130,7 @@ Started at `bfc1185a9b0f4ecf2fb04478340c58ab385ac44f` on `fase-1`, two local com
 ## D07.9 · Native file-read interruption qualified
 
 At base `46377d4`, both native file-read cases passed at successful `pread64` before userspace delivery. Search remains qualified at its libc result boundaries. Full production task ownership and restart with a separate trusted ledger and authentication still block F8. [Evidence](docs/PRUEBAS.md#d079--native-file-read-syscall-boundary)
+
+## D07.9 · Gateway ownership binding qualified
+
+At base `a5382c5`, the standalone gateway passed native ID binding and credential rotation, including recovery of an active reservation after gateway termination. The SDK sweep gate and gateway binding now have separate executable regression coverage. Production ownership still needs one supervisor lifecycle for both components, a restricted workspace driver, and uncertain-MCP reconciliation across a full restart. The F8 entry gate remains closed. [Evidence](docs/PRUEBAS.md#d079--bound-gateway-admission)

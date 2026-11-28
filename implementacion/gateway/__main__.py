@@ -593,6 +593,8 @@ def main():
                         help="Maximum lifetime of the authenticated listener (1–300, default 120)")
     parser.add_argument("--task-state", type=Path, help="Private SQLite task ledger")
     parser.add_argument("--task-id", help="Verifiable persistent task identity")
+    parser.add_argument("--task-owner", nargs=2, metavar=("SESSION", "WORKSPACE"),
+                        help="Bind a persistent task to one native session and workspace; rotate credentials on restart")
     parser.add_argument("--create-task", action="store_true", help="Create a new persistent budget")
     parser.add_argument("--responses", action="store_true", help="Enable only Responses SSE on loopback")
     args = parser.parse_args()
@@ -602,7 +604,7 @@ def main():
     try:
         task = None
         persistent = args.task_state is not None
-        if (persistent != (args.task_id is not None) or args.create_task and not persistent
+        if (persistent != (args.task_id is not None) or (args.create_task or args.task_owner) and not persistent
                 or persistent and args.task_budget is None):
             raise Rejected("incomplete task state configuration")
         if args.responses and not persistent:
@@ -626,7 +628,8 @@ def main():
                         ledger_type = runpy.run_path(str(Path(__file__).with_name("task_ledger.py")))["Ledger"]
                         ledger_model = args.model + "|responses" if args.responses else args.model
                         with ledger_type.open(args.task_state, args.task_id, (*args.task_budget, ledger_model, args.port),
-                                              seconds, create=args.create_task) as ledger:
+                                              seconds, create=args.create_task, owner=args.task_owner,
+                                              credential=task.authorization) as ledger:
                             task.ledger = ledger
                             with deadline(max(0.001, ledger.expires - time.time())):
                                 serve(args.listen, args.port, args.model, task, responses)
