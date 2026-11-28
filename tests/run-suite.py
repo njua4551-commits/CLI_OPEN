@@ -6,6 +6,7 @@ from pathlib import Path
 import platform
 import runpy
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,8 @@ def python(*args):
 
 
 def preflight():
+    if not shutil.which("rg", path="/usr/bin:/bin"):
+        raise SystemExit("BLOCKED: OpenCode search fixtures require ripgrep inside the Bubblewrap PATH")
     for relative, expected in ARTIFACTS.items():
         path = ROOT / ".fase1" / relative
         if not path.is_file():
@@ -84,8 +87,15 @@ def main():
     else:
         if platform.system() != "Linux" or platform.machine() != "x86_64":
             raise SystemExit("BLOCKED: this profile requires Linux x86_64")
+        if os.geteuid() == 0:
+            raise SystemExit("BLOCKED: Linux integration profiles require an unprivileged user")
         if not shutil.which("bwrap"):
             raise SystemExit("BLOCKED: Bubblewrap is required")
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                probe.bind(("127.0.0.1", 0))
+        except OSError as error:
+            raise SystemExit(f"BLOCKED: test launcher cannot open an IPv4 loopback socket ({error.strerror})") from None
         if profile == "linux":
             for fixture in ("fase4-linux", "fase5-workspace", "fase6-gateway",
                             "fase6-concurrencia", "fase6-d07-cancel", "fase6-d07-budget", "fase6-d07-persist"):

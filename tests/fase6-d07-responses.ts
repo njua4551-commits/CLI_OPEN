@@ -679,7 +679,12 @@ try {
           }
           await Bun.sleep(50)
         }
-        assert.match(sessionID ?? "", /^ses_/, "I/O barrier did not hold " + probe.id)
+        const markerExists = await Bun.file(barrier).exists()
+        const toolSnapshot = persistedTool("completed", callID) ? "completed"
+          : persistedTool("error", callID) ? "error"
+          : persistedTool("running", callID) ? "running" : "missing"
+        assert.match(sessionID ?? "", /^ses_/,
+          `I/O barrier did not hold ${probe.id} (marker=${markerExists}, tool=${toolSnapshot}, exit=${active.exitCode})`)
         const observed = await readFile(barrier, "utf8")
         if (nativeIO) {
           assert.match(observed, nativeRead ? /^\d+ pread64\n$/ :

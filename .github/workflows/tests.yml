@@ -39,7 +39,7 @@ jobs:
       - name: Prepare Bubblewrap on Ubuntu
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bubblewrap
+          sudo apt-get install -y --no-install-recommends bubblewrap ripgrep
           restriction=$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)
           echo "kernel.apparmor_restrict_unprivileged_userns=$restriction"
           if [ "$restriction" = 1 ]; then
@@ -51,6 +51,7 @@ jobs:
           python3 --version
           command -v bwrap
           bwrap --version
+          /usr/bin/rg --version
           df -h /tmp
       - name: Check kernel namespace support
         run: |
